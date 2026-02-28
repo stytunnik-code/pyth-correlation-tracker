@@ -75,7 +75,7 @@ function Smoke() {
         this.vy=-(0.1+Math.random()*0.25);
         this.vx=(Math.random()-0.5)*0.12;
         this.op=0;
-        this.maxOp=0.05+Math.random()*0.1;
+        this.maxOp=0.12+Math.random()*0.18;
         this.fadingIn=true;
         this.col=COLS[Math.floor(Math.random()*COLS.length)];
         this.rot=Math.random()*Math.PI*2;
@@ -85,7 +85,7 @@ function Smoke() {
       }
       tick(){
         this.y+=this.vy; this.x+=this.vx; this.rot+=this.rspd;
-        if(this.fadingIn){this.op+=0.0006;if(this.op>=this.maxOp)this.fadingIn=false;}
+        if(this.fadingIn){this.op+=0.001;if(this.op>=this.maxOp)this.fadingIn=false;}
         else this.op-=0.00025;
         if(this.op<=0||this.y<-this.r)this.reset();
       }
@@ -112,7 +112,7 @@ function Smoke() {
     return()=>{cancelAnimationFrame(id);window.removeEventListener("resize",setSize);};
   },[]);
 
-  return <canvas ref={ref} style={{position:"fixed",inset:0,width:"100%",height:"100%",pointerEvents:"none",zIndex:0}}/>;
+  return <canvas ref={ref} className="smoke-bg" style={{position:"fixed",top:0,left:0,width:"100vw",height:"100vh",pointerEvents:"none",zIndex:1}}/>;
 }
 
 /* ─── SPARKLINE ──────────────────────────────────────────────────────────── */
@@ -228,7 +228,31 @@ export default function App(){
         setPrices(np);setHistory({...histRef.current});setStatus("live");
       } else throw new Error("0 valid prices parsed");
     }catch(e){
-      console.error("[Pyth] error, falling back to demo:", e.message);
+      console.error("[Pyth] proxy failed:", e.message, "- trying Hermes directly...");
+      try{
+        // Try Hermes directly as second attempt
+        const ids2=ASSETS.map(a=>`ids[]=${a.id}`).join("&");
+        const r2=await fetch(`https://hermes.pyth.network/v2/updates/price/latest?${ids2}&parsed=true`);
+        if(!r2.ok)throw new Error("hermes direct failed");
+        const d2=await r2.json();
+        const items2=d2.parsed||[];
+        const np2={};
+        items2.forEach(item=>{
+          const cleanId=item.id?.replace(/^0x/,"");
+          const asset=ASSETS.find(a=>a.id.replace(/^0x/,"")===cleanId);
+          if(!asset)return;
+          const po=item.price;
+          if(!po)return;
+          const p=parseFloat(po.price)*Math.pow(10,po.expo??-8);
+          if(isFinite(p)&&p>0){np2[asset.symbol]=p;push(asset.symbol,p);}
+        });
+        if(Object.keys(np2).length>0){
+          setPrices(np2);setHistory({...histRef.current});setStatus("live");
+          console.log("[Pyth] direct Hermes success!");
+          return;
+        }
+      }catch(e2){console.error("[Pyth] direct also failed:",e2.message);}
+      // Final fallback: demo
       ASSETS.forEach(a=>{
         const h=histRef.current[a.symbol];
         const last=h?.length?h[h.length-1]:SEED[a.symbol]??100;
@@ -473,6 +497,7 @@ export default function App(){
         html,body,#root{height:100%;width:100%;background:var(--bg);}
 
         .app{min-height:100vh;width:100%;background:var(--bg);color:var(--tx);font-family:var(--fm);display:flex;flex-direction:column;position:relative;overflow-x:hidden;opacity:0;transition:opacity .5s;}
+        canvas.smoke-bg{mix-blend-mode:screen;}
         .app.on{opacity:1;}
 
         /* Header */
