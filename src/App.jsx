@@ -123,14 +123,7 @@ function CorrChart({symA,symB,histRef}){
 
 /* ── PYTH LOGO ──────────────────────────────────────────────────────────── */
 function PythLogo({size=30}){
-  return(
-    <svg width={size} height={size} viewBox="0 0 120 120" fill="none">
-      <rect width="120" height="120" rx="26" fill="#7142CF"/>
-      <path d="M34 96 L34 44 C34 26 46 16 62 16 C78 16 90 26 90 44 C90 60 78 70 62 70 L54 70 L54 96 Z"
-            fill="none" stroke="white" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round"/>
-      <ellipse cx="66" cy="48" rx="14" ry="16" fill="white"/>
-    </svg>
-  );
+  return <img src="/pyth-logo.png" alt="Pyth" width={size} height={size} style={{borderRadius:"8px",objectFit:"contain"}}/>;
 }
 
 /* ── MAIN ───────────────────────────────────────────────────────────────── */
