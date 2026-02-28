@@ -1,6 +1,7 @@
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  res.setHeader("Cache-Control", "no-store");
   if (req.method === "OPTIONS") return res.status(200).end();
 
   const { ids } = req.query;
@@ -8,22 +9,41 @@ export default async function handler(req, res) {
 
   try {
     const idList = Array.isArray(ids) ? ids : ids.split(",");
-    const params = idList.map(id => `ids[]=${id.trim()}`).join("&");
     
-    // Use the v2 parsed endpoint which returns the exact format App.jsx expects
-    const url = `https://hermes.pyth.network/v2/updates/price/latest?${params}&parsed=true`;
+    // Build query with proper ids[] format for Hermes v2
+    const params = new URLSearchParams();
+    idList.forEach(id => params.append("ids[]", id.trim()));
+    params.append("parsed", "true");
+    
+    const url = `https://hermes.pyth.network/v2/updates/price/latest?${params.toString()}`;
     
     const response = await fetch(url, {
-      headers: { "Accept": "application/json" },
+      method: "GET",
+      headers: {
+        "Accept": "application/json",
+        "User-Agent": "pyth-correlation-tracker/1.0",
+      },
+      signal: AbortSignal.timeout(8000),
     });
 
-    if (!response.ok) throw new Error(`Hermes ${response.status}`);
+    if (!response.ok) {
+      const errText = await response.text();
+      throw new Error(`Hermes ${response.status}: ${errText.slice(0,200)}`);
+    }
 
     const data = await response.json();
-    
-    // Return in the format App.jsx expects: { parsed: [...] }
-    return res.status(200).json({ parsed: data.parsed || [] });
+
+    // Normalize to { parsed: [...] } format
+    // Hermes v2 returns: { binary: {...}, parsed: [{id, price:{price,conf,expo}, ema_price, metadata}] }
+    const parsed = (data.parsed || []).map(item => ({
+      id: item.id,
+      price: item.price,      // {price: "638...", conf: "...", expo: -8, publish_time: ...}
+      ema_price: item.ema_price,
+      metadata: item.metadata,
+    }));
+
+    return res.status(200).json({ parsed, count: parsed.length });
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message, stack: err.stack?.slice(0, 300) });
   }
 }
