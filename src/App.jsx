@@ -2,16 +2,16 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import SmokeBackground from "./SmokeBackground";
 
 const ASSETS = [
-  { id: "e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43", symbol: "BTC",     name: "Bitcoin",      category: "crypto",    color: "#F7931A", icon: "₿" },
-  { id: "ff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace", symbol: "ETH",     name: "Ethereum",     category: "crypto",    color: "#8B9FFF", icon: "Ξ" },
-  { id: "ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d", symbol: "SOL",     name: "Solana",       category: "crypto",    color: "#14F195", icon: "◎" },
-  { id: "dcef50dd0a4cd2dcc17e45df1676dcb336a11a61c69df7a0299b0150c672d25c", symbol: "DOGE",    name: "Dogecoin",     category: "crypto",    color: "#C8A84B", icon: "Ð" },
-  { id: "eaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a", symbol: "USDC",    name: "USD Coin",     category: "crypto",    color: "#2775CA", icon: "$" },
-  { id: "a995d00bb36a63cef7fd2c287dc105fc8f3d93779f062f09551b0af3e81ec30b", symbol: "EUR/USD", name: "Euro",         category: "fx",        color: "#60A5FA", icon: "€" },
-  { id: "84c2dde9633d93d1bcad84e7dc41c9d56578b7ec52fabedc1f335d673df0a7c1", symbol: "GBP/USD", name: "Pound",        category: "fx",        color: "#34D399", icon: "£" },
-  { id: "765d2ba906dbc32ca17cc11f5310a89e9ee1f6420508c63861f2f8ba4ee34bb2", symbol: "XAU/USD", name: "Gold",         category: "commodity", color: "#FCD34D", icon: "Au" },
-  { id: "925ca92ff005ae943c158e3563f59698ce7e75c5a8c8dd43303a0a154887b3e6", symbol: "WTI",     name: "Oil (WTI)",    category: "commodity", color: "#FB923C", icon: "⛽" },
-  { id: "49f6b65cb1de6b10eaf75e7c03ca029c306d0357e91b5311b175084a5ad55688", symbol: "AAPL",   name: "Apple Inc",    category: "equity",    color: "#E2E8F0", icon: "" },
+  { id: "e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43", symbol: "BTC",     name: "Bitcoin",      category: "crypto",    color: "#F7931A", icon: "₿", logo: "https://assets.coingecko.com/coins/images/1/small/bitcoin.png" },
+  { id: "ff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace", symbol: "ETH",     name: "Ethereum",     category: "crypto",    color: "#8B9FFF", icon: "Ξ", logo: "https://assets.coingecko.com/coins/images/279/small/ethereum.png" },
+  { id: "ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d", symbol: "SOL",     name: "Solana",       category: "crypto",    color: "#14F195", icon: "◎", logo: "https://assets.coingecko.com/coins/images/4128/small/solana.png" },
+  { id: "dcef50dd0a4cd2dcc17e45df1676dcb336a11a61c69df7a0299b0150c672d25c", symbol: "DOGE",    name: "Dogecoin",     category: "crypto",    color: "#C8A84B", icon: "Ð", logo: "https://assets.coingecko.com/coins/images/5/small/dogecoin.png" },
+  { id: "eaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a", symbol: "USDC",    name: "USD Coin",     category: "crypto",    color: "#2775CA", icon: "$", logo: "https://assets.coingecko.com/coins/images/6319/small/usdc.png" },
+  { id: "a995d00bb36a63cef7fd2c287dc105fc8f3d93779f062f09551b0af3e81ec30b", symbol: "EUR/USD", name: "Euro",         category: "fx",        color: "#60A5FA", icon: "€", logo: null },
+  { id: "84c2dde9633d93d1bcad84e7dc41c9d56578b7ec52fabedc1f335d673df0a7c1", symbol: "GBP/USD", name: "Pound",        category: "fx",        color: "#34D399", icon: "£", logo: null },
+  { id: "765d2ba906dbc32ca17cc11f5310a89e9ee1f6420508c63861f2f8ba4ee34bb2", symbol: "XAU/USD", name: "Gold",         category: "commodity", color: "#FCD34D", icon: "Au", logo: null },
+  { id: "925ca92ff005ae943c158e3563f59698ce7e75c5a8c8dd43303a0a154887b3e6", symbol: "WTI",     name: "Oil (WTI)",    category: "commodity", color: "#FB923C", icon: "⛽", logo: null },
+  { id: "49f6b65cb1de6b10eaf75e7c03ca029c306d0357e91b5311b175084a5ad55688", symbol: "AAPL",   name: "Apple Inc",    category: "equity",    color: "#E2E8F0", icon: "", logo: null },
 ];
 
 const SEED = { BTC:65000,ETH:3200,SOL:140,DOGE:0.15,USDC:1,"EUR/USD":1.085,"GBP/USD":1.265,"XAU/USD":2320,WTI:78,AAPL:185 };
@@ -124,6 +124,22 @@ function CorrChart({symA,symB,histRef}){
 /* ── PYTH LOGO ──────────────────────────────────────────────────────────── */
 function PythLogo({size=30}){
   return <img src="/pyth-logo.png" alt="Pyth" width={size} height={size} style={{borderRadius:"8px",objectFit:"contain"}}/>;
+}
+
+/* ── ASSET ICON ─────────────────────────────────────────────────────────── */
+function AssetIcon({asset,size=36}){
+  const [imgErr,setImgErr]=useState(false);
+  const hasLogo=asset.logo&&!imgErr;
+  const sym=asset.icon||asset.symbol.split("/")[0].slice(0,2);
+  return(
+    <div className={`asset-icon${!hasLogo?" sym":""}`} style={{width:size,height:size,"--ac":asset.color}}>
+      {hasLogo?(
+        <img src={asset.logo} alt="" width={size} height={size} onError={()=>setImgErr(true)}/>
+      ):(
+        <span className="asset-icon-sym">{sym}</span>
+      )}
+    </div>
+  );
 }
 
 /* ── MAIN ───────────────────────────────────────────────────────────────── */
@@ -338,7 +354,7 @@ export default function App(){
               return(
                 <div key={asset.symbol} className="tc" style={{"--ac":asset.color,"--d":`${i*30}ms`}}>
                   <div className="tc-head">
-                    <div className="tc-icon" style={{color:asset.color}}>{asset.icon}</div>
+                    <AssetIcon asset={asset} size={36}/>
                     <div className="tc-meta">
                       <div className="tc-sym" style={{color:asset.color}}>{asset.symbol}</div>
                       <div className="tc-name">{asset.name}</div>
@@ -439,7 +455,7 @@ export default function App(){
                 <div className="dp-left">
                   <div className="dp-pair">
                     <div className="dp-asset">
-                      <div className="dp-icon" style={{color:selA?.color}}>{selA?.icon}</div>
+                      {selA&&<AssetIcon asset={selA} size={48}/>}
                       <div className="dp-sym" style={{color:selA?.color}}>{selected.a}</div>
                       <div className="dp-aname">{selA?.name}</div>
                     </div>
@@ -449,7 +465,7 @@ export default function App(){
                       <div className="dp-desc">{si.desc}</div>
                     </div>
                     <div className="dp-asset">
-                      <div className="dp-icon" style={{color:selB?.color}}>{selB?.icon}</div>
+                      {selB&&<AssetIcon asset={selB} size={48}/>}
                       <div className="dp-sym" style={{color:selB?.color}}>{selected.b}</div>
                       <div className="dp-aname">{selB?.name}</div>
                     </div>
@@ -648,7 +664,10 @@ export default function App(){
         .tc::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at top left, var(--ac,transparent) 0%, transparent 60%); opacity: 0.04; pointer-events: none; }
         .tc:hover { transform: translateY(-3px); border-color: var(--cb); box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
         .tc-head { display: flex; align-items: center; gap: 8px; }
-        .tc-icon { font-size: 18px; font-weight: 700; width: 28px; text-align: center; line-height: 1; }
+        .asset-icon { flex-shrink: 0; border-radius: 10px; overflow: hidden; background: rgba(0,0,0,0.3); display: flex; align-items: center; justify-content: center; }
+        .asset-icon img { width: 100%; height: 100%; object-fit: contain; padding: 2px; image-rendering: -webkit-optimize-contrast; image-rendering: crisp-edges; }
+        .asset-icon.sym { background: color-mix(in srgb, var(--ac) 22%, transparent); border: 1px solid color-mix(in srgb, var(--ac) 40%, transparent); }
+        .asset-icon-sym { font-size: 13px; font-weight: 800; color: var(--ac); text-transform: uppercase; letter-spacing: .02em; }
         .tc-meta { flex: 1; min-width: 0; }
         .tc-sym { font-family: var(--fd); font-size: 13px; font-weight: 700; line-height: 1.1; }
         .tc-name { font-size: 8px; color: var(--td); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
@@ -702,7 +721,8 @@ export default function App(){
         .dp-right { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
         .dp-pair { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
         .dp-asset { text-align: center; }
-        .dp-icon { font-size: 24px; font-weight: 700; line-height: 1; }
+        .dp-asset .asset-icon { margin: 0 auto; }
+        .dp-asset .asset-icon-sym { font-size: 18px; }
         .dp-sym { font-family: var(--fd); font-size: 16px; font-weight: 800; margin-top: 4px; }
         .dp-aname { font-size: 9px; color: var(--td); margin-top: 2px; }
         .dp-mid { text-align: center; flex: 1; }
