@@ -1,34 +1,30 @@
 export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
-  res.setHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
   res.setHeader("Cache-Control", "no-store");
   if (req.method === "OPTIONS") return res.status(200).end();
 
-  // ids can come as ?ids=id1,id2,id3 or ?ids[]=id1&ids[]=id2
   let { ids } = req.query;
   if (!ids) return res.status(400).json({ error: "Missing ids" });
 
   const idList = Array.isArray(ids)
-    ? ids
+    ? ids.flatMap(i => i.split(","))
     : ids.split(",").map(s => s.trim()).filter(Boolean);
 
   try {
-    // Build proper query: each id as separate ids[] param
     const params = new URLSearchParams();
-    idList.forEach(id => params.append("ids[]", id));
+    idList.forEach(id => params.append("ids[]", id.trim()));
     params.set("parsed", "true");
-    params.set("encoding", "hex");
+    params.set("ignore_invalid_price_ids", "true"); // skip 404 IDs gracefully
 
     const url = `https://hermes.pyth.network/v2/updates/price/latest?${params}`;
-
     const response = await fetch(url, {
       headers: { "Accept": "application/json" },
       signal: AbortSignal.timeout(10000),
     });
 
     if (!response.ok) throw new Error(`Hermes ${response.status}`);
-
     const data = await response.json();
+
     const parsed = (data.parsed || []).map(item => ({
       id: item.id,
       price: item.price,

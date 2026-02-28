@@ -7,10 +7,10 @@ const ASSETS = [
   { id: "ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d", symbol: "SOL",     name: "Solana",    category: "crypto",    color: "#9945FF" },
   { id: "dcef50dd0a4cd2dcc17e45df1676dcb336a11a461c54d397a53f6f2a1e3cf07c", symbol: "DOGE",    name: "Dogecoin",  category: "crypto",    color: "#C8A84B" },
   { id: "eaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a", symbol: "USDC",    name: "USD Coin",  category: "crypto",    color: "#2775CA" },
-  { id: "8ac0c70fff57e9aefdf5edf44b51d62c2d433653cbb2cf5cc06bb115af04d221", symbol: "EUR/USD", name: "Euro",      category: "fx",        color: "#60A5FA" },
+  { id: "a995d00bb36a63cef7fd2c287dc105fc8f3d93779f062f09551b0af3e81ec30b", symbol: "EUR/USD", name: "Euro",      category: "fx",        color: "#60A5FA" },
   { id: "84c2dde9633d93d1bcad84e7dc41c9d56578b7ec52fabedc1f335d673df0a7c1", symbol: "GBP/USD", name: "Pound",     category: "fx",        color: "#34D399" },
   { id: "765d2ba906dbc32ca17cc11f5310a89e9ee1f6420508c63861f2f8ba4ee34bb2", symbol: "XAU/USD", name: "Gold",      category: "commodity", color: "#FCD34D" },
-  { id: "c9d8b075a5c69303365ae23632d4e2560c5caa6a73b04100c51cfa985ba4aa0e", symbol: "WTI",     name: "Oil",       category: "commodity", color: "#FB923C" },
+  { id: "c9d8b075a5c69303365ae23632d4e2560c5caa6a73b04100c51cfa985ba4aa0e", symbol: "WTI",     name: "Oil (WTI)", category: "commodity", color: "#FB923C" },
   { id: "49f6b65cb1de6b10468f01a6760ee3c4c7f19ab72c8e7c4c7e8b2a3e3e3e3e3e", symbol: "AAPL",   name: "Apple",     category: "equity",    color: "#E2E8F0" },
 ];
 
@@ -85,7 +85,7 @@ function Smoke() {
       }
       tick(){
         this.y+=this.vy; this.x+=this.vx; this.rot+=this.rspd;
-        if(this.fadingIn){this.op+=0.001;if(this.op>=this.maxOp)this.fadingIn=false;}
+        if(this.fadingIn){this.op+=0.002;if(this.op>=this.maxOp)this.fadingIn=false;}
         else this.op-=0.00025;
         if(this.op<=0||this.y<-this.r)this.reset();
       }
@@ -105,14 +105,14 @@ function Smoke() {
     }
 
     const ps=[];
-    for(let i=0;i<32;i++)ps.push(new P(true));
+    for(let i=0;i<45;i++)ps.push(new P(true));
     let id;
     const loop=()=>{ctx.clearRect(0,0,W,H);ps.forEach(p=>{p.tick();p.draw();});id=requestAnimationFrame(loop);};
     loop();
     return()=>{cancelAnimationFrame(id);window.removeEventListener("resize",setSize);};
   },[]);
 
-  return <canvas ref={ref} className="smoke-bg" style={{position:"fixed",top:0,left:0,width:"100vw",height:"100vh",pointerEvents:"none",zIndex:1}}/>;
+  return <canvas ref={ref} className="smoke-bg" style={{position:"fixed",top:0,left:0,width:"100%",height:"100%",pointerEvents:"none",zIndex:1,opacity:1}}/>;
 }
 
 /* ─── SPARKLINE ──────────────────────────────────────────────────────────── */
