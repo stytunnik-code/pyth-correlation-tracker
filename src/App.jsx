@@ -10,7 +10,7 @@ const ASSETS = [
   { id: "84c2dde9633d93d1bcad84e7dc41c9d56578b7ec52fabedc1f335d673df0a7c1", symbol: "GBP/USD", name: "Pound",        category: "fx",        color: "#34D399", icon: "£" },
   { id: "765d2ba906dbc32ca17cc11f5310a89e9ee1f6420508c63861f2f8ba4ee34bb2", symbol: "XAU/USD", name: "Gold",         category: "commodity", color: "#FCD34D", icon: "Au" },
   { id: "c9d8b075a5c69303365ae23632d4e2560c5caa6a73b04100c51cfa985ba4aa0e", symbol: "WTI",     name: "Oil (WTI)",    category: "commodity", color: "#FB923C", icon: "⛽" },
-  { id: "49f6b65cb1de6b10468f01a6760ee3c4c7f19ab72c8e7c4c7e8b2a3e3e3e3e3e", symbol: "AAPL",   name: "Apple Inc",    category: "equity",    color: "#E2E8F0", icon: "" },
+  { id: "49f6b65cb1de6b10468f01a6760ee3c4c7f19ab72c8e7c4c7e8b2a3e7565688", symbol: "AAPL",   name: "Apple Inc",    category: "equity",    color: "#E2E8F0", icon: "" },
 ];
 
 const SEED = { BTC:65000,ETH:3200,SOL:140,DOGE:0.15,USDC:1,"EUR/USD":1.085,"GBP/USD":1.265,"XAU/USD":2320,WTI:78,AAPL:185 };
@@ -222,8 +222,8 @@ export default function App(){
         if(isFinite(p)&&p>0){np[asset.symbol]=p;push(asset.symbol,p);}
       });
       if(Object.keys(np).length>0){
-        setPrevPrices(prev=>({...prev,...prices}));
-        setPrices(np);setHistory({...histRef.current});
+        setPrices(prev=>{ setPrevPrices(pp=>({...pp,...prev})); return np; });
+        setHistory({...histRef.current});
         setStatus("live");setTickCount(t=>t+1);setLastUpdate(new Date());
       }else throw new Error("0 prices");
     }catch{
@@ -242,8 +242,8 @@ export default function App(){
           if(isFinite(p)&&p>0){np2[asset.symbol]=p;push(asset.symbol,p);}
         });
         if(Object.keys(np2).length>0){
-          setPrevPrices(prev=>({...prev,...prices}));
-          setPrices(np2);setHistory({...histRef.current});
+          setPrices(prev=>{ setPrevPrices(pp=>({...pp,...prev})); return np2; });
+          setHistory({...histRef.current});
           setStatus("live");setTickCount(t=>t+1);setLastUpdate(new Date());return;
         }
       }catch{}
@@ -255,7 +255,7 @@ export default function App(){
       setPrices(Object.fromEntries(ASSETS.map(a=>[a.symbol,histRef.current[a.symbol].slice(-1)[0]])));
       setHistory({...histRef.current});setStatus("demo");setTickCount(t=>t+1);setLastUpdate(new Date());
     }
-  },[prices]);
+  },[]);  // eslint-disable-line react-hooks/exhaustive-deps
 
   useEffect(()=>{fetchPrices();const iv=setInterval(fetchPrices,3000);return()=>clearInterval(iv);},[fetchPrices]);
 
@@ -296,12 +296,15 @@ export default function App(){
 
   async function sendFeedback(){
     if(!feedbackText.trim())return;
+    // Escape HTML to prevent XSS in Telegram HTML mode
+    const safe=feedbackText.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
     try{
-      await fetch(`https://api.telegram.org/bot7510359411:AAGfsKzw4DvQpd0sTZAmGUm4l-86SJLL_Xo/sendMessage`,{
-        method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({chat_id:"582278751",text:`🔔 Feedback — Pyth Correlation\n\n${feedbackText}\n\n⏰ ${new Date().toLocaleString()}`,parse_mode:"HTML"})
+      await fetch("/api/feedback",{
+        method:"POST",
+        headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({text:safe,ts:new Date().toLocaleString()})
       });
-    }catch{}
+    }catch(e){console.error("Feedback error:",e);}
     setFeedbackSent(true);
     setTimeout(()=>{setFeedbackOpen(false);setFeedbackText("");setFeedbackSent(false);},2200);
   }
@@ -382,7 +385,7 @@ export default function App(){
               const h1=h.length>1?h[0]:null;
               const pct24=h1&&cur?((cur-h1)/h1*100):null;
               const hi=h.length?Math.max(...h):null,lo=h.length?Math.min(...h):null;
-              const vol=h.length>10?Math.sqrt(h.slice(-20).reduce((s,v,_,a)=>{const m=a.reduce((x,y)=>x+y,0)/a.length;return s+(v-m)**2;},0)/Math.min(h.length,20)):null;
+              const vs=h.slice(-20);const vol=vs.length>4?Math.sqrt(vs.reduce((s,v,_,a)=>{const m=a.reduce((x,y)=>x+y,0)/a.length;return s+(v-m)**2;},0)/vs.length):null;
               return(
                 <div key={asset.symbol} className="tc" style={{"--ac":asset.color,"--d":`${i*30}ms`}}>
                   <div className="tc-head">
