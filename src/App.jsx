@@ -677,7 +677,7 @@ export default function App(){
         }
 
         /* MAIN */
-        .main { flex: 1; padding: 16px 24px; display: flex; flex-direction: column; gap: 12px; position: relative; z-index: 1; max-width: 1800px; width: 100%; margin: 0 auto; }
+        .main { flex: 1; padding: 16px 24px; display: flex; flex-direction: column; gap: 12px; position: relative; z-index: 1; width: 100%; }
 
         /* CARDS */
         .card { background: var(--card); border: 1px solid var(--cb); border-radius: var(--r); backdrop-filter: blur(16px); overflow: hidden; animation: fup .4s ease both; }
@@ -689,7 +689,7 @@ export default function App(){
         .cm { font-size: 9px; color: var(--td); letter-spacing: .08em; }
 
         /* TICKERS */
-        .tgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+        .tgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(160px, 1fr)); gap: 8px; width: 100%; }
         .tc { background: var(--card); border: 1px solid var(--cb2); border-top: 2px solid var(--ac, var(--pu)); border-radius: var(--r); padding: 12px; display: flex; flex-direction: column; gap: 6px; transition: transform .2s, border-color .2s, box-shadow .2s; animation: fup .4s ease both; animation-delay: var(--d,0ms); cursor: default; position: relative; overflow: hidden; }
         .tc::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at top left, var(--ac,transparent) 0%, transparent 60%); opacity: 0.04; pointer-events: none; }
         .tc:hover { transform: translateY(-3px); border-color: var(--cb); box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
@@ -722,8 +722,8 @@ export default function App(){
         .leglb { font-size: 9px; font-weight: 700; }
 
         /* HEATMAP */
-        .hmwrap { overflow-x: auto; padding: 10px; }
-        .hm { border-collapse: separate; border-spacing: 2px; }
+        .hmwrap { overflow-x: auto; padding: 10px; width: 100%; }
+        .hm { border-collapse: separate; border-spacing: 2px; width: 100%; }
         .hm-corner { width: 72px; vertical-align: bottom; padding-bottom: 4px; }
         .hm-corner-txt { font-size: 7px; color: var(--tm); display: block; text-align: right; }
         .hm-cl { padding: 2px 1px; }
@@ -732,7 +732,7 @@ export default function App(){
         .hm-rl { padding-right: 6px; white-space: nowrap; }
         .hm-rl-inner { display: flex; align-items: center; gap: 5px; }
         .hm-rl-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
-        .hm-cell { width: 44px; height: 40px; text-align: center; vertical-align: middle; font-size: 8px; font-weight: 700; border-radius: 5px; cursor: pointer; transition: filter .18s, transform .18s; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+        .hm-cell { min-width: 44px; height: 40px; text-align: center; vertical-align: middle; font-size: 8px; font-weight: 700; border-radius: 5px; cursor: pointer; transition: filter .18s, transform .18s; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
         .hm-cell:hover { filter: brightness(1.4); transform: scale(1.08); z-index: 2; position: relative; }
         .hm-cell.diag { cursor: default; background: rgba(139,92,246,.04) !important; border: 1px solid rgba(139,92,246,.15); }
         .hm-cell.sel { outline: 2px solid rgba(255,255,255,.8); outline-offset: -1px; }
