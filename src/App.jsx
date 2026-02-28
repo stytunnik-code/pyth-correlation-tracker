@@ -44,6 +44,16 @@ function fmt(sym,val){
 
 function fmtPct(v){if(v===null||!isFinite(v))return"–";return`${v>=0?"+":""}${v.toFixed(3)}%`;}
 
+/* ── SKELETON ──────────────────────────────────────────────────────────── */
+function TickerSkeleton(){return(
+  <div className="tc tc-skeleton">
+    <div className="tc-head"><div className="sk-icon"/><div className="sk-meta"><div className="sk-line w8"/><div className="sk-line w12"/></div><div className="sk-badge"/></div>
+    <div className="tc-price-row"><div className="sk-line w14"/><div className="sk-line w6"/></div>
+    <div className="tc-spark-row"><div className="sk-spark"/><div className="sk-line w10"/></div>
+    <div className="tc-stats"><div className="sk-stat"/><div className="sk-stat"/><div className="sk-stat"/><div className="sk-stat"/></div>
+  </div>
+);}
+
 function strengthInfo(v){
   if(v===null)return{label:"COMPUTING",color:"#5a4a7a",desc:"Collecting data..."};
   const a=Math.abs(v);
@@ -158,6 +168,7 @@ export default function App(){
   const [feedbackSent,setFeedbackSent]=useState(false);
   const [tickCount,setTickCount]=useState(0);
   const [lastUpdate,setLastUpdate]=useState(null);
+  const [errorMsg,setErrorMsg]=useState(null);
   const histRef=useRef({});
 
   useEffect(()=>{setTimeout(()=>setMounted(true),80);},[]);
@@ -189,9 +200,10 @@ export default function App(){
       if(Object.keys(np).length>0){
         setPrices(prev=>{ setPrevPrices(pp=>({...pp,...prev})); return np; });
         setHistory({...histRef.current});
-        setStatus("live");setTickCount(t=>t+1);setLastUpdate(new Date());
+        setStatus("live");setTickCount(t=>t+1);setLastUpdate(new Date());setErrorMsg(null);
       }else throw new Error("0 prices");
-    }catch{
+    }catch(e){
+      setErrorMsg(e?.message||"Network error");
       try{
         const ids2=ASSETS.map(a=>`ids[]=${a.id}`).join("&");
         const r2=await fetch(`https://hermes.pyth.network/v2/updates/price/latest?${ids2}&parsed=true&ignore_invalid_price_ids=true`);
@@ -209,7 +221,7 @@ export default function App(){
         if(Object.keys(np2).length>0){
           setPrices(prev=>{ setPrevPrices(pp=>({...pp,...prev})); return np2; });
           setHistory({...histRef.current});
-          setStatus("live");setTickCount(t=>t+1);setLastUpdate(new Date());return;
+          setStatus("live");setTickCount(t=>t+1);setLastUpdate(new Date());setErrorMsg(null);return;
         }
       }catch{}
       ASSETS.forEach(a=>{
@@ -219,6 +231,7 @@ export default function App(){
       });
       setPrices(Object.fromEntries(ASSETS.map(a=>[a.symbol,histRef.current[a.symbol].slice(-1)[0]])));
       setHistory({...histRef.current});setStatus("demo");setTickCount(t=>t+1);setLastUpdate(new Date());
+      setErrorMsg("API unavailable · showing demo data");
     }
   },[]);  // eslint-disable-line react-hooks/exhaustive-deps
 
@@ -340,11 +353,18 @@ export default function App(){
       </div>
 
       <main className="main">
-
+        {status==="demo"&&errorMsg&&(
+          <div className="err-banner" role="alert">
+            <span className="err-banner-icon">⚠</span>
+            <span>{errorMsg}</span>
+          </div>
+        )}
         {/* ══ TICKERS ════════════════════════════════════════════════════ */}
         <section className={`sec${mobileTab!=="tickers"?" mh":""}`} id="sec-tickers">
           <div className="tgrid">
-            {vis.map((asset,i)=>{
+            {status==="connecting"?(
+              vis.map((_,i)=><TickerSkeleton key={i}/>)
+            ):vis.map((asset,i)=>{
               const h=history[asset.symbol]||[],cur=prices[asset.symbol],prev=prevPrices[asset.symbol];
               const pct=prev&&cur?((cur-prev)/prev*100):null;
               const h1=h.length>1?h[0]:null;
@@ -688,6 +708,21 @@ export default function App(){
         .tc-stat { display: flex; gap: 4px; align-items: baseline; }
         .tc-sk { font-size: 8px; color: var(--tm); text-transform: uppercase; }
         .tc-sv { font-size: 9px; color: var(--td); font-variant-numeric: tabular-nums; }
+
+        /* SKELETON */
+        .tc-skeleton { pointer-events: none; }
+        .tc-skeleton .sk-icon { width: 36px; height: 36px; border-radius: 10px; background: linear-gradient(90deg,rgba(139,92,246,.15) 25%,rgba(139,92,246,.08) 50%,rgba(139,92,246,.15) 75%); background-size: 200% 100%; animation: shim .9s infinite; }
+        .tc-skeleton .sk-meta { flex: 1; display: flex; flex-direction: column; gap: 4px; }
+        .tc-skeleton .sk-line { height: 10px; border-radius: 4px; background: linear-gradient(90deg,rgba(139,92,246,.12) 25%,rgba(139,92,246,.06) 50%,rgba(139,92,246,.12) 75%); background-size: 200% 100%; animation: shim .9s infinite; }
+        .tc-skeleton .sk-line.w6 { width: 35px; } .tc-skeleton .sk-line.w8 { width: 48px; } .tc-skeleton .sk-line.w10 { width: 55px; } .tc-skeleton .sk-line.w12 { width: 70px; } .tc-skeleton .sk-line.w14 { width: 72px; }
+        .tc-skeleton .sk-badge { width: 40px; height: 14px; border-radius: 4px; background: linear-gradient(90deg,rgba(139,92,246,.1) 25%,rgba(139,92,246,.05) 50%,rgba(139,92,246,.1) 75%); background-size: 200% 100%; animation: shim .9s infinite; }
+        .tc-skeleton .sk-spark { width: 80px; height: 32px; border-radius: 4px; background: linear-gradient(90deg,rgba(139,92,246,.08) 25%,rgba(139,92,246,.04) 50%,rgba(139,92,246,.08) 75%); background-size: 200% 100%; animation: shim .9s infinite; }
+        .tc-skeleton .sk-stat { height: 12px; border-radius: 3px; background: linear-gradient(90deg,rgba(139,92,246,.08) 25%,rgba(139,92,246,.04) 50%,rgba(139,92,246,.08) 75%); background-size: 200% 100%; animation: shim .9s infinite; }
+        @keyframes shim { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+
+        /* ERROR BANNER */
+        .err-banner { display: flex; align-items: center; gap: 8px; padding: 10px 16px; margin-bottom: 12px; background: rgba(251,146,60,.12); border: 1px solid rgba(251,146,60,.35); border-radius: var(--r); color: #fb923c; font-size: 11px; }
+        .err-banner-icon { font-size: 14px; }
 
         /* LEGEND */
         .leg { display: flex; align-items: center; gap: 5px; }
