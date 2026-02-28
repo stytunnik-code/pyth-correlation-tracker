@@ -190,8 +190,10 @@ export default function App(){
 
   const fetchPrices=useCallback(async()=>{
     try{
-      const idList=ASSETS.map(a=>a.id).join(",");
-      const res=await fetch(`/api/pyth?ids=${idList}`);
+      // Send all IDs as separate params for Hermes compatibility
+      const params=new URLSearchParams();
+      ASSETS.forEach(a=>params.append("ids",a.id));
+      const res=await fetch(`/api/pyth?${params}`);
       if(!res.ok){
         const err=await res.json().catch(()=>({}));
         throw new Error(`HTTP ${res.status}: ${err.error||""}`);
