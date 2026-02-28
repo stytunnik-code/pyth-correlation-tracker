@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, useCallback } from "react";
+import SmokeBackground from "./SmokeBackground";
 
 const ASSETS = [
   { id: "e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43", symbol: "BTC",     name: "Bitcoin",      category: "crypto",    color: "#F7931A", icon: "₿" },
@@ -50,51 +51,6 @@ function strengthInfo(v){
   if(a>0.5)return{label:v>0?"STRONG +":"STRONG −",color:v>0?"#6ee7b7":"#fca5a5",desc:v>0?"Clear positive relationship":"Clear inverse relationship"};
   if(a>0.3)return{label:v>0?"MODERATE +":"MODERATE −",color:v>0?"#a7f3d0":"#fecaca",desc:v>0?"Moderate positive tendency":"Moderate inverse tendency"};
   return{label:"UNCORRELATED",color:"#8b5cf6",desc:"No significant linear relationship"};
-}
-
-/* ── SMOKE ─────────────────────────────────────────────────────────────── */
-function Smoke(){
-  const ref=useRef();
-  useEffect(()=>{
-    const c=ref.current;if(!c)return;
-    const ctx=c.getContext("2d");
-    let W=window.innerWidth,H=window.innerHeight;
-    const resize=()=>{W=window.innerWidth;H=window.innerHeight;c.width=W;c.height=H;};
-    resize();window.addEventListener("resize",resize);
-    const COLS=["rgba(109,40,217,","rgba(88,28,135,","rgba(139,92,246,","rgba(76,29,149,","rgba(67,20,180,"];
-    class P{
-      reset(init=false){
-        this.x=Math.random()*W;this.y=init?Math.random()*H:H+100;
-        this.r=140+Math.random()*240;this.vy=-(0.08+Math.random()*0.22);
-        this.vx=(Math.random()-0.5)*0.1;this.op=0;
-        this.maxOp=0.1+Math.random()*0.16;this.fi=true;
-        this.col=COLS[Math.floor(Math.random()*COLS.length)];
-        this.rot=Math.random()*Math.PI*2;this.rs=(Math.random()-.5)*.003;
-        this.sx=0.5+Math.random()*.9;this.sy=0.4+Math.random()*.7;
-      }
-      constructor(init=false){this.reset(init);}
-      tick(){
-        this.y+=this.vy;this.x+=this.vx;this.rot+=this.rs;
-        if(this.fi){this.op+=0.0018;if(this.op>=this.maxOp)this.fi=false;}
-        else this.op-=0.0003;
-        if(this.op<=0||this.y<-this.r)this.reset();
-      }
-      draw(){
-        ctx.save();ctx.translate(this.x,this.y);ctx.rotate(this.rot);ctx.scale(this.sx,this.sy);
-        const g=ctx.createRadialGradient(0,0,0,0,0,this.r);
-        g.addColorStop(0,`${this.col}${this.op})`);
-        g.addColorStop(0.5,`${this.col}${this.op*.4})`);
-        g.addColorStop(1,`${this.col}0)`);
-        ctx.fillStyle=g;ctx.beginPath();ctx.arc(0,0,this.r,0,Math.PI*2);ctx.fill();
-        ctx.restore();
-      }
-    }
-    const ps=Array.from({length:40},(_,i)=>new P(i<20));
-    let id;const loop=()=>{ctx.clearRect(0,0,W,H);ps.forEach(p=>{p.tick();p.draw();});id=requestAnimationFrame(loop);};
-    loop();
-    return()=>{cancelAnimationFrame(id);window.removeEventListener("resize",resize);};
-  },[]);
-  return<canvas ref={ref} style={{position:"fixed",inset:0,width:"100%",height:"100%",pointerEvents:"none",zIndex:0}}/>;
 }
 
 /* ── SPARKLINE ──────────────────────────────────────────────────────────── */
@@ -311,7 +267,7 @@ export default function App(){
 
   return(
     <div className={`app${mounted?" on":""}`}>
-      <Smoke/>
+      <SmokeBackground/>
 
       {/* ══ HEADER ══════════════════════════════════════════════════════ */}
       <header className="hdr">
