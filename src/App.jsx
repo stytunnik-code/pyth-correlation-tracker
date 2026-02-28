@@ -630,8 +630,10 @@ export default function App(){
           --r: 10px; --rs: 7px;
         }
         *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-        html, body, #root { height: 100%; background: var(--bg); }
-        .app { min-height: 100vh; width: 100%; background: var(--bg); color: var(--tx); font-family: var(--fm); display: flex; flex-direction: column; position: relative; overflow-x: hidden; opacity: 0; transition: opacity .5s; }
+        html { width: 100%; height: 100%; }
+        body { width: 100%; min-height: 100%; background: var(--bg); margin: 0; }
+        #root { width: 100%; min-height: 100vh; display: block; }
+        .app { min-height: 100vh; width: 100%; max-width: 100vw; background: var(--bg); color: var(--tx); font-family: var(--fm); display: flex; flex-direction: column; position: relative; overflow-x: hidden; opacity: 0; transition: opacity .5s; }
         .app.on { opacity: 1; }
 
         /* HEADER */
