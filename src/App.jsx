@@ -1,40 +1,36 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 
-/* ─── ASSETS ─────────────────────────────────────────────────────────────── */
 const ASSETS = [
-  { id: "e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43", symbol: "BTC",     name: "Bitcoin",   category: "crypto",    color: "#F7931A" },
-  { id: "ff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace", symbol: "ETH",     name: "Ethereum",  category: "crypto",    color: "#8B9FFF" },
-  { id: "ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d", symbol: "SOL",     name: "Solana",    category: "crypto",    color: "#9945FF" },
-  { id: "dcef50dd0a4cd2dcc17e45df1676dcb336a11a461c54d397a53f6f2a1e3cf07c", symbol: "DOGE",    name: "Dogecoin",  category: "crypto",    color: "#C8A84B" },
-  { id: "eaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a", symbol: "USDC",    name: "USD Coin",  category: "crypto",    color: "#2775CA" },
-  { id: "a995d00bb36a63cef7fd2c287dc105fc8f3d93779f062f09551b0af3e81ec30b", symbol: "EUR/USD", name: "Euro",      category: "fx",        color: "#60A5FA" },
-  { id: "84c2dde9633d93d1bcad84e7dc41c9d56578b7ec52fabedc1f335d673df0a7c1", symbol: "GBP/USD", name: "Pound",     category: "fx",        color: "#34D399" },
-  { id: "765d2ba906dbc32ca17cc11f5310a89e9ee1f6420508c63861f2f8ba4ee34bb2", symbol: "XAU/USD", name: "Gold",      category: "commodity", color: "#FCD34D" },
-  { id: "c9d8b075a5c69303365ae23632d4e2560c5caa6a73b04100c51cfa985ba4aa0e", symbol: "WTI",     name: "Oil (WTI)", category: "commodity", color: "#FB923C" },
-  { id: "49f6b65cb1de6b10468f01a6760ee3c4c7f19ab72c8e7c4c7e8b2a3e3e3e3e3e", symbol: "AAPL",   name: "Apple",     category: "equity",    color: "#E2E8F0" },
+  { id: "e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43", symbol: "BTC",     name: "Bitcoin",      category: "crypto",    color: "#F7931A", icon: "₿" },
+  { id: "ff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace", symbol: "ETH",     name: "Ethereum",     category: "crypto",    color: "#8B9FFF", icon: "Ξ" },
+  { id: "ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d", symbol: "SOL",     name: "Solana",       category: "crypto",    color: "#14F195", icon: "◎" },
+  { id: "dcef50dd0a4cd2dcc17e45df1676dcb336a11a461c54d397a53f6f2a1e3cf07c", symbol: "DOGE",    name: "Dogecoin",     category: "crypto",    color: "#C8A84B", icon: "Ð" },
+  { id: "eaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a", symbol: "USDC",    name: "USD Coin",     category: "crypto",    color: "#2775CA", icon: "$" },
+  { id: "a995d00bb36a63cef7fd2c287dc105fc8f3d93779f062f09551b0af3e81ec30b", symbol: "EUR/USD", name: "Euro",         category: "fx",        color: "#60A5FA", icon: "€" },
+  { id: "84c2dde9633d93d1bcad84e7dc41c9d56578b7ec52fabedc1f335d673df0a7c1", symbol: "GBP/USD", name: "Pound",        category: "fx",        color: "#34D399", icon: "£" },
+  { id: "765d2ba906dbc32ca17cc11f5310a89e9ee1f6420508c63861f2f8ba4ee34bb2", symbol: "XAU/USD", name: "Gold",         category: "commodity", color: "#FCD34D", icon: "Au" },
+  { id: "c9d8b075a5c69303365ae23632d4e2560c5caa6a73b04100c51cfa985ba4aa0e", symbol: "WTI",     name: "Oil (WTI)",    category: "commodity", color: "#FB923C", icon: "⛽" },
+  { id: "49f6b65cb1de6b10468f01a6760ee3c4c7f19ab72c8e7c4c7e8b2a3e3e3e3e3e", symbol: "AAPL",   name: "Apple Inc",    category: "equity",    color: "#E2E8F0", icon: "" },
 ];
 
 const SEED = { BTC:65000,ETH:3200,SOL:140,DOGE:0.15,USDC:1,"EUR/USD":1.085,"GBP/USD":1.265,"XAU/USD":2320,WTI:78,AAPL:185 };
+const CAT_COLORS = { crypto:"#9945FF", fx:"#60A5FA", commodity:"#FCD34D", equity:"#E2E8F0" };
 
-/* ─── MATH ───────────────────────────────────────────────────────────────── */
-function pearson(a, b) {
-  const n = Math.min(a.length, b.length);
-  if (n < 4) return null;
-  const ax = a.slice(-n), bx = b.slice(-n);
-  const ma = ax.reduce((s,v)=>s+v,0)/n, mb = bx.reduce((s,v)=>s+v,0)/n;
+function pearson(a,b){
+  const n=Math.min(a.length,b.length);if(n<4)return null;
+  const ax=a.slice(-n),bx=b.slice(-n);
+  const ma=ax.reduce((s,v)=>s+v,0)/n,mb=bx.reduce((s,v)=>s+v,0)/n;
   let num=0,da=0,db=0;
   for(let i=0;i<n;i++){const ai=ax[i]-ma,bi=bx[i]-mb;num+=ai*bi;da+=ai*ai;db+=bi*bi;}
-  const d=Math.sqrt(da*db);
-  return d===0?0:Math.max(-1,Math.min(1,num/d));
+  const d=Math.sqrt(da*db);return d===0?0:Math.max(-1,Math.min(1,num/d));
 }
 
-function corrColor(v) {
-  if(v===null) return "rgba(139,77,255,0.06)";
-  if(v>=0){const t=v;return `rgba(${Math.round(t*20)},${Math.round(160+t*95)},${Math.round(80+t*80)},${0.12+t*0.7})`;}
-  const t=-v;
-  return `rgba(${Math.round(200+t*55)},${Math.round(60-t*50)},${Math.round(80-t*60)},${0.12+t*0.7})`;
+function corrBg(v){
+  if(v===null)return"rgba(255,255,255,0.02)";
+  if(v>=0){const t=v;return`rgba(${Math.round(t*20)},${Math.round(180+t*75)},${Math.round(100+t*80)},${0.1+t*0.72})`;}
+  const t=-v;return`rgba(${Math.round(210+t*45)},${Math.round(50-t*40)},${Math.round(70-t*50)},${0.1+t*0.72})`;
 }
-function corrTextColor(v){if(v===null)return"#4a3a6a";return Math.abs(v)>0.45?"#fff":"#c4b5fd";}
+function corrFg(v){if(v===null)return"#2a1f40";return Math.abs(v)>0.4?"#fff":"#c4b5fd";}
 
 function fmt(sym,val){
   if(!val)return"–";
@@ -42,89 +38,90 @@ function fmt(sym,val){
   if(["EUR/USD","GBP/USD"].includes(sym))return val.toFixed(5);
   if(val>1000)return`$${val.toLocaleString(undefined,{maximumFractionDigits:0})}`;
   if(val>1)return`$${val.toFixed(2)}`;
-  return`$${val.toFixed(5)}`;
+  return`$${val.toFixed(6)}`;
 }
 
-function strengthLabel(v){
-  if(v===null)return"COMPUTING";
+function fmtPct(v){if(v===null||!isFinite(v))return"–";return`${v>=0?"+":""}${v.toFixed(3)}%`;}
+
+function strengthInfo(v){
+  if(v===null)return{label:"COMPUTING",color:"#5a4a7a",desc:"Collecting data..."};
   const a=Math.abs(v);
-  if(a>0.8)return v>0?"VERY STRONG ▲":"VERY STRONG ▼";
-  if(a>0.5)return v>0?"STRONG ▲":"STRONG ▼";
-  if(a>0.3)return v>0?"MODERATE ▲":"MODERATE ▼";
-  return"WEAK / NEUTRAL";
+  if(a>0.8)return{label:v>0?"VERY STRONG +":"VERY STRONG −",color:v>0?"#34d399":"#f87171",desc:v>0?"Assets move almost in lockstep":"Assets move in opposite directions strongly"};
+  if(a>0.5)return{label:v>0?"STRONG +":"STRONG −",color:v>0?"#6ee7b7":"#fca5a5",desc:v>0?"Clear positive relationship":"Clear inverse relationship"};
+  if(a>0.3)return{label:v>0?"MODERATE +":"MODERATE −",color:v>0?"#a7f3d0":"#fecaca",desc:v>0?"Moderate positive tendency":"Moderate inverse tendency"};
+  return{label:"UNCORRELATED",color:"#8b5cf6",desc:"No significant linear relationship"};
 }
 
-/* ─── SMOKE ──────────────────────────────────────────────────────────────── */
-function Smoke() {
-  const ref = useRef();
+/* ── SMOKE ─────────────────────────────────────────────────────────────── */
+function Smoke(){
+  const ref=useRef();
   useEffect(()=>{
-    const canvas=ref.current; if(!canvas)return;
-    const ctx=canvas.getContext("2d");
+    const c=ref.current;if(!c)return;
+    const ctx=c.getContext("2d");
     let W=window.innerWidth,H=window.innerHeight;
-    const setSize=()=>{W=window.innerWidth;H=window.innerHeight;canvas.width=W;canvas.height=H;};
-    setSize();
-    window.addEventListener("resize",setSize);
-
-    const COLS=["rgba(109,40,217,","rgba(139,92,246,","rgba(76,29,149,","rgba(88,28,135,","rgba(124,58,237,"];
+    const resize=()=>{W=window.innerWidth;H=window.innerHeight;c.width=W;c.height=H;};
+    resize();window.addEventListener("resize",resize);
+    const COLS=["rgba(109,40,217,","rgba(88,28,135,","rgba(139,92,246,","rgba(76,29,149,","rgba(67,20,180,"];
     class P{
-      constructor(init=false){this.reset(init);}
       reset(init=false){
-        this.x=Math.random()*W;
-        this.y=init?Math.random()*H:H+120;
-        this.r=150+Math.random()*220;
-        this.vy=-(0.1+Math.random()*0.25);
-        this.vx=(Math.random()-0.5)*0.12;
-        this.op=0;
-        this.maxOp=0.12+Math.random()*0.18;
-        this.fadingIn=true;
+        this.x=Math.random()*W;this.y=init?Math.random()*H:H+100;
+        this.r=140+Math.random()*240;this.vy=-(0.08+Math.random()*0.22);
+        this.vx=(Math.random()-0.5)*0.1;this.op=0;
+        this.maxOp=0.1+Math.random()*0.16;this.fi=true;
         this.col=COLS[Math.floor(Math.random()*COLS.length)];
-        this.rot=Math.random()*Math.PI*2;
-        this.rspd=(Math.random()-0.5)*0.004;
-        this.sx=0.5+Math.random()*0.9;
-        this.sy=0.4+Math.random()*0.7;
+        this.rot=Math.random()*Math.PI*2;this.rs=(Math.random()-.5)*.003;
+        this.sx=0.5+Math.random()*.9;this.sy=0.4+Math.random()*.7;
       }
+      constructor(init=false){this.reset(init);}
       tick(){
-        this.y+=this.vy; this.x+=this.vx; this.rot+=this.rspd;
-        if(this.fadingIn){this.op+=0.002;if(this.op>=this.maxOp)this.fadingIn=false;}
-        else this.op-=0.00025;
+        this.y+=this.vy;this.x+=this.vx;this.rot+=this.rs;
+        if(this.fi){this.op+=0.0018;if(this.op>=this.maxOp)this.fi=false;}
+        else this.op-=0.0003;
         if(this.op<=0||this.y<-this.r)this.reset();
       }
       draw(){
-        ctx.save();
-        ctx.translate(this.x,this.y);
-        ctx.rotate(this.rot);
-        ctx.scale(this.sx,this.sy);
+        ctx.save();ctx.translate(this.x,this.y);ctx.rotate(this.rot);ctx.scale(this.sx,this.sy);
         const g=ctx.createRadialGradient(0,0,0,0,0,this.r);
         g.addColorStop(0,`${this.col}${this.op})`);
-        g.addColorStop(0.45,`${this.col}${this.op*0.5})`);
+        g.addColorStop(0.5,`${this.col}${this.op*.4})`);
         g.addColorStop(1,`${this.col}0)`);
-        ctx.fillStyle=g;
-        ctx.beginPath();ctx.arc(0,0,this.r,0,Math.PI*2);ctx.fill();
+        ctx.fillStyle=g;ctx.beginPath();ctx.arc(0,0,this.r,0,Math.PI*2);ctx.fill();
         ctx.restore();
       }
     }
-
-    const ps=[];
-    for(let i=0;i<45;i++)ps.push(new P(true));
-    let id;
-    const loop=()=>{ctx.clearRect(0,0,W,H);ps.forEach(p=>{p.tick();p.draw();});id=requestAnimationFrame(loop);};
+    const ps=Array.from({length:40},(_,i)=>new P(i<20));
+    let id;const loop=()=>{ctx.clearRect(0,0,W,H);ps.forEach(p=>{p.tick();p.draw();});id=requestAnimationFrame(loop);};
     loop();
-    return()=>{cancelAnimationFrame(id);window.removeEventListener("resize",setSize);};
+    return()=>{cancelAnimationFrame(id);window.removeEventListener("resize",resize);};
   },[]);
-
-  return <canvas ref={ref} className="smoke-bg" style={{position:"fixed",top:0,left:0,width:"100%",height:"100%",pointerEvents:"none",zIndex:1,opacity:1}}/>;
+  return<canvas ref={ref} style={{position:"fixed",inset:0,width:"100%",height:"100%",pointerEvents:"none",zIndex:0}}/>;
 }
 
-/* ─── SPARKLINE ──────────────────────────────────────────────────────────── */
-function Spark({data,color}){
-  if(!data||data.length<2)return<svg width="54"height="20"/>;
-  const pts=data.slice(-40),mn=Math.min(...pts),mx=Math.max(...pts),rng=mx-mn||1;
-  const d=pts.map((v,i)=>`${(i/(pts.length-1))*52+1},${18-((v-mn)/rng)*16}`).join(" ");
+/* ── SPARKLINE ──────────────────────────────────────────────────────────── */
+function Spark({data,color,h=28,w=72}){
+  if(!data||data.length<2)return<svg width={w} height={h}/>;
+  const pts=data.slice(-50),mn=Math.min(...pts),mx=Math.max(...pts),rng=mx-mn||1;
+  const xs=pts.map((_,i)=>(i/(pts.length-1))*(w-2)+1);
+  const ys=pts.map(v=>h-2-((v-mn)/rng)*(h-4));
+  const line=xs.map((x,i)=>`${i===0?"M":"L"}${x},${ys[i]}`).join(" ");
+  const area=`${line} L${xs[xs.length-1]},${h} L${xs[0]},${h} Z`;
   const up=pts[pts.length-1]>=pts[0];
-  return<svg width="54"height="20"><polyline points={d} fill="none" stroke={up?"#a78bfa":"#f87171"} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>;
+  const sc=up?"#34d399":"#f87171";
+  return(
+    <svg width={w} height={h}>
+      <defs>
+        <linearGradient id={`sg${color.replace("#","")}`} x1="0" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor={sc} stopOpacity="0.3"/>
+          <stop offset="100%" stopColor={sc} stopOpacity="0"/>
+        </linearGradient>
+      </defs>
+      <path d={area} fill={`url(#sg${color.replace("#","")})`}/>
+      <path d={line} fill="none" stroke={sc} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
+    </svg>
+  );
 }
 
-/* ─── CORR CHART ─────────────────────────────────────────────────────────── */
+/* ── CORR CHART ─────────────────────────────────────────────────────────── */
 function CorrChart({symA,symB,histRef}){
   const ref=useRef();
   useEffect(()=>{
@@ -132,44 +129,60 @@ function CorrChart({symA,symB,histRef}){
     const n=Math.min(ha.length,hb.length),pts=[];
     for(let i=4;i<=n;i++){const v=pearson(ha.slice(0,i),hb.slice(0,i));if(v!==null)pts.push(v);}
     const c=ref.current;if(!c||pts.length<2)return;
-    const ctx=c.getContext("2d"),W=c.offsetWidth||400,H=80;
-    c.width=W;c.height=H;
-    ctx.clearRect(0,0,W,H);
-    ctx.strokeStyle="rgba(139,92,246,0.18)";ctx.lineWidth=1;ctx.setLineDash([3,4]);
-    ctx.beginPath();ctx.moveTo(0,H/2);ctx.lineTo(W,H/2);ctx.stroke();
-    ctx.setLineDash([]);
+    const ctx=c.getContext("2d"),W=c.offsetWidth||400,H=100;
+    c.width=W;c.height=H;ctx.clearRect(0,0,W,H);
+    // Grid lines
+    [-0.5,0,0.5].forEach(v=>{
+      const y=H/2-(v*H/2*.88);
+      ctx.strokeStyle=v===0?"rgba(139,92,246,0.25)":"rgba(255,255,255,0.05)";
+      ctx.lineWidth=v===0?1.5:1;ctx.setLineDash(v===0?[]:[ 3,4]);
+      ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();
+      ctx.setLineDash([]);
+      if(v!==0){ctx.fillStyle="rgba(255,255,255,0.2)";ctx.font="9px monospace";ctx.fillText(v>0?"+0.5":"-0.5",4,y-2);}
+    });
     const last=pts[pts.length-1];
-    const g=ctx.createLinearGradient(0,0,W,0);
-    g.addColorStop(0,"rgba(139,92,246,0.6)");
-    g.addColorStop(1,last>=0?"rgba(52,211,153,1)":"rgba(248,113,113,1)");
-    ctx.strokeStyle=g;ctx.lineWidth=2;
+    // Area fill
+    const ag=ctx.createLinearGradient(0,0,0,H);
+    ag.addColorStop(0,last>=0?"rgba(52,211,153,0.15)":"rgba(248,113,113,0.15)");
+    ag.addColorStop(1,"transparent");
+    ctx.fillStyle=ag;
     ctx.beginPath();
-    pts.forEach((v,i)=>{const x=(i/(pts.length-1))*(W-4)+2,y=H/2-(v*H/2*0.88);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+    pts.forEach((v,i)=>{const x=(i/(pts.length-1))*(W-4)+2,y=H/2-(v*H/2*.88);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+    ctx.lineTo(W-2,H/2);ctx.lineTo(2,H/2);ctx.closePath();ctx.fill();
+    // Line
+    const lg=ctx.createLinearGradient(0,0,W,0);
+    lg.addColorStop(0,"rgba(139,92,246,0.8)");
+    lg.addColorStop(1,last>=0?"rgba(52,211,153,1)":"rgba(248,113,113,1)");
+    ctx.strokeStyle=lg;ctx.lineWidth=2;ctx.lineJoin="round";
+    ctx.beginPath();
+    pts.forEach((v,i)=>{const x=(i/(pts.length-1))*(W-4)+2,y=H/2-(v*H/2*.88);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
     ctx.stroke();
+    // Current value dot
+    const lx=(pts.length-1)/(pts.length-1)*(W-4)+2,ly=H/2-(last*H/2*.88);
+    ctx.fillStyle=last>=0?"#34d399":"#f87171";
+    ctx.beginPath();ctx.arc(lx,ly,4,0,Math.PI*2);ctx.fill();
   });
-  return<canvas ref={ref} style={{width:"100%",height:80,display:"block"}}/>;
+  return<canvas ref={ref} style={{width:"100%",height:100,display:"block"}}/>;
 }
 
-/* ─── PYTH LOGO (original P shape) ──────────────────────────────────────── */
+/* ── PYTH LOGO ──────────────────────────────────────────────────────────── */
 function PythLogo({size=30}){
   return(
     <svg width={size} height={size} viewBox="0 0 120 120" fill="none">
-      <rect width="120" height="120" rx="24" fill="#7142CF"/>
-      {/* Outer arc - left side */}
-      <path d="M30 95 L30 42 C30 24 42 14 60 14 C78 14 90 24 90 42 C90 60 78 70 60 70 L52 70 L52 95 Z" 
-            fill="none" stroke="white" strokeWidth="11" strokeLinecap="round" strokeLinejoin="round"/>
-      {/* Inner P counter */}
-      <path d="M52 52 C52 42 58 36 66 36 C74 36 80 42 80 50 C80 58 74 64 66 64 L52 64 Z"
-            fill="white"/>
+      <rect width="120" height="120" rx="26" fill="#7142CF"/>
+      <path d="M34 96 L34 44 C34 26 46 16 62 16 C78 16 90 26 90 44 C90 60 78 70 62 70 L54 70 L54 96 Z"
+            fill="none" stroke="white" strokeWidth="10" strokeLinecap="round" strokeLinejoin="round"/>
+      <ellipse cx="66" cy="48" rx="14" ry="16" fill="white"/>
     </svg>
   );
 }
 
-/* ─── MAIN APP ───────────────────────────────────────────────────────────── */
+/* ── MAIN ───────────────────────────────────────────────────────────────── */
 export default function App(){
   const [prices,setPrices]=useState({});
   const [history,setHistory]=useState({});
   const [corr,setCorr]=useState({});
+  const [prevPrices,setPrevPrices]=useState({});
   const [status,setStatus]=useState("connecting");
   const [filter,setFilter]=useState("all");
   const [selected,setSelected]=useState(null);
@@ -178,6 +191,8 @@ export default function App(){
   const [feedbackOpen,setFeedbackOpen]=useState(false);
   const [feedbackText,setFeedbackText]=useState("");
   const [feedbackSent,setFeedbackSent]=useState(false);
+  const [tickCount,setTickCount]=useState(0);
+  const [lastUpdate,setLastUpdate]=useState(null);
   const histRef=useRef({});
 
   useEffect(()=>{setTimeout(()=>setMounted(true),80);},[]);
@@ -190,82 +205,57 @@ export default function App(){
 
   const fetchPrices=useCallback(async()=>{
     try{
-      // Send all IDs as separate params for Hermes compatibility
       const params=new URLSearchParams();
       ASSETS.forEach(a=>params.append("ids",a.id));
       const res=await fetch(`/api/pyth?${params}`);
-      if(!res.ok){
-        const err=await res.json().catch(()=>({}));
-        throw new Error(`HTTP ${res.status}: ${err.error||""}`);
-      }
+      if(!res.ok)throw new Error(`HTTP ${res.status}`);
       const data=await res.json();
-      console.log("[Pyth] raw response:", data.count, "items, first:", data.parsed?.[0]);
-
       const items=data.parsed||[];
-      if(!items.length)throw new Error("empty response");
-
+      if(!items.length)throw new Error("empty");
       const np={};
       items.forEach(item=>{
-        // Match by id (with or without 0x prefix)
         const cleanId=item.id?.replace(/^0x/,"");
         const asset=ASSETS.find(a=>a.id.replace(/^0x/,"")===cleanId);
-        if(!asset){console.warn("[Pyth] unknown id:",item.id);return;}
-
-        // Hermes v2 parsed format: item.price = {price: "638752...", conf: "...", expo: -8}
-        const priceObj=item.price;
-        if(!priceObj||priceObj.price===undefined){console.warn("[Pyth] no price for",asset.symbol);return;}
-        
-        const raw=parseFloat(priceObj.price);
-        const expo=priceObj.expo??-8;
-        const p=raw*Math.pow(10,expo);
-        
-        console.log(`[Pyth] ${asset.symbol}: raw=${priceObj.price} expo=${expo} => $${p.toFixed(4)}`);
-        
+        if(!asset)return;
+        const po=item.price;if(!po)return;
+        const p=parseFloat(po.price)*Math.pow(10,po.expo??-8);
         if(isFinite(p)&&p>0){np[asset.symbol]=p;push(asset.symbol,p);}
       });
-
-      const count=Object.keys(np).length;
-      console.log(`[Pyth] parsed ${count} prices successfully`);
-      if(count>0){
-        setPrices(np);setHistory({...histRef.current});setStatus("live");
-      } else throw new Error("0 valid prices parsed");
-    }catch(e){
-      console.error("[Pyth] proxy failed:", e.message, "- trying Hermes directly...");
+      if(Object.keys(np).length>0){
+        setPrevPrices(prev=>({...prev,...prices}));
+        setPrices(np);setHistory({...histRef.current});
+        setStatus("live");setTickCount(t=>t+1);setLastUpdate(new Date());
+      }else throw new Error("0 prices");
+    }catch{
       try{
-        // Try Hermes directly as second attempt
         const ids2=ASSETS.map(a=>`ids[]=${a.id}`).join("&");
-        const r2=await fetch(`https://hermes.pyth.network/v2/updates/price/latest?${ids2}&parsed=true`);
-        if(!r2.ok)throw new Error("hermes direct failed");
+        const r2=await fetch(`https://hermes.pyth.network/v2/updates/price/latest?${ids2}&parsed=true&ignore_invalid_price_ids=true`);
+        if(!r2.ok)throw new Error();
         const d2=await r2.json();
-        const items2=d2.parsed||[];
         const np2={};
-        items2.forEach(item=>{
+        (d2.parsed||[]).forEach(item=>{
           const cleanId=item.id?.replace(/^0x/,"");
           const asset=ASSETS.find(a=>a.id.replace(/^0x/,"")===cleanId);
           if(!asset)return;
-          const po=item.price;
-          if(!po)return;
+          const po=item.price;if(!po)return;
           const p=parseFloat(po.price)*Math.pow(10,po.expo??-8);
           if(isFinite(p)&&p>0){np2[asset.symbol]=p;push(asset.symbol,p);}
         });
         if(Object.keys(np2).length>0){
-          setPrices(np2);setHistory({...histRef.current});setStatus("live");
-          console.log("[Pyth] direct Hermes success!");
-          return;
+          setPrevPrices(prev=>({...prev,...prices}));
+          setPrices(np2);setHistory({...histRef.current});
+          setStatus("live");setTickCount(t=>t+1);setLastUpdate(new Date());return;
         }
-      }catch(e2){console.error("[Pyth] direct also failed:",e2.message);}
-      // Final fallback: demo
+      }catch{}
       ASSETS.forEach(a=>{
         const h=histRef.current[a.symbol];
         const last=h?.length?h[h.length-1]:SEED[a.symbol]??100;
-        const p=last+(Math.random()-0.49)*last*0.002;
-        push(a.symbol,p);
+        push(a.symbol,last+(Math.random()-.49)*last*.002);
       });
       setPrices(Object.fromEntries(ASSETS.map(a=>[a.symbol,histRef.current[a.symbol].slice(-1)[0]])));
-      setHistory({...histRef.current});
-      setStatus("demo");
+      setHistory({...histRef.current});setStatus("demo");setTickCount(t=>t+1);setLastUpdate(new Date());
     }
-  },[]);
+  },[prices]);
 
   useEffect(()=>{fetchPrices();const iv=setInterval(fetchPrices,3000);return()=>clearInterval(iv);},[fetchPrices]);
 
@@ -286,62 +276,95 @@ export default function App(){
       const v=corr[`${vis[i].symbol}-${vis[j].symbol}`];
       if(v!=null&&isFinite(v))pairs.push({a:vis[i],b:vis[j],v});
     }
-    return dir==="pos"?pairs.sort((x,y)=>y.v-x.v).slice(0,5):pairs.sort((x,y)=>x.v-y.v).slice(0,5);
+    return dir==="pos"?pairs.sort((x,y)=>y.v-x.v).slice(0,6):pairs.sort((x,y)=>x.v-y.v).slice(0,6);
   }
+
+  // Stats
+  const validCorrs=[];
+  for(let i=0;i<ASSETS.length;i++)for(let j=i+1;j<ASSETS.length;j++){
+    const v=corr[`${ASSETS[i].symbol}-${ASSETS[j].symbol}`];
+    if(v!==null&&v!==undefined&&isFinite(v)&&ASSETS[i].symbol!==ASSETS[j].symbol)validCorrs.push(v);
+  }
+  const avgCorr=validCorrs.length?validCorrs.reduce((a,b)=>a+b,0)/validCorrs.length:0;
+  const strongPos=validCorrs.filter(v=>v>0.7).length;
+  const strongNeg=validCorrs.filter(v=>v<-0.7).length;
 
   const selCorr=selected?corr[`${selected.a}-${selected.b}`]??null:null;
   const selA=selected?ASSETS.find(a=>a.symbol===selected.a):null;
   const selB=selected?ASSETS.find(a=>a.symbol===selected.b):null;
+  const si=strengthInfo(selCorr);
 
-  // Send feedback to Telegram
   async function sendFeedback(){
     if(!feedbackText.trim())return;
     try{
-      const BOT_TOKEN="7510359411:AAGfsKzw4DvQpd0sTZAmGUm4l-86SJLL_Xo";
-      const CHAT_ID="582278751";
-      const msg=`🔔 Feedback — Pyth Correlation Tracker\n\n${feedbackText}\n\n⏰ ${new Date().toLocaleString()}`;
-      const res=await fetch(`https://api.telegram.org/bot${BOT_TOKEN}/sendMessage`,{
+      await fetch(`https://api.telegram.org/bot7510359411:AAGfsKzw4DvQpd0sTZAmGUm4l-86SJLL_Xo/sendMessage`,{
         method:"POST",headers:{"Content-Type":"application/json"},
-        body:JSON.stringify({chat_id:CHAT_ID,text:msg,parse_mode:"HTML"})
+        body:JSON.stringify({chat_id:"582278751",text:`🔔 Feedback — Pyth Correlation\n\n${feedbackText}\n\n⏰ ${new Date().toLocaleString()}`,parse_mode:"HTML"})
       });
-      if(!res.ok)throw new Error("tg error");
-      setFeedbackSent(true);
-      setTimeout(()=>{setFeedbackOpen(false);setFeedbackText("");setFeedbackSent(false);},2500);
-    }catch(e){
-      console.error("Feedback error:",e);
-      setFeedbackSent(true); // show success anyway
-      setTimeout(()=>{setFeedbackOpen(false);setFeedbackText("");setFeedbackSent(false);},2500);
-    }
+    }catch{}
+    setFeedbackSent(true);
+    setTimeout(()=>{setFeedbackOpen(false);setFeedbackText("");setFeedbackSent(false);},2200);
   }
 
   return(
     <div className={`app${mounted?" on":""}`}>
       <Smoke/>
 
-      {/* HEADER */}
+      {/* ══ HEADER ══════════════════════════════════════════════════════ */}
       <header className="hdr">
         <div className="hdr-l">
-          <PythLogo size={36}/>
-          <div>
-            <div className="brand"><span className="b-pyth">PYTH</span><span className="b-x"> × </span><span className="b-rs">rustrell</span></div>
-            <div className="sub">Cross-Asset Correlation Matrix</div>
+          <PythLogo size={38}/>
+          <div className="hdr-info">
+            <div className="hdr-brand">
+              <span className="b-pyth">PYTH</span>
+              <span className="b-sep"> × </span>
+              <span className="b-rs">rustrell</span>
+            </div>
+            <div className="hdr-sub">Cross-Asset Correlation Matrix</div>
+          </div>
+        </div>
+        <div className="hdr-stats">
+          <div className="hstat">
+            <div className="hstat-val">{validCorrs.length}</div>
+            <div className="hstat-key">Pairs</div>
+          </div>
+          <div className="hstat-sep"/>
+          <div className="hstat">
+            <div className="hstat-val pos">{strongPos}</div>
+            <div className="hstat-key">Strong +</div>
+          </div>
+          <div className="hstat-sep"/>
+          <div className="hstat">
+            <div className="hstat-val neg">{strongNeg}</div>
+            <div className="hstat-key">Strong −</div>
+          </div>
+          <div className="hstat-sep"/>
+          <div className="hstat">
+            <div className="hstat-val" style={{color:avgCorr>=0?"#34d399":"#f87171"}}>{avgCorr.toFixed(3)}</div>
+            <div className="hstat-key">Avg Corr</div>
           </div>
         </div>
         <div className="hdr-r">
+          <div className="hdr-upd">{lastUpdate?`UPD ${lastUpdate.toLocaleTimeString()}`:""}</div>
           <div className={`pill ${status}`}><span className="dot"/>{status==="live"?"LIVE":"DEMO"}</div>
+          <div className="tick-badge">#{tickCount}</div>
         </div>
       </header>
 
-      {/* FILTERS */}
-      <div className="filters">
-        {["all","crypto","fx","equity","commodity"].map(c=>(
+      {/* ══ FILTER BAR ══════════════════════════════════════════════════ */}
+      <div className="fbar">
+        {["all","crypto","fx","commodity","equity"].map(c=>(
           <button key={c} className={`fbtn${filter===c?" a":""}`} onClick={()=>setFilter(c)}>
-            {c==="all"?"All Assets":c==="fx"?"FX Pairs":c.charAt(0).toUpperCase()+c.slice(1)}
+            {c==="all"?"All Assets":c==="fx"?"FX Pairs":c==="commodity"?"Commodities":c.charAt(0).toUpperCase()+c.slice(1)}
+            <span className="fbtn-count">{c==="all"?ASSETS.length:ASSETS.filter(a=>a.category===c).length}</span>
           </button>
         ))}
+        <div className="fbar-right">
+          <div className="window-badge">⏱ 200-tick window · 3s interval</div>
+        </div>
       </div>
 
-      {/* MOBILE TABS */}
+      {/* ══ MOBILE TABS ════════════════════════════════════════════════ */}
       <div className="mtabs">
         {[["heatmap","Matrix"],["tickers","Prices"],["top","Rankings"]].map(([k,l])=>(
           <button key={k} className={`mt${mobileTab===k?" a":""}`} onClick={()=>setMobileTab(k)}>{l}</button>
@@ -350,22 +373,39 @@ export default function App(){
 
       <main className="main">
 
-        {/* TICKERS */}
-        <section className={`sec-t${mobileTab!=="tickers"?" mhide":""}`}>
+        {/* ══ TICKERS ════════════════════════════════════════════════════ */}
+        <section className={`sec${mobileTab!=="tickers"?" mh":""}`} id="sec-tickers">
           <div className="tgrid">
-            {vis.map((a,i)=>{
-              const h=history[a.symbol]||[],cur=prices[a.symbol];
-              const prev=h.length>1?h[h.length-2]:null;
+            {vis.map((asset,i)=>{
+              const h=history[asset.symbol]||[],cur=prices[asset.symbol],prev=prevPrices[asset.symbol];
               const pct=prev&&cur?((cur-prev)/prev*100):null;
+              const h1=h.length>1?h[0]:null;
+              const pct24=h1&&cur?((cur-h1)/h1*100):null;
+              const hi=h.length?Math.max(...h):null,lo=h.length?Math.min(...h):null;
+              const vol=h.length>10?Math.sqrt(h.slice(-20).reduce((s,v,_,a)=>{const m=a.reduce((x,y)=>x+y,0)/a.length;return s+(v-m)**2;},0)/Math.min(h.length,20)):null;
               return(
-                <div key={a.symbol} className="tc" style={{"--ac":a.color,"--d":`${i*35}ms`}}>
-                  <div className="tc-top">
-                    <div><div className="tc-cat">{a.category}</div><div className="tc-sym" style={{color:a.color}}>{a.symbol}</div></div>
-                    {pct!==null&&<div className={`tc-pct${pct>=0?" up":" dn"}`}>{pct>=0?"+":""}{pct.toFixed(2)}%</div>}
+                <div key={asset.symbol} className="tc" style={{"--ac":asset.color,"--d":`${i*30}ms`}}>
+                  <div className="tc-head">
+                    <div className="tc-icon" style={{color:asset.color}}>{asset.icon}</div>
+                    <div className="tc-meta">
+                      <div className="tc-sym" style={{color:asset.color}}>{asset.symbol}</div>
+                      <div className="tc-name">{asset.name}</div>
+                    </div>
+                    <div className={`tc-badge ${asset.category}`}>{asset.category}</div>
                   </div>
-                  <div className="tc-bot">
-                    <div className="tc-p">{fmt(a.symbol,cur)}</div>
-                    <Spark data={h} color={a.color}/>
+                  <div className="tc-price-row">
+                    <div className="tc-price">{fmt(asset.symbol,cur)}</div>
+                    {pct!==null&&<div className={`tc-pct${pct>=0?" up":" dn"}`}>{fmtPct(pct)}</div>}
+                  </div>
+                  <div className="tc-spark-row">
+                    <Spark data={h} color={asset.color} w={80} h={32}/>
+                    {pct24!==null&&<div className={`tc-pct24${pct24>=0?" up":" dn"}`}>Session: {fmtPct(pct24)}</div>}
+                  </div>
+                  <div className="tc-stats">
+                    {hi&&<div className="tc-stat"><span className="tc-sk">H</span><span className="tc-sv">{fmt(asset.symbol,hi)}</span></div>}
+                    {lo&&<div className="tc-stat"><span className="tc-sk">L</span><span className="tc-sv">{fmt(asset.symbol,lo)}</span></div>}
+                    {vol&&<div className="tc-stat"><span className="tc-sk">σ</span><span className="tc-sv">{vol.toFixed(4)}</span></div>}
+                    <div className="tc-stat"><span className="tc-sk">n</span><span className="tc-sv">{h.length}</span></div>
                   </div>
                 </div>
               );
@@ -373,21 +413,45 @@ export default function App(){
           </div>
         </section>
 
-        {/* HEATMAP */}
-        <section className={`sec-h${mobileTab!=="heatmap"?" mhide":""}`}>
+        {/* ══ HEATMAP ═════════════════════════════════════════════════════ */}
+        <section className={`sec${mobileTab!=="heatmap"?" mh":""}`} id="sec-heatmap">
           <div className="card">
             <div className="card-hdr">
-              <span className="ct">Correlation Heatmap</span>
-              <span className="cm">{vis.length}×{vis.length} · 200 ticks · tap cell</span>
-              <div className="leg"><span className="legbar"/><span className="leglb">−1</span><span className="leglb" style={{marginLeft:4}}>+1</span></div>
+              <div className="card-hdr-l">
+                <span className="ct">Correlation Heatmap</span>
+                <span className="cm">{vis.length}×{vis.length} Pearson · rolling 200 ticks</span>
+              </div>
+              <div className="card-hdr-r">
+                <div className="leg">
+                  <span className="leglb" style={{color:"#f87171"}}>−1</span>
+                  <span className="legbar"/>
+                  <span className="leglb" style={{color:"#34d399"}}>+1</span>
+                </div>
+              </div>
             </div>
             <div className="hmwrap">
               <table className="hm">
-                <thead><tr><th className="hmc"/>{vis.map(a=><th key={a.symbol} className="hmcl" style={{color:a.color}}>{a.symbol}</th>)}</tr></thead>
+                <thead>
+                  <tr>
+                    <th className="hm-corner"><span className="hm-corner-txt">↓ row vs col →</span></th>
+                    {vis.map(a=>(
+                      <th key={a.symbol} className="hm-cl">
+                        <div className="hm-cl-inner" style={{color:a.color}}>
+                          <div className="hm-cl-sym">{a.symbol}</div>
+                        </div>
+                      </th>
+                    ))}
+                  </tr>
+                </thead>
                 <tbody>
                   {vis.map(rA=>(
                     <tr key={rA.symbol}>
-                      <td className="hmrl" style={{color:rA.color}}>{rA.symbol}</td>
+                      <td className="hm-rl">
+                        <div className="hm-rl-inner">
+                          <span className="hm-rl-dot" style={{background:rA.color}}/>
+                          <span style={{color:rA.color}}>{rA.symbol}</span>
+                        </div>
+                      </td>
                       {vis.map(cB=>{
                         const key=`${rA.symbol}-${cB.symbol}`,val=corr[key]??null;
                         const diag=rA.symbol===cB.symbol;
@@ -395,9 +459,10 @@ export default function App(){
                         return(
                           <td key={cB.symbol}
                             onClick={()=>!diag&&setSelected(sel?null:{a:rA.symbol,b:cB.symbol})}
-                            className={`hmc${diag?" diag":""}${sel?" sel":""}`}
-                            style={{background:diag?"rgba(139,92,246,0.04)":corrColor(val),color:diag?"#3a2a5a":corrTextColor(val)}}>
-                            {diag?"·":val!==null?val.toFixed(2):"…"}
+                            className={`hm-cell${diag?" diag":""}${sel?" sel":""}`}
+                            style={{background:diag?"transparent":corrBg(val),color:diag?"#2a1f40":corrFg(val)}}>
+                            {diag?<span className="diag-sym" style={{color:rA.color}}>{rA.symbol.split("/")[0]}</span>:
+                             val!==null?val.toFixed(2):"…"}
                           </td>
                         );
                       })}
@@ -408,53 +473,100 @@ export default function App(){
             </div>
           </div>
 
-          {/* DETAIL PANEL */}
+          {/* ── DETAIL PANEL ─────────────────────────────────────────── */}
           {selected&&(
-            <div className="card detail">
+            <div className="card detail-panel">
               <div className="card-hdr">
-                <span className="ct">Pair Analysis</span>
-                <button className="xbtn" onClick={()=>setSelected(null)}>✕</button>
-              </div>
-              <div className="dpair">
-                <div className="dsym" style={{color:selA?.color}}>{selected.a}</div>
-                <div className="dblock">
-                  <div className="dval" style={{color:selCorr===null?"#5a4a7a":selCorr>=0?"#34d399":"#f87171"}}>{selCorr===null?"…":selCorr.toFixed(3)}</div>
-                  <div className="dstr">{strengthLabel(selCorr)}</div>
+                <div className="card-hdr-l">
+                  <span className="ct">Pair Analysis</span>
+                  <span className="cm">{selected.a} / {selected.b}</span>
                 </div>
-                <div className="dsym" style={{color:selB?.color}}>{selected.b}</div>
+                <button className="xbtn" onClick={()=>setSelected(null)}>✕ Close</button>
               </div>
-              <div className="dchartbox">
-                <div className="dcl">Rolling Correlation History</div>
-                <CorrChart symA={selected.a} symB={selected.b} histRef={histRef}/>
-              </div>
-              <div className="dstats">
-                {[["Ticks",`${Math.min(history[selected.a]?.length||0,history[selected.b]?.length||0)}`],
-                  ["Categories",`${selA?.category} / ${selB?.category}`],
-                  ["Window","200 samples"],["Updated",new Date().toLocaleTimeString()]].map(([k,v])=>(
-                  <div key={k} className="dsi"><div className="dsk">{k}</div><div className="dsv">{v}</div></div>
-                ))}
+              <div className="dp-body">
+                <div className="dp-left">
+                  <div className="dp-pair">
+                    <div className="dp-asset">
+                      <div className="dp-icon" style={{color:selA?.color}}>{selA?.icon}</div>
+                      <div className="dp-sym" style={{color:selA?.color}}>{selected.a}</div>
+                      <div className="dp-aname">{selA?.name}</div>
+                    </div>
+                    <div className="dp-mid">
+                      <div className="dp-corr" style={{color:si.color}}>{selCorr===null?"–":selCorr.toFixed(3)}</div>
+                      <div className="dp-label" style={{color:si.color}}>{si.label}</div>
+                      <div className="dp-desc">{si.desc}</div>
+                    </div>
+                    <div className="dp-asset">
+                      <div className="dp-icon" style={{color:selB?.color}}>{selB?.icon}</div>
+                      <div className="dp-sym" style={{color:selB?.color}}>{selected.b}</div>
+                      <div className="dp-aname">{selB?.name}</div>
+                    </div>
+                  </div>
+                  <div className="dp-stats-grid">
+                    {[
+                      ["Ticks collected",`${Math.min(history[selected.a]?.length||0,history[selected.b]?.length||0)}`],
+                      ["Window size","200 samples"],
+                      ["Update interval","3 seconds"],
+                      ["Algorithm","Pearson r"],
+                      [`${selected.a} category`,selA?.category||"–"],
+                      [`${selected.b} category`,selB?.category||"–"],
+                    ].map(([k,v])=>(
+                      <div key={k} className="dp-stat">
+                        <div className="dp-sk">{k}</div>
+                        <div className="dp-sv">{v}</div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+                <div className="dp-right">
+                  <div className="dp-chart-title">Rolling Correlation History</div>
+                  <CorrChart symA={selected.a} symB={selected.b} histRef={histRef}/>
+                  <div className="dp-prices">
+                    {[selA,selB].map(a=>a&&(
+                      <div key={a.symbol} className="dp-price-row">
+                        <span style={{color:a.color}}>{a.symbol}</span>
+                        <span className="dp-pval">{fmt(a.symbol,prices[a.symbol])}</span>
+                        <Spark data={history[a.symbol]||[]} color={a.color} w={60} h={22}/>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
           )}
         </section>
 
-        {/* RANKINGS */}
-        <section className={`sec-r${mobileTab!=="top"?" mhide":""}`}>
+        {/* ══ RANKINGS ════════════════════════════════════════════════════ */}
+        <section className={`sec${mobileTab!=="top"?" mh":""}`} id="sec-rankings">
           <div className="rgrid">
             {["pos","neg"].map(dir=>(
               <div key={dir} className="card">
                 <div className="card-hdr">
-                  <span className="ct" style={{color:dir==="pos"?"#34d399":"#f87171"}}>
-                    {dir==="pos"?"▲ Strongest Positive":"▼ Strongest Negative"}
-                  </span>
-                </div>
-                {topPairs(dir).map(({a,b,v},i)=>(
-                  <div key={`${a.symbol}${b.symbol}`} className="rr" onClick={()=>setSelected({a:a.symbol,b:b.symbol})} style={{"--i":i}}>
-                    <div className="rn">{i+1}</div>
-                    <div className="rp"><span style={{color:a.color}}>{a.symbol}</span><span className="rvs">vs</span><span style={{color:b.color}}>{b.symbol}</span></div>
-                    <div className={`rv ${dir==="pos"?"pos":"neg"}`}>{v.toFixed(3)}</div>
+                  <div className="card-hdr-l">
+                    <span className="ct" style={{color:dir==="pos"?"#34d399":"#f87171"}}>
+                      {dir==="pos"?"▲ Strongest Positive":"▼ Strongest Negative"}
+                    </span>
+                    <span className="cm">Top 6 pairs · {filter==="all"?"all assets":filter}</span>
                   </div>
-                ))}
+                </div>
+                {topPairs(dir).map(({a,b,v},i)=>{
+                  const bar=Math.abs(v)*100;
+                  return(
+                    <div key={`${a.symbol}${b.symbol}`} className="rr" onClick={()=>setSelected({a:a.symbol,b:b.symbol})} style={{"--i":i}}>
+                      <div className="rr-bar" style={{width:`${bar}%`,background:dir==="pos"?"rgba(52,211,153,0.12)":"rgba(248,113,113,0.12)"}}/>
+                      <div className="rr-num">{i+1}</div>
+                      <div className="rr-pair">
+                        <span className="rr-sym" style={{color:a.color}}>{a.symbol}</span>
+                        <span className="rr-cat">{a.category}</span>
+                        <span className="rr-vs">vs</span>
+                        <span className="rr-sym" style={{color:b.color}}>{b.symbol}</span>
+                        <span className="rr-cat">{b.category}</span>
+                      </div>
+                      <div className={`rr-val ${dir}`}>{v.toFixed(3)}</div>
+                      <div className="rr-str">{strengthInfo(v).label.split(" ")[0]}</div>
+                    </div>
+                  );
+                })}
               </div>
             ))}
           </div>
@@ -462,177 +574,258 @@ export default function App(){
 
       </main>
 
-      {/* FOOTER */}
+      {/* ══ FOOTER ═════════════════════════════════════════════════════ */}
       <footer className="foot">
-        <PythLogo size={16}/>
-        <span>Powered by <a href="https://pyth.network" target="_blank" rel="noreferrer" className="flink">Pyth Network</a> · Pyth Playground Hackathon 2025 · Built by <a href="https://x.com/xzolmoneythinks" target="_blank" rel="noreferrer" className="flink">@xzolmoneythinks</a></span>
-        <button className="fbk" onClick={()=>setFeedbackOpen(true)}>Feedback</button>
+        <div className="foot-l">
+          <PythLogo size={18}/>
+          <span>Powered by <a href="https://pyth.network" target="_blank" rel="noreferrer" className="fl">Pyth Network</a></span>
+          <span className="foot-sep">·</span>
+          <span>Pyth Playground Hackathon 2025</span>
+          <span className="foot-sep">·</span>
+          <span>Built by <a href="https://x.com/xzolmoneythinks" target="_blank" rel="noreferrer" className="fl">@xzolmoneythinks</a></span>
+        </div>
+        <div className="foot-r">
+          <span className="foot-info">Data updates every 3s · 400ms Pyth oracle</span>
+          <button className="fbk-btn" onClick={()=>setFeedbackOpen(true)}>💬 Feedback</button>
+        </div>
       </footer>
 
-      {/* FEEDBACK MODAL */}
+      {/* ══ FEEDBACK MODAL ═════════════════════════════════════════════ */}
       {feedbackOpen&&(
         <div className="overlay" onClick={()=>setFeedbackOpen(false)}>
           <div className="modal" onClick={e=>e.stopPropagation()}>
-            <div className="modal-hdr"><span className="ct">Send Feedback</span><button className="xbtn" onClick={()=>setFeedbackOpen(false)}>✕</button></div>
+            <div className="card-hdr">
+              <div className="card-hdr-l">
+                <span className="ct">Send Feedback</span>
+                <span className="cm">Sent to Telegram instantly</span>
+              </div>
+              <button className="xbtn" onClick={()=>setFeedbackOpen(false)}>✕</button>
+            </div>
             {feedbackSent?(
-              <div className="sent">✅ Sent! Thank you.</div>
+              <div className="sent">✅ Received! Thank you.</div>
             ):(
-              <>
-                <textarea className="fta" placeholder="Your feedback, bug report, or feature request..." value={feedbackText} onChange={e=>setFeedbackText(e.target.value)} rows={5}/>
-                <button className="fsend" onClick={sendFeedback}>Send →</button>
-              </>
+              <div className="modal-body">
+                <textarea className="fta" placeholder="Bug report, feature request, or general feedback..." value={feedbackText} onChange={e=>setFeedbackText(e.target.value)} rows={5} autoFocus/>
+                <button className="fsend" onClick={sendFeedback} disabled={!feedbackText.trim()}>Send →</button>
+              </div>
             )}
           </div>
         </div>
       )}
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap');
-        :root{
-          --bg:#08060f;--card:rgba(255,255,255,0.025);--cb:rgba(139,92,246,0.12);
-          --pu:#8b5cf6;--pul:#a78bfa;--pud:rgba(139,92,246,0.25);
-          --tx:#ddd6fe;--td:#6d5a8a;--tm:#2d1f4a;
-          --gn:#34d399;--rd:#f87171;
-          --fd:'Syne',sans-serif;--fm:'JetBrains Mono',monospace;
+        @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+        :root {
+          --bg: #060410;
+          --bg2: #0a0718;
+          --card: rgba(255,255,255,0.028);
+          --cb: rgba(139,92,246,0.14);
+          --cb2: rgba(139,92,246,0.07);
+          --pu: #8b5cf6; --pul: #a78bfa; --pud: rgba(139,92,246,0.22);
+          --tx: #e2d9f3; --td: #6b5c8a; --tm: #2d1f4a; --txx: #f0eaff;
+          --gn: #34d399; --rd: #f87171;
+          --fd: 'Outfit', sans-serif;
+          --fm: 'Space Mono', monospace;
+          --r: 10px; --rs: 7px;
         }
-        *,*::before,*::after{box-sizing:border-box;margin:0;padding:0;}
-        html,body,#root{height:100%;width:100%;background:var(--bg);}
+        *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body, #root { height: 100%; background: var(--bg); }
+        .app { min-height: 100vh; width: 100%; background: var(--bg); color: var(--tx); font-family: var(--fm); display: flex; flex-direction: column; position: relative; overflow-x: hidden; opacity: 0; transition: opacity .5s; }
+        .app.on { opacity: 1; }
 
-        .app{min-height:100vh;width:100%;background:var(--bg);color:var(--tx);font-family:var(--fm);display:flex;flex-direction:column;position:relative;overflow-x:hidden;opacity:0;transition:opacity .5s;}
-        canvas.smoke-bg{mix-blend-mode:screen;}
-        .app.on{opacity:1;}
+        /* HEADER */
+        .hdr { position: sticky; top: 0; z-index: 100; display: flex; align-items: center; gap: 16px; padding: 10px 24px; background: rgba(6,4,16,0.92); backdrop-filter: blur(28px); border-bottom: 1px solid var(--cb); flex-wrap: wrap; }
+        .hdr-l { display: flex; align-items: center; gap: 12px; }
+        .hdr-info { display: flex; flex-direction: column; gap: 2px; }
+        .hdr-brand { font-family: var(--fd); font-size: 18px; font-weight: 800; letter-spacing: .04em; }
+        .b-pyth { color: #fff; } .b-sep { color: var(--pud); } .b-rs { color: var(--pul); }
+        .hdr-sub { font-size: 9px; color: var(--td); letter-spacing: .2em; text-transform: uppercase; }
+        .hdr-stats { display: flex; align-items: center; gap: 0; margin-left: 20px; background: rgba(0,0,0,0.3); border: 1px solid var(--cb2); border-radius: var(--rs); overflow: hidden; }
+        .hstat { padding: 6px 14px; text-align: center; }
+        .hstat-val { font-family: var(--fd); font-size: 16px; font-weight: 700; color: var(--txx); }
+        .hstat-val.pos { color: var(--gn); } .hstat-val.neg { color: var(--rd); }
+        .hstat-key { font-size: 8px; color: var(--td); letter-spacing: .1em; text-transform: uppercase; margin-top: 1px; }
+        .hstat-sep { width: 1px; height: 32px; background: var(--cb); }
+        .hdr-r { margin-left: auto; display: flex; align-items: center; gap: 8px; }
+        .hdr-upd { font-size: 9px; color: var(--td); letter-spacing: .08em; }
+        .pill { display: flex; align-items: center; gap: 5px; padding: 4px 11px; border-radius: 20px; font-size: 9px; font-weight: 700; letter-spacing: .14em; border: 1px solid; }
+        .pill.live { background: rgba(52,211,153,.08); border-color: rgba(52,211,153,.3); color: var(--gn); }
+        .pill.demo { background: rgba(251,146,60,.08); border-color: rgba(251,146,60,.3); color: #fb923c; }
+        .pill.connecting { background: rgba(139,92,246,.08); border-color: var(--pud); color: var(--pul); }
+        .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; animation: pulse 2s infinite; }
+        @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.3} }
+        .tick-badge { font-size: 9px; color: var(--tm); letter-spacing: .06em; }
 
-        /* Header */
-        .hdr{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:12px 28px;background:rgba(8,6,15,0.88);backdrop-filter:blur(24px);border-bottom:1px solid var(--cb);}
-        .hdr-l{display:flex;align-items:center;gap:12px;}
-        .brand{font-family:var(--fd);font-size:17px;font-weight:800;letter-spacing:.06em;}
-        .b-pyth{color:#fff;}.b-x{color:var(--pud);}.b-rs{color:var(--pul);}
-        .sub{font-size:9px;color:var(--td);letter-spacing:.18em;text-transform:uppercase;margin-top:2px;}
-        .hdr-r{display:flex;align-items:center;gap:10px;}
-        .pill{display:flex;align-items:center;gap:6px;padding:5px 13px;border-radius:20px;font-size:10px;font-weight:600;letter-spacing:.12em;border:1px solid;}
-        .pill.live{background:rgba(52,211,153,.08);border-color:rgba(52,211,153,.3);color:var(--gn);}
-        .pill.demo{background:rgba(251,146,60,.08);border-color:rgba(251,146,60,.3);color:#fb923c;}
-        .pill.connecting{background:rgba(139,92,246,.08);border-color:var(--pud);color:var(--pul);}
-        .dot{width:6px;height:6px;border-radius:50%;background:currentColor;animation:pulse 2s infinite;}
-        @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+        /* FILTER BAR */
+        .fbar { display: flex; align-items: center; gap: 5px; padding: 8px 24px; border-bottom: 1px solid var(--cb2); background: rgba(6,4,16,.7); overflow-x: auto; scrollbar-width: none; position: relative; z-index: 1; }
+        .fbar::-webkit-scrollbar { display: none; }
+        .fbtn { display: flex; align-items: center; gap: 6px; flex-shrink: 0; padding: 5px 12px; border-radius: 20px; border: 1px solid var(--tm); background: transparent; color: var(--td); font-size: 10px; font-family: var(--fm); cursor: pointer; transition: all .15s; white-space: nowrap; }
+        .fbtn:hover { border-color: var(--pud); color: var(--pul); }
+        .fbtn.a { background: var(--pud); border-color: var(--pu); color: #fff; }
+        .fbtn-count { background: rgba(255,255,255,0.1); border-radius: 10px; padding: 1px 6px; font-size: 8px; }
+        .fbar-right { margin-left: auto; flex-shrink: 0; }
+        .window-badge { font-size: 9px; color: var(--tm); letter-spacing: .06em; white-space: nowrap; }
 
-        /* Filters */
-        .filters{display:flex;gap:6px;padding:10px 28px;overflow-x:auto;scrollbar-width:none;position:relative;z-index:1;border-bottom:1px solid var(--cb);background:rgba(8,6,15,.7);}
-        .filters::-webkit-scrollbar{display:none;}
-        .fbtn{flex-shrink:0;padding:5px 14px;border-radius:20px;border:1px solid var(--tm);background:transparent;color:var(--td);font-size:10px;font-family:var(--fm);cursor:pointer;transition:all .15s;white-space:nowrap;}
-        .fbtn:hover{border-color:var(--pud);color:var(--pul);}
-        .fbtn.a{background:var(--pud);border-color:var(--pu);color:#fff;}
-
-        /* Mobile tabs */
-        .mtabs{display:none;}
+        /* MOBILE TABS */
+        .mtabs { display: none; }
         @media(max-width:768px){
-          .mtabs{display:flex;background:rgba(8,6,15,.9);border-bottom:1px solid var(--cb);position:relative;z-index:1;}
-          .mt{flex:1;padding:11px;border:none;background:transparent;color:var(--td);font-size:11px;font-family:var(--fm);cursor:pointer;border-bottom:2px solid transparent;transition:all .2s;}
-          .mt.a{color:var(--pul);border-bottom-color:var(--pu);}
-          .mhide{display:none!important;}
+          .mtabs { display: flex; background: rgba(6,4,16,.95); border-bottom: 1px solid var(--cb); position: relative; z-index: 1; }
+          .mt { flex: 1; padding: 10px; border: none; background: transparent; color: var(--td); font-size: 11px; font-family: var(--fm); cursor: pointer; border-bottom: 2px solid transparent; transition: all .2s; }
+          .mt.a { color: var(--pul); border-bottom-color: var(--pu); }
+          .mh { display: none !important; }
         }
 
-        /* Main */
-        .main{flex:1;padding:20px 28px;display:flex;flex-direction:column;gap:14px;position:relative;z-index:1;max-width:1700px;width:100%;margin:0 auto;}
+        /* MAIN */
+        .main { flex: 1; padding: 16px 24px; display: flex; flex-direction: column; gap: 12px; position: relative; z-index: 1; max-width: 1800px; width: 100%; margin: 0 auto; }
 
-        /* Cards */
-        .card{background:var(--card);border:1px solid var(--cb);border-radius:12px;backdrop-filter:blur(16px);overflow:hidden;animation:fup .45s ease both;}
-        @keyframes fup{from{opacity:0;transform:translateY(14px)}to{opacity:1;transform:translateY(0)}}
-        .card-hdr{padding:12px 16px 10px;display:flex;align-items:baseline;flex-wrap:wrap;gap:6px;border-bottom:1px solid var(--cb);}
-        .ct{font-family:var(--fd);font-size:13px;font-weight:700;color:var(--tx);letter-spacing:.05em;}
-        .cm{font-size:10px;color:var(--td);}
-        .leg{display:flex;align-items:center;gap:4px;margin-left:auto;}
-        .legbar{width:44px;height:6px;border-radius:3px;background:linear-gradient(90deg,#f87171,rgba(139,92,246,.3),#34d399);}
-        .leglb{font-size:9px;color:var(--td);}
+        /* CARDS */
+        .card { background: var(--card); border: 1px solid var(--cb); border-radius: var(--r); backdrop-filter: blur(16px); overflow: hidden; animation: fup .4s ease both; }
+        @keyframes fup { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+        .card-hdr { padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--cb2); }
+        .card-hdr-l { display: flex; flex-direction: column; gap: 2px; }
+        .card-hdr-r { display: flex; align-items: center; gap: 8px; }
+        .ct { font-family: var(--fd); font-size: 13px; font-weight: 700; color: var(--txx); letter-spacing: .03em; }
+        .cm { font-size: 9px; color: var(--td); letter-spacing: .08em; }
 
-        /* Tickers */
-        .sec-t{animation:fup .4s ease both;}
-        .tgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:8px;}
-        .tc{background:var(--card);border:1px solid var(--cb);border-left:2px solid var(--ac,var(--pu));border-radius:8px;padding:10px 12px;transition:transform .2s;animation:fup .4s ease both;animation-delay:var(--d,0ms);}
-        .tc:hover{transform:translateY(-2px);}
-        .tc-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:5px;}
-        .tc-cat{font-size:8px;color:var(--td);letter-spacing:.12em;text-transform:uppercase;}
-        .tc-sym{font-family:var(--fd);font-size:14px;font-weight:700;margin-top:2px;}
-        .tc-pct{font-size:9px;font-weight:600;padding:2px 5px;border-radius:4px;}
-        .tc-pct.up{color:var(--gn);background:rgba(52,211,153,.1);}
-        .tc-pct.dn{color:var(--rd);background:rgba(248,113,113,.1);}
-        .tc-bot{display:flex;justify-content:space-between;align-items:center;}
-        .tc-p{font-size:12px;color:var(--tx);font-variant-numeric:tabular-nums;}
+        /* TICKERS */
+        .tgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 8px; }
+        .tc { background: var(--card); border: 1px solid var(--cb2); border-top: 2px solid var(--ac, var(--pu)); border-radius: var(--r); padding: 12px; display: flex; flex-direction: column; gap: 6px; transition: transform .2s, border-color .2s, box-shadow .2s; animation: fup .4s ease both; animation-delay: var(--d,0ms); cursor: default; position: relative; overflow: hidden; }
+        .tc::before { content: ''; position: absolute; inset: 0; background: radial-gradient(circle at top left, var(--ac,transparent) 0%, transparent 60%); opacity: 0.04; pointer-events: none; }
+        .tc:hover { transform: translateY(-3px); border-color: var(--cb); box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+        .tc-head { display: flex; align-items: center; gap: 8px; }
+        .tc-icon { font-size: 18px; font-weight: 700; width: 28px; text-align: center; line-height: 1; }
+        .tc-meta { flex: 1; min-width: 0; }
+        .tc-sym { font-family: var(--fd); font-size: 13px; font-weight: 700; line-height: 1.1; }
+        .tc-name { font-size: 8px; color: var(--td); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .tc-badge { font-size: 7px; padding: 2px 5px; border-radius: 4px; letter-spacing: .08em; text-transform: uppercase; flex-shrink: 0; }
+        .tc-badge.crypto { background: rgba(153,69,255,.15); color: #9945ff; }
+        .tc-badge.fx { background: rgba(96,165,250,.12); color: #60a5fa; }
+        .tc-badge.commodity { background: rgba(252,211,77,.12); color: #fcd34d; }
+        .tc-badge.equity { background: rgba(226,232,240,.1); color: #e2e8f0; }
+        .tc-price-row { display: flex; align-items: baseline; justify-content: space-between; gap: 4px; }
+        .tc-price { font-family: var(--fd); font-size: 15px; font-weight: 700; color: var(--txx); font-variant-numeric: tabular-nums; }
+        .tc-pct { font-size: 10px; font-weight: 700; padding: 2px 5px; border-radius: 4px; }
+        .tc-pct.up { color: var(--gn); background: rgba(52,211,153,.1); }
+        .tc-pct.dn { color: var(--rd); background: rgba(248,113,113,.1); }
+        .tc-spark-row { display: flex; align-items: center; justify-content: space-between; }
+        .tc-pct24 { font-size: 8px; }
+        .tc-pct24.up { color: var(--gn); } .tc-pct24.dn { color: var(--rd); }
+        .tc-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; border-top: 1px solid var(--cb2); padding-top: 6px; }
+        .tc-stat { display: flex; gap: 4px; align-items: baseline; }
+        .tc-sk { font-size: 8px; color: var(--tm); text-transform: uppercase; }
+        .tc-sv { font-size: 9px; color: var(--td); font-variant-numeric: tabular-nums; }
 
-        /* Heatmap */
-        .sec-h{display:flex;flex-direction:column;gap:14px;}
-        .hmwrap{overflow-x:auto;padding:12px;}
-        .hm{border-collapse:separate;border-spacing:2px;width:100%;}
-        .hmc{width:62px;}
-        .hmcl{font-size:8px;font-weight:700;letter-spacing:.03em;text-align:center;writing-mode:vertical-lr;transform:rotate(180deg);height:52px;padding:2px;}
-        .hmrl{font-size:9px;font-weight:700;padding-right:6px;white-space:nowrap;}
-        .hmc{width:40px;height:40px;text-align:center;font-size:8px;font-weight:600;border-radius:5px;cursor:pointer;transition:filter .2s,transform .2s;font-variant-numeric:tabular-nums;}
-        .hmc:hover{filter:brightness(1.35);transform:scale(1.06);}
-        .hmc.diag{cursor:default;}
-        .hmc.sel{outline:2px solid rgba(255,255,255,.75);outline-offset:-1px;}
+        /* LEGEND */
+        .leg { display: flex; align-items: center; gap: 5px; }
+        .legbar { width: 60px; height: 6px; border-radius: 3px; background: linear-gradient(90deg,#f87171,rgba(139,92,246,.3),#34d399); }
+        .leglb { font-size: 9px; font-weight: 700; }
 
-        /* Detail */
-        .detail{animation:sin .3s ease both;}
-        @keyframes sin{from{opacity:0;transform:translateX(16px)}to{opacity:1;transform:translateX(0)}}
-        .xbtn{background:transparent;border:1px solid var(--tm);color:var(--td);padding:3px 8px;border-radius:5px;cursor:pointer;font-size:11px;margin-left:auto;transition:all .2s;}
-        .xbtn:hover{border-color:var(--pud);color:var(--pul);}
-        .dpair{display:flex;align-items:center;justify-content:space-around;padding:14px;}
-        .dsym{font-family:var(--fd);font-size:20px;font-weight:800;}
-        .dblock{text-align:center;}
-        .dval{font-family:var(--fd);font-size:34px;font-weight:800;line-height:1;transition:color .4s;}
-        .dstr{font-size:9px;color:var(--td);letter-spacing:.12em;margin-top:3px;}
-        .dchartbox{background:rgba(0,0,0,.25);border-radius:8px;padding:10px;margin:0 12px 10px;}
-        .dcl{font-size:9px;color:var(--td);letter-spacing:.1em;text-transform:uppercase;margin-bottom:6px;}
-        .dstats{display:grid;grid-template-columns:1fr 1fr;gap:5px;padding:0 12px 12px;}
-        .dsi{background:rgba(0,0,0,.2);border-radius:6px;padding:7px 9px;border:1px solid var(--cb);}
-        .dsk{font-size:8px;color:var(--td);letter-spacing:.1em;text-transform:uppercase;margin-bottom:2px;}
-        .dsv{font-size:10px;color:var(--tx);}
+        /* HEATMAP */
+        .hmwrap { overflow-x: auto; padding: 10px; }
+        .hm { border-collapse: separate; border-spacing: 2px; }
+        .hm-corner { width: 72px; vertical-align: bottom; padding-bottom: 4px; }
+        .hm-corner-txt { font-size: 7px; color: var(--tm); display: block; text-align: right; }
+        .hm-cl { padding: 2px 1px; }
+        .hm-cl-inner { writing-mode: vertical-lr; transform: rotate(180deg); display: flex; flex-direction: column; align-items: center; height: 56px; justify-content: flex-end; }
+        .hm-cl-sym { font-size: 8px; font-weight: 700; letter-spacing: .03em; white-space: nowrap; }
+        .hm-rl { padding-right: 6px; white-space: nowrap; }
+        .hm-rl-inner { display: flex; align-items: center; gap: 5px; }
+        .hm-rl-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
+        .hm-cell { width: 44px; height: 40px; text-align: center; vertical-align: middle; font-size: 8px; font-weight: 700; border-radius: 5px; cursor: pointer; transition: filter .18s, transform .18s; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+        .hm-cell:hover { filter: brightness(1.4); transform: scale(1.08); z-index: 2; position: relative; }
+        .hm-cell.diag { cursor: default; background: rgba(139,92,246,.04) !important; border: 1px solid rgba(139,92,246,.15); }
+        .hm-cell.sel { outline: 2px solid rgba(255,255,255,.8); outline-offset: -1px; }
+        .diag-sym { font-size: 8px; font-weight: 700; color: var(--td); }
+        .xbtn { background: transparent; border: 1px solid var(--tm); color: var(--td); padding: 4px 10px; border-radius: 5px; cursor: pointer; font-size: 10px; font-family: var(--fm); transition: all .2s; white-space: nowrap; }
+        .xbtn:hover { border-color: var(--pud); color: var(--pul); }
 
-        /* Rankings */
-        .sec-r{}
-        .rgrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;}
-        .rr{display:flex;align-items:center;gap:10px;padding:8px 16px;border-bottom:1px solid rgba(139,92,246,.05);cursor:pointer;transition:background .15s;animation:fup .3s ease both;animation-delay:calc(var(--i)*55ms);}
-        .rr:hover{background:rgba(139,92,246,.05);}
-        .rn{width:14px;font-size:9px;color:var(--tm);}
-        .rp{flex:1;display:flex;align-items:center;gap:6px;font-size:11px;font-weight:600;}
-        .rvs{font-size:8px;color:var(--tm);}
-        .rv{font-family:var(--fd);font-size:14px;font-weight:700;font-variant-numeric:tabular-nums;}
-        .rv.pos{color:var(--gn);}.rv.neg{color:var(--rd);}
+        /* DETAIL PANEL */
+        .detail-panel { animation: slideIn .28s ease both; }
+        @keyframes slideIn { from{opacity:0;transform:translateY(-8px)} to{opacity:1;transform:translateY(0)} }
+        .dp-body { display: grid; grid-template-columns: 1fr 1fr; gap: 0; }
+        .dp-left { padding: 16px; border-right: 1px solid var(--cb2); }
+        .dp-right { padding: 16px; display: flex; flex-direction: column; gap: 10px; }
+        .dp-pair { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 14px; }
+        .dp-asset { text-align: center; }
+        .dp-icon { font-size: 24px; font-weight: 700; line-height: 1; }
+        .dp-sym { font-family: var(--fd); font-size: 16px; font-weight: 800; margin-top: 4px; }
+        .dp-aname { font-size: 9px; color: var(--td); margin-top: 2px; }
+        .dp-mid { text-align: center; flex: 1; }
+        .dp-corr { font-family: var(--fd); font-size: 42px; font-weight: 800; line-height: 1; transition: color .4s; }
+        .dp-label { font-size: 9px; font-weight: 700; letter-spacing: .14em; margin-top: 4px; }
+        .dp-desc { font-size: 9px; color: var(--td); margin-top: 4px; max-width: 140px; margin-left: auto; margin-right: auto; line-height: 1.4; }
+        .dp-stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 5px; }
+        .dp-stat { background: rgba(0,0,0,.25); border: 1px solid var(--cb2); border-radius: var(--rs); padding: 7px 9px; }
+        .dp-sk { font-size: 8px; color: var(--td); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 3px; }
+        .dp-sv { font-size: 11px; color: var(--tx); }
+        .dp-chart-title { font-size: 9px; color: var(--td); letter-spacing: .1em; text-transform: uppercase; }
+        .dp-prices { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--cb2); padding-top: 8px; }
+        .dp-price-row { display: flex; align-items: center; gap: 8px; font-size: 10px; font-weight: 700; }
+        .dp-pval { font-variant-numeric: tabular-nums; color: var(--tx); flex: 1; }
 
-        /* Footer */
-        .foot{display:flex;align-items:center;justify-content:center;gap:8px;padding:12px 28px;font-size:10px;color:var(--tm);border-top:1px solid var(--cb);position:relative;z-index:1;flex-wrap:wrap;}
-        .flink{color:var(--pul);text-decoration:none;}.flink:hover{text-decoration:underline;}
-        .fbk{margin-left:8px;background:transparent;border:1px solid var(--tm);color:var(--td);padding:4px 10px;border-radius:5px;cursor:pointer;font-size:10px;font-family:var(--fm);transition:all .2s;}
-        .fbk:hover{border-color:var(--pud);color:var(--pul);}
+        /* RANKINGS */
+        .rgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+        .rr { display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-bottom: 1px solid var(--cb2); cursor: pointer; transition: background .15s; position: relative; overflow: hidden; animation: fup .3s ease both; animation-delay: calc(var(--i)*50ms); }
+        .rr-bar { position: absolute; left: 0; top: 0; height: 100%; transition: width .5s; pointer-events: none; }
+        .rr:hover { background: rgba(139,92,246,.06); }
+        .rr:last-child { border-bottom: none; }
+        .rr-num { width: 16px; font-size: 9px; color: var(--tm); flex-shrink: 0; z-index: 1; }
+        .rr-pair { flex: 1; display: flex; align-items: center; gap: 5px; z-index: 1; flex-wrap: wrap; }
+        .rr-sym { font-size: 11px; font-weight: 700; }
+        .rr-cat { font-size: 7px; color: var(--td); padding: 1px 4px; border: 1px solid var(--tm); border-radius: 3px; }
+        .rr-vs { font-size: 8px; color: var(--tm); }
+        .rr-val { font-family: var(--fd); font-size: 15px; font-weight: 800; font-variant-numeric: tabular-nums; z-index: 1; }
+        .rr-val.pos { color: var(--gn); } .rr-val.neg { color: var(--rd); }
+        .rr-str { font-size: 7px; color: var(--td); letter-spacing: .08em; z-index: 1; white-space: nowrap; }
 
-        /* Feedback modal */
-        .overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:200;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(6px);animation:fadein .2s ease;}
-        @keyframes fadein{from{opacity:0}to{opacity:1}}
-        .modal{background:#110d1e;border:1px solid var(--cb);border-radius:14px;padding:0;width:min(480px,92vw);overflow:hidden;animation:fup .25s ease;}
-        .fta{width:100%;padding:12px 16px;background:rgba(0,0,0,.3);border:1px solid var(--cb);border-radius:8px;color:var(--tx);font-family:var(--fm);font-size:12px;resize:vertical;margin:14px 16px 10px;width:calc(100% - 32px);outline:none;}
-        .fta:focus{border-color:var(--pu);}
-        .fsend{display:block;margin:0 16px 14px;padding:10px 20px;background:var(--pud);border:1px solid var(--pu);border-radius:8px;color:#fff;font-family:var(--fd);font-size:13px;font-weight:700;cursor:pointer;transition:all .2s;width:calc(100% - 32px);}
-        .fsend:hover{background:var(--pu);}
-        .sent{padding:24px;text-align:center;font-size:15px;color:var(--gn);}
+        /* FOOTER */
+        .foot { display: flex; align-items: center; justify-content: space-between; padding: 10px 24px; font-size: 10px; color: var(--tm); border-top: 1px solid var(--cb2); position: relative; z-index: 1; flex-wrap: wrap; gap: 8px; }
+        .foot-l { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .foot-r { display: flex; align-items: center; gap: 10px; }
+        .foot-sep { color: var(--tm); }
+        .foot-info { font-size: 9px; color: var(--tm); }
+        .fl { color: var(--pul); text-decoration: none; } .fl:hover { text-decoration: underline; }
+        .fbk-btn { background: transparent; border: 1px solid var(--cb); color: var(--pul); padding: 5px 12px; border-radius: 20px; cursor: pointer; font-size: 10px; font-family: var(--fm); transition: all .2s; }
+        .fbk-btn:hover { background: var(--pud); border-color: var(--pu); }
 
-        /* Scrollbar */
-        ::-webkit-scrollbar{width:4px;height:4px;}
-        ::-webkit-scrollbar-track{background:transparent;}
-        ::-webkit-scrollbar-thumb{background:var(--pud);border-radius:2px;}
+        /* MODAL */
+        .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 200; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px); animation: fadein .2s ease; }
+        @keyframes fadein { from{opacity:0} to{opacity:1} }
+        .modal { background: #0c0917; border: 1px solid var(--cb); border-radius: var(--r); width: min(500px, 94vw); overflow: hidden; animation: fup .22s ease; }
+        .modal-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
+        .fta { width: 100%; padding: 10px 12px; background: rgba(0,0,0,.4); border: 1px solid var(--cb); border-radius: var(--rs); color: var(--tx); font-family: var(--fm); font-size: 12px; resize: vertical; outline: none; transition: border-color .2s; }
+        .fta:focus { border-color: var(--pu); }
+        .fsend { padding: 10px; background: var(--pud); border: 1px solid var(--pu); border-radius: var(--rs); color: #fff; font-family: var(--fd); font-size: 13px; font-weight: 700; cursor: pointer; transition: all .2s; }
+        .fsend:hover:not(:disabled) { background: var(--pu); }
+        .fsend:disabled { opacity: .4; cursor: default; }
+        .sent { padding: 28px; text-align: center; font-size: 16px; color: var(--gn); }
 
-        @media(max-width:768px){
-          .main{padding:12px;}
-          .hdr{padding:10px 16px;}
-          .filters{padding:8px 12px;}
-          .rgrid{grid-template-columns:1fr;}
-          .hmc{width:34px;height:34px;font-size:7px;}
-          .hmcl{font-size:7px;height:48px;}
-          .dval{font-size:26px;}
-          .dsym{font-size:17px;}
+        /* SCROLLBAR */
+        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: var(--pud); border-radius: 2px; }
+
+        /* RESPONSIVE */
+        @media(max-width:1024px) {
+          .dp-body { grid-template-columns: 1fr; }
+          .dp-left { border-right: none; border-bottom: 1px solid var(--cb2); }
+          .hdr-stats { display: none; }
         }
-        @media(max-width:480px){
-          .sub{display:none;}
-          .tgrid{grid-template-columns:1fr 1fr;}
+        @media(max-width:768px) {
+          .main { padding: 10px 12px; }
+          .hdr { padding: 10px 14px; }
+          .fbar { padding: 7px 12px; }
+          .rgrid { grid-template-columns: 1fr; }
+          .hm-cell { width: 34px; height: 34px; font-size: 7px; }
+          .hm-cl-inner { height: 44px; }
+          .dp-corr { font-size: 32px; }
+          .dp-sym { font-size: 14px; }
+        }
+        @media(max-width:480px) {
+          .hdr-sub { display: none; }
+          .tgrid { grid-template-columns: 1fr 1fr; }
+          .hdr-upd { display: none; }
         }
       `}</style>
     </div>
