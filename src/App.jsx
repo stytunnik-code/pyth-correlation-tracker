@@ -386,7 +386,7 @@ export default function App(){
             <span>{errorMsg}</span>
           </div>
         )}
-        {activeTab==="charts"&&<div style={{position:"fixed",top:128,left:0,right:0,bottom:0,zIndex:50}}><ChartsTab assets={ASSETS} ohlcvRef={ohlcvRef} histRef={histRef} prices={prices} chartAsset={chartAsset} setChartAsset={setChartAsset} chartTf={chartTf} setChartTf={setChartTf} chartType={chartType} setChartType={setChartType}/></div>}
+        {activeTab==="charts"&&<div style={{position:"fixed",top:128,left:0,right:0,bottom:0,zIndex:50,background:"#070512"}}><ChartsTab assets={ASSETS} ohlcvRef={ohlcvRef} histRef={histRef} prices={prices} chartAsset={chartAsset} setChartAsset={setChartAsset} chartTf={chartTf} setChartTf={setChartTf} chartType={chartType} setChartType={setChartType}/></div>}
         {activeTab==="matrix"&&<>
         {/* ══ TICKERS ════════════════════════════════════════════════════ */}
         <section className={`sec${mobileTab!=="tickers"?" mh":""}`} id="sec-tickers">
@@ -879,15 +879,38 @@ export default function App(){
 }
 
 /* ── CHARTS TAB ─────────────────────────────────────────────────────────── */
-const TF_LIST = ["1m","5m","15m","1h","4h","1d"];
-const TF_SECS_MAP = {"1m":60,"5m":300,"15m":900,"1h":3600,"4h":14400,"1d":86400};
+const TF_LIST    = ["1m","5m","15m","1h","4h","1d"];
+const TF_SECS_C  = {"1m":60,"5m":300,"15m":900,"1h":3600,"4h":14400,"1d":86400};
+
+// Merge live Pyth ticks into Binance candles
+function mergeLive(base, liveMap, symbol, tf) {
+  if (!base || !base.length) return base || [];
+  const secs = TF_SECS_C[tf] || 60;
+  const now  = Math.floor(Date.now() / 1000);
+  const barT = Math.floor(now / secs) * secs;
+  const price = liveMap[symbol];
+  if (!price) return base;
+
+  const copy = [...base];
+  const last = copy[copy.length - 1];
+  if (last && last.t === barT) {
+    // Update current candle with latest price
+    copy[copy.length - 1] = {
+      ...last,
+      h: Math.max(last.h, price),
+      l: Math.min(last.l, price),
+      c: price,
+    };
+  } else if (barT > last.t) {
+    copy.push({ t: barT, o: price, h: price, l: price, c: price, v: 0, n: 1 });
+  }
+  return copy;
+}
 
 function drawChart(canvas, bars, chartType) {
   if (!canvas) return;
   const parent = canvas.parentElement;
   if (!parent) return;
-
-  // Match canvas resolution to DOM size
   const W = parent.clientWidth;
   const H = parent.clientHeight;
   if (W < 20 || H < 20) return;
@@ -896,378 +919,274 @@ function drawChart(canvas, bars, chartType) {
 
   const ctx = canvas.getContext("2d");
   ctx.clearRect(0, 0, W, H);
-
-  // Dark background
   ctx.fillStyle = "#070512";
   ctx.fillRect(0, 0, W, H);
 
   if (!bars || bars.length < 2) {
     ctx.fillStyle = "rgba(139,92,246,0.4)";
-    ctx.font = "13px 'Space Mono', monospace";
+    ctx.font = "13px 'Space Mono',monospace";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
-    ctx.fillText("Accumulating candles — check back in a moment", W / 2, H / 2);
+    ctx.fillText("Loading chart data…", W / 2, H / 2);
     return;
   }
 
-  const PADDING = { top: 16, right: 70, bottom: 28, left: 4 };
-  const CW = W - PADDING.left - PADDING.right;
-  const CH = H - PADDING.top  - PADDING.bottom;
-
-  // Use last 150 candles max
-  const vis = bars.slice(-150);
+  const PAD = { t: 16, r: 72, b: 28, l: 4 };
+  const CW = W - PAD.l - PAD.r;
+  const CH = H - PAD.t - PAD.b;
+  const vis = bars.slice(-Math.min(bars.length, 200));
   const n   = vis.length;
 
-  const allL = vis.map(b => b.l);
-  const allH = vis.map(b => b.h);
-  const dataMin = Math.min(...allL);
-  const dataMax = Math.max(...allH);
-  const dataRange = dataMax - dataMin || dataMax * 0.002 || 1;
-
-  // Add 5% padding top/bottom
-  const yMin = dataMin - dataRange * 0.05;
-  const yMax = dataMax + dataRange * 0.05;
-  const yRange = yMax - yMin;
-
-  const toY = v => PADDING.top + CH * (1 - (v - yMin) / yRange);
+  const dMin = Math.min(...vis.map(b => b.l));
+  const dMax = Math.max(...vis.map(b => b.h));
+  const dR   = dMax - dMin || dMax * 0.002 || 1;
+  const yMin = dMin - dR * 0.04;
+  const yMax = dMax + dR * 0.04;
+  const yR   = yMax - yMin;
+  const toY  = v => PAD.t + CH * (1 - (v - yMin) / yR);
   const colW = CW / n;
-  const toX = i => PADDING.left + (i + 0.5) * colW;
+  const toX  = i => PAD.l + (i + 0.5) * colW;
 
-  // ── Grid lines ────────────────────────────────────────────────────────
-  const gridCount = 6;
+  // Grid
   ctx.setLineDash([2, 4]);
   ctx.lineWidth = 1;
-  for (let i = 0; i <= gridCount; i++) {
-    const v = yMin + (yRange / gridCount) * i;
+  for (let i = 0; i <= 6; i++) {
+    const v = yMin + (yR / 6) * i;
     const y = toY(v);
-    ctx.strokeStyle = "rgba(139,92,246,0.10)";
-    ctx.beginPath(); ctx.moveTo(PADDING.left, y); ctx.lineTo(W - PADDING.right, y); ctx.stroke();
-
-    // Price label
-    const label = v >= 10000 ? v.toFixed(0) :
-                  v >= 100   ? v.toFixed(1) :
-                  v >= 1     ? v.toFixed(4) : v.toFixed(6);
-    ctx.fillStyle = "rgba(120,100,180,0.6)";
-    ctx.font = "9px 'Space Mono', monospace";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
-    ctx.fillText(label, W - PADDING.right + 4, y);
+    ctx.strokeStyle = "rgba(139,92,246,0.09)";
+    ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(W - PAD.r, y); ctx.stroke();
+    const lbl = v >= 10000 ? v.toFixed(0) : v >= 100 ? v.toFixed(1) : v >= 1 ? v.toFixed(4) : v.toFixed(6);
+    ctx.fillStyle = "rgba(110,90,170,0.55)";
+    ctx.font = "9px 'Space Mono',monospace";
+    ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.fillText(lbl, W - PAD.r + 4, y);
   }
   ctx.setLineDash([]);
 
-  // ── Volume bars (bottom 15% of chart area) ────────────────────────────
-  const volAreaH = CH * 0.14;
-  const volBase  = PADDING.top + CH;
-  const maxN = Math.max(...vis.map(b => b.n || 1));
+  // Volume (bottom 14%)
+  const volH  = CH * 0.14;
+  const volBase = PAD.t + CH;
+  const maxV  = Math.max(...vis.map(b => b.v || b.n || 1));
   vis.forEach((b, i) => {
-    const x   = toX(i);
-    const bw  = Math.max(1, colW * 0.7);
-    const vh  = (b.n / maxN) * volAreaH;
-    ctx.fillStyle = b.c >= b.o ? "rgba(52,211,153,0.15)" : "rgba(248,113,113,0.15)";
+    const x  = toX(i);
+    const bw = Math.max(1, colW * 0.7);
+    const vh = ((b.v || b.n || 0) / maxV) * volH;
+    ctx.fillStyle = b.c >= b.o ? "rgba(52,211,153,0.13)" : "rgba(248,113,113,0.13)";
     ctx.fillRect(x - bw / 2, volBase - vh, bw, vh);
   });
 
-  // ── Candles or Line ───────────────────────────────────────────────────
   if (chartType === "line") {
-    const up = vis[vis.length - 1].c >= vis[0].o;
-    const lineCol = up ? "#34d399" : "#f87171";
-
-    // Gradient fill under line
-    const grad = ctx.createLinearGradient(0, PADDING.top, 0, volBase);
-    grad.addColorStop(0, up ? "rgba(52,211,153,0.18)" : "rgba(248,113,113,0.18)");
+    const up  = vis[vis.length - 1].c >= vis[0].o;
+    const col = up ? "#34d399" : "#f87171";
+    const grad = ctx.createLinearGradient(0, PAD.t, 0, volBase);
+    grad.addColorStop(0, up ? "rgba(52,211,153,0.20)" : "rgba(248,113,113,0.20)");
     grad.addColorStop(1, "rgba(0,0,0,0)");
-
     ctx.beginPath();
-    vis.forEach((b, i) => {
-      const x = toX(i), y = toY(b.c);
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    });
-    ctx.lineTo(toX(n - 1), volBase);
-    ctx.lineTo(toX(0), volBase);
-    ctx.closePath();
-    ctx.fillStyle = grad;
-    ctx.fill();
-
-    ctx.strokeStyle = lineCol;
-    ctx.lineWidth = 1.5;
-    ctx.lineJoin = "round";
+    vis.forEach((b, i) => { const x=toX(i),y=toY(b.c); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
+    ctx.lineTo(toX(n-1), volBase); ctx.lineTo(toX(0), volBase);
+    ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
+    ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.lineJoin = "round";
     ctx.beginPath();
-    vis.forEach((b, i) => {
-      const x = toX(i), y = toY(b.c);
-      i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-    });
+    vis.forEach((b, i) => { const x=toX(i),y=toY(b.c); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
     ctx.stroke();
-
   } else {
-    // Candlesticks
-    const bodyW = Math.max(1, colW * 0.65);
+    const bw = Math.max(1, colW * 0.65);
     vis.forEach((b, i) => {
       const x  = toX(i);
       const up = b.c >= b.o;
-      const green = "rgba(52,211,153,0.88)";
-      const red   = "rgba(248,113,113,0.88)";
-      const col   = up ? green : red;
-
-      // Wick
-      ctx.strokeStyle = col;
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(x, toY(b.h));
-      ctx.lineTo(x, toY(b.l));
-      ctx.stroke();
-
-      // Body
-      const openY  = toY(b.o);
-      const closeY = toY(b.c);
-      const bodyTop = Math.min(openY, closeY);
-      const bodyH   = Math.max(1, Math.abs(openY - closeY));
-
+      const col = up ? "rgba(52,211,153,0.88)" : "rgba(248,113,113,0.88)";
+      ctx.strokeStyle = col; ctx.lineWidth = 1;
+      ctx.beginPath(); ctx.moveTo(x, toY(b.h)); ctx.lineTo(x, toY(b.l)); ctx.stroke();
+      const by = Math.min(toY(b.o), toY(b.c));
+      const bH = Math.max(1, Math.abs(toY(b.o) - toY(b.c)));
       ctx.fillStyle = col;
-      ctx.fillRect(x - bodyW / 2, bodyTop, bodyW, bodyH);
-
-      if (bodyW > 4) {
-        ctx.strokeStyle = col;
-        ctx.lineWidth = 0.5;
-        ctx.strokeRect(x - bodyW / 2, bodyTop, bodyW, bodyH);
-      }
+      ctx.fillRect(x - bw/2, by, bw, bH);
+      if (bw > 3) { ctx.strokeStyle = col; ctx.lineWidth = 0.5; ctx.strokeRect(x - bw/2, by, bw, bH); }
     });
   }
 
-  // ── Time axis labels ──────────────────────────────────────────────────
+  // Time axis
   const step = Math.max(1, Math.floor(n / 8));
-  ctx.fillStyle = "rgba(100,80,160,0.55)";
-  ctx.font = "8px 'Space Mono', monospace";
-  ctx.textAlign = "center";
-  ctx.textBaseline = "top";
+  ctx.fillStyle = "rgba(100,80,160,0.5)";
+  ctx.font = "8px 'Space Mono',monospace";
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
   vis.forEach((b, i) => {
     if (i % step === 0) {
       const d = new Date(b.t * 1000);
-      const secs = b.tfSecs || 60;
-      const label = secs >= 86400
-        ? d.toLocaleDateString("en", { month: "short", day: "numeric" })
-        : d.toLocaleTimeString("en", { hour: "2-digit", minute: "2-digit", hour12: false });
-      ctx.fillText(label, toX(i), PADDING.top + CH + 4);
+      const lbl = b.tfSecs >= 86400
+        ? d.toLocaleDateString("en",{month:"short",day:"numeric"})
+        : d.toLocaleTimeString("en",{hour:"2-digit",minute:"2-digit",hour12:false});
+      ctx.fillText(lbl, toX(i), PAD.t + CH + 4);
     }
   });
 
-  // ── Current price line ────────────────────────────────────────────────
+  // Current price line
   if (vis.length) {
-    const last = vis[vis.length - 1].c;
+    const last = vis[vis.length-1].c;
     const y    = toY(last);
     const up   = last >= vis[0].o;
-
-    ctx.strokeStyle = up ? "rgba(52,211,153,0.45)" : "rgba(248,113,113,0.45)";
-    ctx.lineWidth = 1;
-    ctx.setLineDash([3, 3]);
-    ctx.beginPath();
-    ctx.moveTo(PADDING.left, y);
-    ctx.lineTo(W - PADDING.right, y);
-    ctx.stroke();
+    ctx.strokeStyle = up ? "rgba(52,211,153,0.5)" : "rgba(248,113,113,0.5)";
+    ctx.lineWidth = 1; ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(PAD.l,y); ctx.lineTo(W-PAD.r,y); ctx.stroke();
     ctx.setLineDash([]);
-
-    // Price badge on right axis
-    const label = last >= 10000 ? last.toFixed(0) :
-                  last >= 100   ? last.toFixed(1) :
-                  last >= 1     ? last.toFixed(4) : last.toFixed(6);
-    const bW = PADDING.right - 4;
-    const bH = 14;
+    const lbl = last>=10000?last.toFixed(0):last>=100?last.toFixed(1):last>=1?last.toFixed(4):last.toFixed(6);
     ctx.fillStyle = up ? "#34d399" : "#f87171";
-    ctx.fillRect(W - PADDING.right + 2, y - bH / 2, bW, bH);
-    ctx.fillStyle = "#000";
-    ctx.font = "bold 8px 'Space Mono', monospace";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
-    ctx.fillText(label, W - PADDING.right + 5, y);
+    ctx.fillRect(W-PAD.r+2, y-7, PAD.r-4, 14);
+    ctx.fillStyle = "#000"; ctx.font = "bold 8px 'Space Mono',monospace";
+    ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.fillText(lbl, W-PAD.r+5, y);
   }
 }
 
-function CandleChart({ bars, chartType, tfSecs }) {
+function CandleChart({ bars, chartType }) {
   const ref    = useRef();
-  const paramsRef = useRef({ bars, chartType, tfSecs });
-  paramsRef.current = { bars, chartType, tfSecs };
+  const latest = useRef({ bars, chartType });
+  latest.current = { bars, chartType };
 
   useEffect(() => {
-    const c = ref.current;
-    if (!c) return;
-
-    // Tag bars with tfSecs so drawChart knows time granularity
-    const taggedBars = (paramsRef.current.bars || []).map(b => ({
-      ...b,
-      tfSecs: paramsRef.current.tfSecs
-    }));
-    drawChart(c, taggedBars, paramsRef.current.chartType);
-
-    const ro = new ResizeObserver(() => {
-      const tagged = (paramsRef.current.bars || []).map(b => ({
-        ...b,
-        tfSecs: paramsRef.current.tfSecs
-      }));
-      drawChart(c, tagged, paramsRef.current.chartType);
-    });
+    const c = ref.current; if (!c) return;
+    const redraw = () => drawChart(c, latest.current.bars, latest.current.chartType);
+    redraw();
+    const ro = new ResizeObserver(redraw);
     if (c.parentElement) ro.observe(c.parentElement);
     return () => ro.disconnect();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line
   }, []);
 
-  // Redraw whenever bars / chartType change
   useEffect(() => {
-    const c = ref.current;
-    if (!c) return;
-    const tagged = (bars || []).map(b => ({ ...b, tfSecs }));
-    drawChart(c, tagged, chartType);
-  }, [bars, chartType, tfSecs]);
+    if (ref.current) drawChart(ref.current, bars, chartType);
+  }, [bars, chartType]);
 
-  return (
-    <canvas
-      ref={ref}
-      style={{ position: "absolute", inset: 0, width: "100%", height: "100%", display: "block" }}
-    />
-  );
+  return <canvas ref={ref} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>;
 }
 
 function ChartsTab({ assets, ohlcvRef, histRef, prices, chartAsset, setChartAsset, chartTf, setChartTf, chartType, setChartType }) {
+  // histCandles: { [symbol]: { [tf]: Bar[] } } — from Binance
+  const [histCandles, setHistCandles] = useState({});
+  const [loadingAsset, setLoadingAsset] = useState(null);
   const [, redraw] = useState(0);
+
+  // Fetch Binance history whenever asset or TF changes
+  useEffect(() => {
+    let cancelled = false;
+    async function load() {
+      setLoadingAsset(chartAsset);
+      try {
+        const res = await fetch(`/api/klines?symbol=${encodeURIComponent(chartAsset)}&interval=${chartTf}&limit=300`);
+        const data = await res.json();
+        if (!cancelled && data.candles && data.candles.length) {
+          setHistCandles(prev => ({
+            ...prev,
+            [chartAsset]: { ...(prev[chartAsset] || {}), [chartTf]: data.candles }
+          }));
+        }
+      } catch (e) {
+        console.warn("Klines fetch failed:", e.message);
+      } finally {
+        if (!cancelled) setLoadingAsset(null);
+      }
+    }
+    load();
+    return () => { cancelled = true; };
+  }, [chartAsset, chartTf]);
+
+  // Live redraw every 3s
   useEffect(() => {
     const iv = setInterval(() => redraw(n => n + 1), 3000);
     return () => clearInterval(iv);
   }, []);
 
   const asset  = assets.find(a => a.symbol === chartAsset) || assets[0];
-  const bars   = ((ohlcvRef.current[chartAsset] || {})[chartTf] || []);
-  const h      = histRef.current[chartAsset] || [];
-  const cur    = prices[chartAsset];
-  const prev   = h.length > 1 ? h[0] : null;
-  const pct    = prev && cur ? (cur - prev) / prev * 100 : null;
-  const hiBar  = bars.length ? Math.max(...bars.map(b => b.h)) : null;
-  const loBar  = bars.length ? Math.min(...bars.map(b => b.l)) : null;
-  const tfSecs = TF_SECS_MAP[chartTf] || 60;
+  // Merge: Binance history base + live Pyth price on top
+  const base   = (histCandles[chartAsset] || {})[chartTf] || [];
+  const liveCandles = (ohlcvRef.current[chartAsset] || {})[chartTf] || [];
+
+  // Use Binance if available, else fall back to Pyth-accumulated
+  const rawBars = base.length ? mergeLive(base, prices, chartAsset, chartTf) : liveCandles;
+  // Tag with tfSecs for time axis
+  const bars = rawBars.map(b => ({ ...b, tfSecs: TF_SECS_C[chartTf] || 60 }));
+
+  const h     = histRef.current[chartAsset] || [];
+  const cur   = prices[chartAsset];
+  const prev  = h.length > 1 ? h[0] : (base.length ? base[0].o : null);
+  const pct   = prev && cur ? (cur - prev) / prev * 100 : null;
+  const hiBar = bars.length ? Math.max(...bars.map(b => b.h)) : null;
+  const loBar = bars.length ? Math.min(...bars.map(b => b.l)) : null;
 
   function fmt(sym, v) {
     if (!v) return "–";
-    if (v >= 10000) return "$" + v.toLocaleString(undefined, { maximumFractionDigits: 0 });
+    if (v >= 10000) return "$" + v.toLocaleString(undefined, {maximumFractionDigits:0});
     if (v >= 100)   return "$" + v.toFixed(2);
     if (v >= 1)     return "$" + v.toFixed(4);
     return "$" + v.toFixed(6);
   }
 
   return (
-    <div style={{
-      display: "flex", flexDirection: "column",
-      width: "100%", height: "100%",
-      background: "#070512", fontFamily: "'Space Mono', monospace"
-    }}>
+    <div style={{display:"flex",flexDirection:"column",width:"100%",height:"100%",background:"#070512",fontFamily:"'Space Mono',monospace"}}>
 
-      {/* ── Asset tab strip ───────────────────────────────────────────── */}
-      <div style={{
-        display: "flex", overflowX: "auto", flexShrink: 0,
-        borderBottom: "1px solid rgba(139,92,246,0.18)",
-        scrollbarWidth: "none"
-      }}>
+      {/* Asset strip */}
+      <div style={{display:"flex",overflowX:"auto",flexShrink:0,borderBottom:"1px solid rgba(139,92,246,0.18)",scrollbarWidth:"none",background:"rgba(7,5,18,0.98)"}}>
         {assets.map(a => {
           const p  = prices[a.symbol];
           const hh = histRef.current[a.symbol] || [];
-          const p0 = hh.length > 1 ? hh[0] : null;
+          const hb = (histCandles[a.symbol] || {})[chartTf] || [];
+          const p0 = hh.length > 1 ? hh[0] : (hb.length ? hb[0].o : null);
           const pc = p0 && p ? (p - p0) / p0 * 100 : null;
           const sel = chartAsset === a.symbol;
           return (
             <button key={a.symbol} onClick={() => setChartAsset(a.symbol)}
-              style={{
-                flexShrink: 0, padding: "8px 14px",
-                background: "transparent", border: "none",
+              style={{flexShrink:0,padding:"8px 14px",background:"transparent",border:"none",
                 borderBottom: sel ? `2px solid ${a.color}` : "2px solid transparent",
-                cursor: "pointer", display: "flex", flexDirection: "column",
-                alignItems: "flex-start", gap: 2, transition: "background .15s",
-              }}>
-              <span style={{ fontSize: 11, fontWeight: 700, color: sel ? a.color : "rgba(180,160,220,0.6)", letterSpacing: ".04em" }}>
-                {a.symbol}
-              </span>
-              <span style={{ fontSize: 10, color: sel ? "#e2d9f3" : "rgba(140,120,180,0.5)", fontVariantNumeric: "tabular-nums" }}>
-                {fmt(a.symbol, p)}
-              </span>
-              {pc !== null && (
-                <span style={{ fontSize: 8, color: pc >= 0 ? "#34d399" : "#f87171" }}>
-                  {pc >= 0 ? "+" : ""}{pc.toFixed(2)}%
-                </span>
-              )}
+                cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"flex-start",gap:2,transition:"background .15s"}}>
+              <span style={{fontSize:11,fontWeight:700,color:sel?a.color:"rgba(180,160,220,0.55)",letterSpacing:".04em"}}>{a.symbol}</span>
+              <span style={{fontSize:10,color:sel?"#e2d9f3":"rgba(130,110,170,0.45)",fontVariantNumeric:"tabular-nums"}}>{fmt(a.symbol,p)}</span>
+              {pc!==null&&<span style={{fontSize:8,color:pc>=0?"#34d399":"#f87171"}}>{pc>=0?"+":""}{pc.toFixed(2)}%</span>}
             </button>
           );
         })}
       </div>
 
-      {/* ── Info bar ──────────────────────────────────────────────────── */}
-      <div style={{
-        display: "flex", alignItems: "center", gap: 14, flexShrink: 0,
-        padding: "8px 16px", borderBottom: "1px solid rgba(139,92,246,0.1)",
-        flexWrap: "wrap"
-      }}>
-        <span style={{ fontSize: 18, color: asset.color, lineHeight: 1 }}>{asset.icon}</span>
-        <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: 15, fontWeight: 800, color: asset.color }}>
-          {asset.symbol}
-        </span>
-        <span style={{ fontFamily: "'Outfit',sans-serif", fontSize: 20, fontWeight: 800, color: "#f0eaff", fontVariantNumeric: "tabular-nums" }}>
-          {fmt(asset.symbol, cur)}
-        </span>
-        {pct !== null && (
-          <span style={{
-            fontSize: 11, fontWeight: 700, padding: "2px 8px", borderRadius: 4,
-            color: pct >= 0 ? "#34d399" : "#f87171",
-            background: pct >= 0 ? "rgba(52,211,153,0.1)" : "rgba(248,113,113,0.1)"
-          }}>
-            {pct >= 0 ? "+" : ""}{pct.toFixed(3)}%
-          </span>
-        )}
-        <div style={{ display: "flex", gap: 12, fontSize: 10, color: "rgba(139,92,246,0.55)", marginLeft: "auto", flexWrap: "wrap" }}>
-          {hiBar && <span>H: <b style={{ color: "#34d399" }}>{fmt(asset.symbol, hiBar)}</b></span>}
-          {loBar && <span>L: <b style={{ color: "#f87171" }}>{fmt(asset.symbol, loBar)}</b></span>}
-          <span>Candles: <b style={{ color: "#a78bfa" }}>{bars.length}</b></span>
-          <span style={{ color: "rgba(100,80,150,0.5)" }}>· Pyth · 3s</span>
+      {/* Info bar */}
+      <div style={{display:"flex",alignItems:"center",gap:12,flexShrink:0,padding:"7px 16px",borderBottom:"1px solid rgba(139,92,246,0.1)",flexWrap:"wrap",background:"rgba(7,5,18,0.96)"}}>
+        <span style={{fontSize:18,color:asset.color}}>{asset.icon}</span>
+        <span style={{fontFamily:"'Outfit',sans-serif",fontSize:15,fontWeight:800,color:asset.color}}>{asset.symbol}</span>
+        <span style={{fontFamily:"'Outfit',sans-serif",fontSize:20,fontWeight:800,color:"#f0eaff",fontVariantNumeric:"tabular-nums"}}>{fmt(asset.symbol,cur)}</span>
+        {pct!==null&&<span style={{fontSize:11,fontWeight:700,padding:"2px 7px",borderRadius:4,color:pct>=0?"#34d399":"#f87171",background:pct>=0?"rgba(52,211,153,0.1)":"rgba(248,113,113,0.1)"}}>
+          {pct>=0?"+":""}{pct.toFixed(3)}%
+        </span>}
+        <div style={{display:"flex",gap:12,fontSize:10,color:"rgba(110,90,160,0.55)",marginLeft:"auto",flexWrap:"wrap"}}>
+          {hiBar&&<span>H: <b style={{color:"#34d399"}}>{fmt(asset.symbol,hiBar)}</b></span>}
+          {loBar&&<span>L: <b style={{color:"#f87171"}}>{fmt(asset.symbol,loBar)}</b></span>}
+          <span>Candles: <b style={{color:"#a78bfa"}}>{bars.length}</b></span>
+          {loadingAsset===chartAsset
+            ? <span style={{color:"#8b5cf6"}}>⟳ Loading…</span>
+            : <span style={{color:"rgba(80,60,120,0.5)"}}>{base.length?"Binance+Pyth":"Pyth only"}</span>}
         </div>
       </div>
 
-      {/* ── Controls ──────────────────────────────────────────────────── */}
-      <div style={{
-        display: "flex", alignItems: "center", gap: 6, flexShrink: 0,
-        padding: "5px 14px", borderBottom: "1px solid rgba(139,92,246,0.08)",
-        flexWrap: "wrap"
-      }}>
-        {/* Timeframe buttons */}
-        <div style={{ display: "flex", gap: 1, background: "rgba(0,0,0,0.4)", borderRadius: 5, padding: 2 }}>
-          {TF_LIST.map(tf => (
-            <button key={tf} onClick={() => setChartTf(tf)}
-              style={{
-                background: chartTf === tf ? "rgba(139,92,246,0.4)" : "transparent",
-                border: "none", borderRadius: 4, cursor: "pointer",
-                color: chartTf === tf ? "#fff" : "rgba(100,80,160,0.6)",
-                fontSize: 10, padding: "3px 10px", fontFamily: "inherit",
-                fontWeight: chartTf === tf ? 700 : 400, transition: "all .15s",
-              }}>{tf}</button>
+      {/* Controls */}
+      <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0,padding:"5px 14px",borderBottom:"1px solid rgba(139,92,246,0.08)",background:"rgba(7,5,18,0.95)"}}>
+        <div style={{display:"flex",gap:1,background:"rgba(0,0,0,0.5)",borderRadius:5,padding:2}}>
+          {TF_LIST.map(tf=>(
+            <button key={tf} onClick={()=>setChartTf(tf)}
+              style={{background:chartTf===tf?"rgba(139,92,246,0.4)":"transparent",border:"none",borderRadius:4,
+                cursor:"pointer",color:chartTf===tf?"#fff":"rgba(100,80,160,0.55)",
+                fontSize:10,padding:"3px 10px",fontFamily:"inherit",fontWeight:chartTf===tf?700:400,transition:"all .15s"}}>{tf}</button>
           ))}
         </div>
-
-        {/* Chart type */}
-        <div style={{ display: "flex", gap: 1, background: "rgba(0,0,0,0.4)", borderRadius: 5, padding: 2, marginLeft: 4 }}>
-          {[["candle", "🕯 Candle"], ["line", "📈 Line"]].map(([k, l]) => (
-            <button key={k} onClick={() => setChartType(k)}
-              style={{
-                background: chartType === k ? "rgba(139,92,246,0.4)" : "transparent",
-                border: "none", borderRadius: 4, cursor: "pointer",
-                color: chartType === k ? "#fff" : "rgba(100,80,160,0.6)",
-                fontSize: 10, padding: "3px 11px", fontFamily: "inherit",
-                transition: "all .15s",
-              }}>{l}</button>
+        <div style={{display:"flex",gap:1,background:"rgba(0,0,0,0.5)",borderRadius:5,padding:2,marginLeft:4}}>
+          {[["candle","🕯"],["line","📈"]].map(([k,ic])=>(
+            <button key={k} onClick={()=>setChartType(k)}
+              style={{background:chartType===k?"rgba(139,92,246,0.4)":"transparent",border:"none",borderRadius:4,
+                cursor:"pointer",color:chartType===k?"#fff":"rgba(100,80,160,0.55)",
+                fontSize:10,padding:"3px 11px",fontFamily:"inherit",transition:"all .15s"}}>{ic}</button>
           ))}
         </div>
-
-        {bars.length < 5 && (
-          <span style={{ marginLeft: "auto", fontSize: 9, color: "rgba(139,92,246,0.4)" }}>
-            ⏱ {bars.length} candle{bars.length !== 1 ? "s" : ""} · accumulating {chartTf} data
-          </span>
-        )}
       </div>
 
-      {/* ── Canvas area — takes all remaining height ───────────────────── */}
-      <div style={{ flex: 1, position: "relative", minHeight: 0 }}>
-        <CandleChart bars={bars} chartType={chartType} tfSecs={tfSecs} />
+      {/* Canvas */}
+      <div style={{flex:1,position:"relative",minHeight:0}}>
+        <CandleChart bars={bars} chartType={chartType}/>
       </div>
     </div>
   );
