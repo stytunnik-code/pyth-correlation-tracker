@@ -583,6 +583,8 @@ export default function App(){
             <span>{errorMsg}</span>
           </div>
         )}
+        {activeTab==="charts"&&<ChartsTab assets={ASSETS} ohlcvRef={ohlcvRef} histRef={histRef} prices={prices} chartAsset={chartAsset} setChartAsset={setChartAsset} chartTf={chartTf} setChartTf={setChartTf} chartType={chartType} setChartType={setChartType} mobileTab={mobileTab}/>}
+        {activeTab==="matrix"&&<>
         {/* ══ TICKERS ════════════════════════════════════════════════════ */}
         <section className={`sec${mobileTab!=="tickers"?" mh":""}`} id="sec-tickers">
           <div className="tgrid">
