@@ -161,7 +161,8 @@ function CandleChart({bars,asset,tf,chartType}){
   const ref=useRef();
   useEffect(()=>{
     const c=ref.current;if(!c)return;
-    const W=c.offsetWidth||800,H=c.offsetHeight||360;
+    function draw(){
+    const W=c.parentElement?.offsetWidth||800,H=c.parentElement?.offsetHeight||400;
     c.width=W;c.height=H;
     const ctx=c.getContext("2d");
     ctx.clearRect(0,0,W,H);
@@ -250,8 +251,13 @@ function CandleChart({bars,asset,tf,chartType}){
       ctx.fillStyle="#fff";ctx.font="bold 9px monospace";ctx.textAlign="left";
       ctx.fillText(last>100?last.toFixed(2):last.toFixed(5),W-PAD.r+4,y+3);
     }
+    } // end draw()
+    draw();
+    const ro=new ResizeObserver(draw);
+    if(c.parentElement)ro.observe(c.parentElement);
+    return()=>ro.disconnect();
   });
-  return <canvas ref={ref} style={{width:"100%",height:"100%",display:"block"}}/>;
+  return <canvas ref={ref} style={{position:"absolute",inset:0,width:"100%",height:"100%",display:"block"}}/>;
 }
 
 function ChartsTab({assets,ohlcvRef,histRef,prices,chartAsset,setChartAsset,chartTf,setChartTf,chartType,setChartType,mobileTab}){
@@ -1070,7 +1076,7 @@ export default function App(){
         }
 
         /* ── CHARTS ──────────────────────────────────────────────────── */
-        .charts-wrap { display: grid; grid-template-columns: 200px 1fr; gap: 12px; height: calc(100vh - 180px); min-height: 500px; }
+        .charts-wrap { display: grid; grid-template-columns: 200px 1fr; gap: 12px; height: calc(100vh - 180px); min-height: 500px; width: 100%; }
         .charts-assets { background: var(--card); border: 1px solid var(--cb); border-radius: var(--r); overflow-y: auto; display: flex; flex-direction: column; }
         .ca-title { font-size: 9px; color: var(--td); letter-spacing: .14em; text-transform: uppercase; padding: 10px 12px 6px; border-bottom: 1px solid var(--cb2); }
         .ca-row { display: flex; align-items: center; gap: 8px; padding: 9px 12px; cursor: pointer; border-bottom: 1px solid var(--cb2); transition: background .15s; border-left: 2px solid transparent; }
@@ -1082,7 +1088,7 @@ export default function App(){
         .ca-price { font-size: 9px; color: var(--td); font-variant-numeric: tabular-nums; }
         .ca-pct { font-size: 9px; font-weight: 700; }
         .ca-pct.up { color: var(--gn); } .ca-pct.dn { color: var(--rd); }
-        .charts-main { background: var(--card); border: 1px solid var(--cb); border-radius: var(--r); display: flex; flex-direction: column; overflow: hidden; }
+        .charts-main { background: var(--card); border: 1px solid var(--cb); border-radius: var(--r); display: flex; flex-direction: column; overflow: hidden; min-width: 0; }
         .ch-hdr { display: flex; align-items: center; justify-content: space-between; padding: 12px 16px; border-bottom: 1px solid var(--cb2); }
         .ch-hdr-l { display: flex; align-items: center; gap: 10px; }
         .ch-icon { font-size: 22px; font-weight: 700; }
@@ -1103,7 +1109,7 @@ export default function App(){
         .ch-tf { background: transparent; border: none; color: var(--td); padding: 3px 10px; border-radius: 4px; font-size: 10px; font-family: var(--fm); cursor: pointer; transition: all .15s; white-space: nowrap; }
         .ch-tf:hover { color: var(--pul); }
         .ch-tf.a { background: var(--pud); color: #fff; }
-        .ch-canvas-wrap { flex: 1; position: relative; min-height: 0; padding: 8px; }
+        .ch-canvas-wrap { flex: 1; position: relative; min-height: 300px; padding: 8px; overflow: hidden; }
         .ch-canvas-wrap canvas { width: 100% !important; height: 100% !important; }
         .ch-notice { padding: 8px 16px; font-size: 9px; color: var(--td); border-top: 1px solid var(--cb2); letter-spacing: .06em; }
         .ch-mh { display: none !important; }
