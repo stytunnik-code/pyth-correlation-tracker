@@ -386,7 +386,7 @@ export default function App(){
             <span>{errorMsg}</span>
           </div>
         )}
-        {activeTab==="charts"&&<ChartsTab assets={ASSETS} ohlcvRef={ohlcvRef} histRef={histRef} prices={prices} chartAsset={chartAsset} setChartAsset={setChartAsset} chartTf={chartTf} setChartTf={setChartTf} chartType={chartType} setChartType={setChartType} mobileTab={mobileTab}/>}
+        {activeTab==="charts"&&<div style={{margin:"-16px -24px",height:"calc(100vh - 128px)"}}><ChartsTab assets={ASSETS} ohlcvRef={ohlcvRef} histRef={histRef} prices={prices} chartAsset={chartAsset} setChartAsset={setChartAsset} chartTf={chartTf} setChartTf={setChartTf} chartType={chartType} setChartType={setChartType} mobileTab={mobileTab}/></div>}
         {activeTab==="matrix"&&<>
         {/* ══ TICKERS ════════════════════════════════════════════════════ */}
         <section className={`sec${mobileTab!=="tickers"?" mh":""}`} id="sec-tickers">
@@ -887,16 +887,17 @@ function useOhlcv(ohlcvRef, symbol, tf, tick) {
   return (ohlcvRef.current[symbol]||{})[tf]||[];
 }
 
-function CandleCanvas({bars, chartType, asset}) {
+function CandleCanvas({bars, chartType, asset, wrapH}) {
   const ref = useRef();
   const drawRef = useRef();
 
   drawRef.current = () => {
     const c = ref.current; if(!c) return;
     const wrap = c.parentElement; if(!wrap) return;
-    const W = wrap.clientWidth; const H = wrap.clientHeight;
-    if(W < 10 || H < 10) return;
-    c.width = W; c.height = H;
+    const W = wrap.clientWidth || 800;
+    const H = wrap.clientHeight || wrapH || 400;
+    if(W < 10) return;
+    c.width = W; c.height = Math.max(H, 200);
     const ctx = c.getContext("2d");
     ctx.clearRect(0,0,W,H);
 
@@ -1040,7 +1041,18 @@ function CandleCanvas({bars, chartType, asset}) {
 
 function ChartsTab({assets, ohlcvRef, histRef, prices, chartAsset, setChartAsset, chartTf, setChartTf, chartType, setChartType}) {
   const [tick, setTick] = useState(0);
+  const [chartH, setChartH] = useState(400);
+  const chartWrapRef = useRef();
   useEffect(() => { const iv = setInterval(() => setTick(t=>t+1), 3000); return () => clearInterval(iv); }, []);
+  useEffect(() => {
+    if(!chartWrapRef.current) return;
+    const ro = new ResizeObserver(entries => {
+      for(const e of entries) setChartH(e.contentRect.height || 400);
+    });
+    ro.observe(chartWrapRef.current);
+    setChartH(chartWrapRef.current.clientHeight || 400);
+    return () => ro.disconnect();
+  }, []);
 
   const asset = assets.find(a=>a.symbol===chartAsset) || assets[0];
   const bars = useOhlcv(ohlcvRef, chartAsset, chartTf, tick);
@@ -1059,7 +1071,7 @@ function ChartsTab({assets, ohlcvRef, histRef, prices, chartAsset, setChartAsset
   }
 
   return (
-    <div style={{display:"flex",flexDirection:"column",height:"calc(100vh - 160px)",minHeight:500,gap:0}}>
+    <div style={{display:"flex",flexDirection:"column",height:"100%",gap:0,background:"#07050f",border:"1px solid rgba(139,92,246,0.15)",borderRadius:10,overflow:"hidden"}}>
       {/* Top bar - asset tabs like Binance */}
       <div style={{display:"flex",alignItems:"center",gap:0,borderBottom:"1px solid rgba(139,92,246,0.15)",overflowX:"auto",flexShrink:0,scrollbarWidth:"none"}}>
         {assets.map(a => {
@@ -1140,8 +1152,8 @@ function ChartsTab({assets, ohlcvRef, histRef, prices, chartAsset, setChartAsset
         </div>
 
         {/* Canvas wrapper */}
-        <div style={{flex:1,position:"relative",minHeight:0,background:"#07050f"}}>
-          <CandleCanvas bars={bars} chartType={chartType} asset={{tf:chartTf}}/>
+        <div style={{flex:1,position:"relative",minHeight:0,background:"#07050f",overflow:"hidden"}} ref={chartWrapRef}>
+          <CandleCanvas bars={bars} chartType={chartType} asset={{tf:chartTf}} wrapH={chartH}/>
         </div>
       </div>
     </div>
