@@ -292,6 +292,7 @@ export default function App(){
   }
 
   return(
+    <>
     <div className={`app${mounted?" on":""}`}>
       <SmokeBackground/>
 
@@ -865,6 +866,7 @@ export default function App(){
         setActiveTab={setActiveTab}
       />
     </div>
+    </>
   );
 }
 
