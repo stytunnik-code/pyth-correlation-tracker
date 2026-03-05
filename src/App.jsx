@@ -863,6 +863,22 @@ export default function App(){
           .dp-corr { font-size: 32px; }
           .dp-sym { font-size: 14px; }
         }
+        /* Charts overlay */
+        .charts-overlay {
+          position: fixed;
+          top: 62px; left: 0; right: 0; bottom: 0;
+          z-index: 500;
+          background: #070512;
+          transform: translateX(100%);
+          transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
+          pointer-events: none;
+          display: flex;
+          flex-direction: column;
+        }
+        .charts-overlay--open {
+          transform: translateX(0);
+          pointer-events: all;
+        }
         @media(max-width:480px) {
           .hdr-sub { display: none; }
           .tgrid { grid-template-columns: 1fr 1fr; }
@@ -873,7 +889,7 @@ export default function App(){
       `}</style>
 
     {/* Charts overlay */}
-    <div style={{position:"fixed",top:62,left:0,right:0,bottom:0,zIndex:500,background:"#070512",transform:activeTab==="charts"?"translateX(0)":"translateX(100%)",transition:"transform 0.35s cubic-bezier(0.4,0,0.2,1)",pointerEvents:activeTab==="charts"?"all":"none",display:"flex",flexDirection:"column"}}>
+    <div className={`charts-overlay${activeTab==="charts"?" charts-overlay--open":""}`}>
       <ChartsTab assets={ASSETS} ohlcvRef={ohlcvRef} histRef={histRef} prices={prices} chartAsset={chartAsset} setChartAsset={setChartAsset} chartTf={chartTf} setChartTf={setChartTf} chartType={chartType} setChartType={setChartType} setActiveTab={setActiveTab}/>
     </div>
   </div>
