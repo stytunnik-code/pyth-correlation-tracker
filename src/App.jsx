@@ -1,3 +1,4 @@
+// build: 2026-03-05 17:15
 import { useState, useEffect, useRef, useCallback } from "react";
 import SmokeBackground from "./SmokeBackground";
 
