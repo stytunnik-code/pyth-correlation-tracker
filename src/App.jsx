@@ -386,7 +386,7 @@ export default function App(){
             <span>{errorMsg}</span>
           </div>
         )}
-        {activeTab==="charts"&&<div style={{position:"fixed",top:128,left:0,right:0,bottom:0,zIndex:50,background:"#070512"}}><ChartsTab assets={ASSETS} ohlcvRef={ohlcvRef} histRef={histRef} prices={prices} chartAsset={chartAsset} setChartAsset={setChartAsset} chartTf={chartTf} setChartTf={setChartTf} chartType={chartType} setChartType={setChartType}/></div>}
+        {activeTab==="charts"&&<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:200,background:"#070512"}}><ChartsTab assets={ASSETS} ohlcvRef={ohlcvRef} histRef={histRef} prices={prices} chartAsset={chartAsset} setChartAsset={setChartAsset} chartTf={chartTf} setChartTf={setChartTf} chartType={chartType} setChartType={setChartType} setActiveTab={setActiveTab}/></div>}
         {activeTab==="matrix"&&<>
         {/* ══ TICKERS ════════════════════════════════════════════════════ */}
         <section className={`sec${mobileTab!=="tickers"?" mh":""}`} id="sec-tickers">
@@ -885,24 +885,26 @@ const TF_SECS_C  = {"1m":60,"5m":300,"15m":900,"1h":3600,"4h":14400,"1d":86400};
 // Merge live Pyth ticks into Binance candles
 function mergeLive(base, liveMap, symbol, tf) {
   if (!base || !base.length) return base || [];
-  const secs = TF_SECS_C[tf] || 60;
-  const now  = Math.floor(Date.now() / 1000);
-  const barT = Math.floor(now / secs) * secs;
+  const secs  = TF_SECS_C[tf] || 60;
+  const now   = Math.floor(Date.now() / 1000);
+  const barT  = Math.floor(now / secs) * secs;
   const price = liveMap[symbol];
   if (!price) return base;
 
-  const copy = [...base];
+  const copy = base.map(b => ({...b}));
   const last = copy[copy.length - 1];
+
   if (last && last.t === barT) {
-    // Update current candle with latest price
-    copy[copy.length - 1] = {
-      ...last,
-      h: Math.max(last.h, price),
-      l: Math.min(last.l, price),
-      c: price,
-    };
-  } else if (barT > last.t) {
-    copy.push({ t: barT, o: price, h: price, l: price, c: price, v: 0, n: 1 });
+    last.h = Math.max(last.h, price);
+    last.l = Math.min(last.l, price);
+    last.c = price;
+    last.n = (last.n||1) + 1;
+  } else if (!last || barT > last.t) {
+    // New candle — open = previous close
+    const prevClose = last ? last.c : price;
+    copy.push({ t: barT, o: prevClose, h: Math.max(prevClose,price), l: Math.min(prevClose,price), c: price, v: 0, n: 1 });
+    // Keep max 500 candles
+    if (copy.length > 500) copy.shift();
   }
   return copy;
 }
@@ -924,99 +926,121 @@ function drawChart(canvas, bars, chartType) {
 
   if (!bars || bars.length < 2) {
     ctx.fillStyle = "rgba(139,92,246,0.4)";
-    ctx.font = "13px 'Space Mono',monospace";
+    ctx.font = "13px monospace";
     ctx.textAlign = "center";
     ctx.textBaseline = "middle";
     ctx.fillText("Loading chart data…", W / 2, H / 2);
     return;
   }
 
+  // Layout
   const PAD = { t: 16, r: 72, b: 28, l: 4 };
   const CW = W - PAD.l - PAD.r;
   const CH = H - PAD.t - PAD.b;
-  const vis = bars.slice(-Math.min(bars.length, 200));
+
+  const vis = bars.slice(-200);
   const n   = vis.length;
 
+  // Price range from OHLC only
   const dMin = Math.min(...vis.map(b => b.l));
   const dMax = Math.max(...vis.map(b => b.h));
   const dR   = dMax - dMin || dMax * 0.002 || 1;
   const yMin = dMin - dR * 0.04;
-  const yMax = dMax + dR * 0.04;
+  const yMax = dMax + dR * 0.08; // extra top padding
   const yR   = yMax - yMin;
-  const toY  = v => PAD.t + CH * (1 - (v - yMin) / yR);
+
+  // Chart area = top 80% of CH, volume = bottom 18%
+  const PRICE_H = CH * 0.80;
+  const VOL_H   = CH * 0.16;
+  const GAP     = CH * 0.04;
+
+  const toY = v => PAD.t + PRICE_H * (1 - (v - yMin) / yR);
   const colW = CW / n;
   const toX  = i => PAD.l + (i + 0.5) * colW;
 
-  // Grid
+  // Grid lines in price area
   ctx.setLineDash([2, 4]);
   ctx.lineWidth = 1;
-  for (let i = 0; i <= 6; i++) {
-    const v = yMin + (yR / 6) * i;
+  for (let i = 0; i <= 5; i++) {
+    const v = yMin + (yR / 5) * i;
     const y = toY(v);
+    if (y < PAD.t || y > PAD.t + PRICE_H) continue;
     ctx.strokeStyle = "rgba(139,92,246,0.09)";
     ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(W - PAD.r, y); ctx.stroke();
     const lbl = v >= 10000 ? v.toFixed(0) : v >= 100 ? v.toFixed(1) : v >= 1 ? v.toFixed(4) : v.toFixed(6);
     ctx.fillStyle = "rgba(110,90,170,0.55)";
-    ctx.font = "9px 'Space Mono',monospace";
+    ctx.font = "9px monospace";
     ctx.textAlign = "left"; ctx.textBaseline = "middle";
     ctx.fillText(lbl, W - PAD.r + 4, y);
   }
   ctx.setLineDash([]);
 
-  // Volume (bottom 14%)
-  const volH  = CH * 0.14;
-  const volBase = PAD.t + CH;
-  const maxV  = Math.max(...vis.map(b => b.v || b.n || 1));
+  // Volume bars — in the bottom VOL_H strip
+  const volTop = PAD.t + PRICE_H + GAP;
+  const volBase = volTop + VOL_H;
+  const vols = vis.map(b => b.v || 0);
+  const maxV = Math.max(...vols, 1); // never 0
   vis.forEach((b, i) => {
-    const x  = toX(i);
-    const bw = Math.max(1, colW * 0.7);
-    const vh = ((b.v || b.n || 0) / maxV) * volH;
-    ctx.fillStyle = b.c >= b.o ? "rgba(52,211,153,0.13)" : "rgba(248,113,113,0.13)";
+    const x   = toX(i);
+    const bw  = Math.max(1, colW * 0.7);
+    const pct = (b.v || 0) / maxV;
+    const vh  = pct * VOL_H;
+    if (vh < 0.5) return;
+    ctx.fillStyle = b.c >= b.o ? "rgba(52,211,153,0.2)" : "rgba(248,113,113,0.2)";
     ctx.fillRect(x - bw / 2, volBase - vh, bw, vh);
   });
 
+  // Candles / Line in price area
   if (chartType === "line") {
     const up  = vis[vis.length - 1].c >= vis[0].o;
     const col = up ? "#34d399" : "#f87171";
-    const grad = ctx.createLinearGradient(0, PAD.t, 0, volBase);
-    grad.addColorStop(0, up ? "rgba(52,211,153,0.20)" : "rgba(248,113,113,0.20)");
+    const grad = ctx.createLinearGradient(0, PAD.t, 0, PAD.t + PRICE_H);
+    grad.addColorStop(0, up ? "rgba(52,211,153,0.18)" : "rgba(248,113,113,0.18)");
     grad.addColorStop(1, "rgba(0,0,0,0)");
     ctx.beginPath();
-    vis.forEach((b, i) => { const x=toX(i),y=toY(b.c); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
-    ctx.lineTo(toX(n-1), volBase); ctx.lineTo(toX(0), volBase);
+    vis.forEach((b, i) => { const x=toX(i), y=toY(b.c); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
+    ctx.lineTo(toX(n-1), PAD.t+PRICE_H); ctx.lineTo(toX(0), PAD.t+PRICE_H);
     ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
     ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.lineJoin = "round";
     ctx.beginPath();
-    vis.forEach((b, i) => { const x=toX(i),y=toY(b.c); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
+    vis.forEach((b, i) => { const x=toX(i), y=toY(b.c); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
     ctx.stroke();
   } else {
     const bw = Math.max(1, colW * 0.65);
     vis.forEach((b, i) => {
-      const x  = toX(i);
-      const up = b.c >= b.o;
-      const col = up ? "rgba(52,211,153,0.88)" : "rgba(248,113,113,0.88)";
+      const x   = toX(i);
+      const up  = b.c >= b.o;
+      const col = up ? "rgba(52,211,153,0.9)" : "rgba(248,113,113,0.9)";
+      // Wick — clipped to price area
+      const wickTop = Math.max(PAD.t, toY(b.h));
+      const wickBot = Math.min(PAD.t + PRICE_H, toY(b.l));
       ctx.strokeStyle = col; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(x, toY(b.h)); ctx.lineTo(x, toY(b.l)); ctx.stroke();
-      const by = Math.min(toY(b.o), toY(b.c));
-      const bH = Math.max(1, Math.abs(toY(b.o) - toY(b.c)));
+      ctx.beginPath(); ctx.moveTo(x, wickTop); ctx.lineTo(x, wickBot); ctx.stroke();
+      // Body
+      const rawTop = Math.min(toY(b.o), toY(b.c));
+      const rawBot = Math.max(toY(b.o), toY(b.c));
+      const bodyTop = Math.max(PAD.t, rawTop);
+      const bodyBot = Math.min(PAD.t + PRICE_H, rawBot);
+      const bodyH   = Math.max(1, bodyBot - bodyTop);
       ctx.fillStyle = col;
-      ctx.fillRect(x - bw/2, by, bw, bH);
-      if (bw > 3) { ctx.strokeStyle = col; ctx.lineWidth = 0.5; ctx.strokeRect(x - bw/2, by, bw, bH); }
+      ctx.fillRect(x - bw/2, bodyTop, bw, bodyH);
+      if (bw > 3) { ctx.strokeStyle = col; ctx.lineWidth = 0.5; ctx.strokeRect(x - bw/2, bodyTop, bw, bodyH); }
     });
   }
 
   // Time axis
   const step = Math.max(1, Math.floor(n / 8));
   ctx.fillStyle = "rgba(100,80,160,0.5)";
-  ctx.font = "8px 'Space Mono',monospace";
+  ctx.font = "8px monospace";
   ctx.textAlign = "center"; ctx.textBaseline = "top";
   vis.forEach((b, i) => {
     if (i % step === 0) {
       const d = new Date(b.t * 1000);
-      const lbl = b.tfSecs >= 86400
+      const tfS = b.tfSecs || 60;
+      const lbl = tfS >= 86400
         ? d.toLocaleDateString("en",{month:"short",day:"numeric"})
         : d.toLocaleTimeString("en",{hour:"2-digit",minute:"2-digit",hour12:false});
-      ctx.fillText(lbl, toX(i), PAD.t + CH + 4);
+      ctx.fillText(lbl, toX(i), volBase + 3);
     }
   });
 
@@ -1024,19 +1048,22 @@ function drawChart(canvas, bars, chartType) {
   if (vis.length) {
     const last = vis[vis.length-1].c;
     const y    = toY(last);
-    const up   = last >= vis[0].o;
-    ctx.strokeStyle = up ? "rgba(52,211,153,0.5)" : "rgba(248,113,113,0.5)";
-    ctx.lineWidth = 1; ctx.setLineDash([3,3]);
-    ctx.beginPath(); ctx.moveTo(PAD.l,y); ctx.lineTo(W-PAD.r,y); ctx.stroke();
-    ctx.setLineDash([]);
-    const lbl = last>=10000?last.toFixed(0):last>=100?last.toFixed(1):last>=1?last.toFixed(4):last.toFixed(6);
-    ctx.fillStyle = up ? "#34d399" : "#f87171";
-    ctx.fillRect(W-PAD.r+2, y-7, PAD.r-4, 14);
-    ctx.fillStyle = "#000"; ctx.font = "bold 8px 'Space Mono',monospace";
-    ctx.textAlign = "left"; ctx.textBaseline = "middle";
-    ctx.fillText(lbl, W-PAD.r+5, y);
+    if (y >= PAD.t && y <= PAD.t + PRICE_H) {
+      const up = last >= vis[0].o;
+      ctx.strokeStyle = up ? "rgba(52,211,153,0.5)" : "rgba(248,113,113,0.5)";
+      ctx.lineWidth = 1; ctx.setLineDash([3,3]);
+      ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(W-PAD.r, y); ctx.stroke();
+      ctx.setLineDash([]);
+      const lbl = last>=10000?last.toFixed(0):last>=100?last.toFixed(1):last>=1?last.toFixed(4):last.toFixed(6);
+      ctx.fillStyle = up ? "#34d399" : "#f87171";
+      ctx.fillRect(W-PAD.r+2, y-7, PAD.r-4, 14);
+      ctx.fillStyle = "#000"; ctx.font = "bold 8px monospace";
+      ctx.textAlign = "left"; ctx.textBaseline = "middle";
+      ctx.fillText(lbl, W-PAD.r+5, y);
+    }
   }
 }
+
 
 function CandleChart({ bars, chartType }) {
   const ref    = useRef();
@@ -1060,7 +1087,7 @@ function CandleChart({ bars, chartType }) {
   return <canvas ref={ref} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>;
 }
 
-function ChartsTab({ assets, ohlcvRef, histRef, prices, chartAsset, setChartAsset, chartTf, setChartTf, chartType, setChartType }) {
+function ChartsTab({ assets, ohlcvRef, histRef, prices, chartAsset, setChartAsset, chartTf, setChartTf, chartType, setChartType, setActiveTab }) {
   // histCandles: { [symbol]: { [tf]: Bar[] } } — from Binance
   const [histCandles, setHistCandles] = useState({});
   const [loadingAsset, setLoadingAsset] = useState(null);
@@ -1069,19 +1096,32 @@ function ChartsTab({ assets, ohlcvRef, histRef, prices, chartAsset, setChartAsse
   // Fetch Binance history whenever asset or TF changes
   useEffect(() => {
     let cancelled = false;
+    const BINANCE_MAP = {
+      "BTC":"BTCUSDT","ETH":"ETHUSDT","SOL":"SOLUSDT","DOGE":"DOGEUSDT",
+      "USDC":"USDCUSDT","XAU/USD":"XAUUSDT","EUR/USD":"EURUSDT","GBP/USD":"GBPUSDT"
+    };
     async function load() {
       setLoadingAsset(chartAsset);
+      const sym = BINANCE_MAP[chartAsset];
+      if (!sym) { if (!cancelled) setLoadingAsset(null); return; }
       try {
-        const res = await fetch(`/api/klines?symbol=${encodeURIComponent(chartAsset)}&interval=${chartTf}&limit=300`);
-        const data = await res.json();
-        if (!cancelled && data.candles && data.candles.length) {
+        const url = `https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${chartTf}&limit=300`;
+        const res = await fetch(url);
+        if (!res.ok) throw new Error(`Binance ${res.status}`);
+        const raw = await res.json();
+        const candles = raw.map(k => ({
+          t: Math.floor(k[0]/1000), o: parseFloat(k[1]),
+          h: parseFloat(k[2]), l: parseFloat(k[3]),
+          c: parseFloat(k[4]), v: parseFloat(k[5]), n: parseInt(k[8])||1
+        }));
+        if (!cancelled && candles.length) {
           setHistCandles(prev => ({
             ...prev,
-            [chartAsset]: { ...(prev[chartAsset] || {}), [chartTf]: data.candles }
+            [chartAsset]: { ...(prev[chartAsset]||{}), [chartTf]: candles }
           }));
         }
       } catch (e) {
-        console.warn("Klines fetch failed:", e.message);
+        console.warn("Binance fetch failed:", e.message);
       } finally {
         if (!cancelled) setLoadingAsset(null);
       }
@@ -1090,9 +1130,9 @@ function ChartsTab({ assets, ohlcvRef, histRef, prices, chartAsset, setChartAsse
     return () => { cancelled = true; };
   }, [chartAsset, chartTf]);
 
-  // Live redraw every 3s
+  // Live redraw every 1s for smooth price updates
   useEffect(() => {
-    const iv = setInterval(() => redraw(n => n + 1), 3000);
+    const iv = setInterval(() => redraw(n => n + 1), 1000);
     return () => clearInterval(iv);
   }, []);
 
@@ -1124,8 +1164,15 @@ function ChartsTab({ assets, ohlcvRef, histRef, prices, chartAsset, setChartAsse
   return (
     <div style={{display:"flex",flexDirection:"column",width:"100%",height:"100%",background:"#070512",fontFamily:"'Space Mono',monospace"}}>
 
-      {/* Asset strip */}
-      <div style={{display:"flex",overflowX:"auto",flexShrink:0,borderBottom:"1px solid rgba(139,92,246,0.18)",scrollbarWidth:"none",background:"rgba(7,5,18,0.98)"}}>
+      {/* Top nav row */}
+      <div style={{display:"flex",alignItems:"center",gap:0,flexShrink:0,borderBottom:"1px solid rgba(139,92,246,0.25)",background:"rgba(7,5,18,1)"}}>
+        <button onClick={()=>setActiveTab&&setActiveTab("matrix")}
+          style={{flexShrink:0,padding:"8px 14px",background:"transparent",border:"none",
+            borderRight:"1px solid rgba(139,92,246,0.15)",cursor:"pointer",
+            color:"rgba(139,92,246,0.7)",fontSize:10,fontFamily:"inherit",whiteSpace:"nowrap"}}>
+          ← Matrix
+        </button>
+        <div style={{display:"flex",overflowX:"auto",flex:1,scrollbarWidth:"none"}}>
         {assets.map(a => {
           const p  = prices[a.symbol];
           const hh = histRef.current[a.symbol] || [];
@@ -1144,6 +1191,7 @@ function ChartsTab({ assets, ohlcvRef, histRef, prices, chartAsset, setChartAsse
             </button>
           );
         })}
+        </div>
       </div>
 
       {/* Info bar */}
