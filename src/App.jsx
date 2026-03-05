@@ -360,7 +360,7 @@ export default function App(){
       </header>
 
       {/* ══ FILTER BAR ══════════════════════════════════════════════════ */}
-      <div className="fbar">
+      <div className="fbar" style={{display:activeTab==="charts"?"none":"flex"}}>
         {["all","crypto","fx","commodity","equity"].map(c=>(
           <button key={c} className={`fbtn${filter===c?" a":""}`} onClick={()=>setFilter(c)}>
             {c==="all"?"All Assets":c==="fx"?"FX Pairs":c==="commodity"?"Commodities":c.charAt(0).toUpperCase()+c.slice(1)}
@@ -373,7 +373,7 @@ export default function App(){
       </div>
 
       {/* ══ MOBILE TABS ════════════════════════════════════════════════ */}
-      <div className="mtabs">
+      <div className="mtabs" style={{display:activeTab==="charts"?"none":"flex"}}>
         {(activeTab==="charts"?[["chart-main","Chart"],["chart-asset","Asset"]]:[ ["heatmap","Matrix"],["tickers","Prices"],["top","Rankings"]]).map(([k,l])=>(
           <button key={k} className={`mt${mobileTab===k?" a":""}`} onClick={()=>setMobileTab(k)}>{l}</button>
         ))}
@@ -386,10 +386,10 @@ export default function App(){
             <span>{errorMsg}</span>
           </div>
         )}
-        {activeTab==="charts"&&<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:200,background:"#070512"}}><ChartsTab assets={ASSETS} ohlcvRef={ohlcvRef} histRef={histRef} prices={prices} chartAsset={chartAsset} setChartAsset={setChartAsset} chartTf={chartTf} setChartTf={setChartTf} chartType={chartType} setChartType={setChartType} setActiveTab={setActiveTab}/></div>}
-        {activeTab==="matrix"&&<>
+        {<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:200,background:"#070512",transform:activeTab==="charts"?"translateX(0)":"translateX(100%)",transition:"transform 0.35s cubic-bezier(0.4,0,0.2,1)",pointerEvents:activeTab==="charts"?"all":"none"}}><ChartsTab assets={ASSETS} ohlcvRef={ohlcvRef} histRef={histRef} prices={prices} chartAsset={chartAsset} setChartAsset={setChartAsset} chartTf={chartTf} setChartTf={setChartTf} chartType={chartType} setChartType={setChartType} setActiveTab={setActiveTab}/></div>}
+        <div style={{opacity:activeTab==="matrix"?1:0,transition:"opacity 0.25s ease",pointerEvents:activeTab==="matrix"?"all":"none"}}>
         {/* ══ TICKERS ════════════════════════════════════════════════════ */}
-        <section className={`sec${mobileTab!=="tickers"?" mh":""}`} id="sec-tickers">
+        <section className={`sec${mobileTab!=="tickers"?" mh":""}`} id="sec-tickers" style={{display:activeTab==="charts"?"none":""}}>
           <div className="tgrid">
             {status==="connecting"?(
               vis.map((_,i)=><TickerSkeleton key={i}/>)
@@ -589,8 +589,7 @@ export default function App(){
           </div>
         </section>
 
-        </>
-        }
+        </div>
       </main>
 
       {/* ══ FOOTER ═════════════════════════════════════════════════════ */}
