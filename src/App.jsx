@@ -148,25 +148,6 @@ function AssetIcon({asset,size=36}){
       ):(
         <span className="asset-icon-sym">{sym}</span>
       )}
-    {/* ── Charts overlay ─── always in DOM, slides in from right ── */}
-    <div style={{
-      position:"fixed", top:62, left:0, right:0, bottom:0,
-      zIndex:500,
-      background:"#070512",
-      transform: activeTab==="charts" ? "translateX(0)" : "translateX(100%)",
-      transition: "transform 0.35s cubic-bezier(0.4,0,0.2,1)",
-      pointerEvents: activeTab==="charts" ? "all" : "none",
-      display:"flex", flexDirection:"column"
-    }}>
-      <ChartsTab
-        assets={ASSETS} ohlcvRef={ohlcvRef} histRef={histRef} prices={prices}
-        chartAsset={chartAsset} setChartAsset={setChartAsset}
-        chartTf={chartTf} setChartTf={setChartTf}
-        chartType={chartType} setChartType={setChartType}
-        setActiveTab={setActiveTab}
-      />
-    </div>
-  </div>
   );
 }
 
@@ -890,23 +871,10 @@ export default function App(){
 
 
       `}</style>
-    {/* ── Charts overlay ─── always in DOM, slides in from right ── */}
-    <div style={{
-      position:"fixed", top:62, left:0, right:0, bottom:0,
-      zIndex:500,
-      background:"#070512",
-      transform: activeTab==="charts" ? "translateX(0)" : "translateX(100%)",
-      transition: "transform 0.35s cubic-bezier(0.4,0,0.2,1)",
-      pointerEvents: activeTab==="charts" ? "all" : "none",
-      display:"flex", flexDirection:"column"
-    }}>
-      <ChartsTab
-        assets={ASSETS} ohlcvRef={ohlcvRef} histRef={histRef} prices={prices}
-        chartAsset={chartAsset} setChartAsset={setChartAsset}
-        chartTf={chartTf} setChartTf={setChartTf}
-        chartType={chartType} setChartType={setChartType}
-        setActiveTab={setActiveTab}
-      />
+
+    {/* Charts overlay */}
+    <div style={{position:"fixed",top:62,left:0,right:0,bottom:0,zIndex:500,background:"#070512",transform:activeTab==="charts"?"translateX(0)":"translateX(100%)",transition:"transform 0.35s cubic-bezier(0.4,0,0.2,1)",pointerEvents:activeTab==="charts"?"all":"none",display:"flex",flexDirection:"column"}}>
+      <ChartsTab assets={ASSETS} ohlcvRef={ohlcvRef} histRef={histRef} prices={prices} chartAsset={chartAsset} setChartAsset={setChartAsset} chartTf={chartTf} setChartTf={setChartTf} chartType={chartType} setChartType={setChartType} setActiveTab={setActiveTab}/>
     </div>
   </div>
   );
@@ -1277,24 +1245,6 @@ function ChartsTab({ assets, ohlcvRef, histRef, prices, chartAsset, setChartAsse
       <div style={{flex:1,position:"relative",minHeight:0}}>
         <CandleChart bars={bars} chartType={chartType}/>
       </div>
-    {/* ── Charts overlay ─── always in DOM, slides in from right ── */}
-    <div style={{
-      position:"fixed", top:62, left:0, right:0, bottom:0,
-      zIndex:500,
-      background:"#070512",
-      transform: activeTab==="charts" ? "translateX(0)" : "translateX(100%)",
-      transition: "transform 0.35s cubic-bezier(0.4,0,0.2,1)",
-      pointerEvents: activeTab==="charts" ? "all" : "none",
-      display:"flex", flexDirection:"column"
-    }}>
-      <ChartsTab
-        assets={ASSETS} ohlcvRef={ohlcvRef} histRef={histRef} prices={prices}
-        chartAsset={chartAsset} setChartAsset={setChartAsset}
-        chartTf={chartTf} setChartTf={setChartTf}
-        chartType={chartType} setChartType={setChartType}
-        setActiveTab={setActiveTab}
-      />
     </div>
-  </div>
   );
 }
