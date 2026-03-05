@@ -148,7 +148,25 @@ function AssetIcon({asset,size=36}){
       ):(
         <span className="asset-icon-sym">{sym}</span>
       )}
+    {/* ── Charts overlay ─── always in DOM, slides in from right ── */}
+    <div style={{
+      position:"fixed", top:62, left:0, right:0, bottom:0,
+      zIndex:500,
+      background:"#070512",
+      transform: activeTab==="charts" ? "translateX(0)" : "translateX(100%)",
+      transition: "transform 0.35s cubic-bezier(0.4,0,0.2,1)",
+      pointerEvents: activeTab==="charts" ? "all" : "none",
+      display:"flex", flexDirection:"column"
+    }}>
+      <ChartsTab
+        assets={ASSETS} ohlcvRef={ohlcvRef} histRef={histRef} prices={prices}
+        chartAsset={chartAsset} setChartAsset={setChartAsset}
+        chartTf={chartTf} setChartTf={setChartTf}
+        chartType={chartType} setChartType={setChartType}
+        setActiveTab={setActiveTab}
+      />
     </div>
+  </div>
   );
 }
 
@@ -386,10 +404,9 @@ export default function App(){
             <span>{errorMsg}</span>
           </div>
         )}
-        {<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,zIndex:200,background:"#070512",transform:activeTab==="charts"?"translateX(0)":"translateX(100%)",transition:"transform 0.35s cubic-bezier(0.4,0,0.2,1)",pointerEvents:activeTab==="charts"?"all":"none"}}><ChartsTab assets={ASSETS} ohlcvRef={ohlcvRef} histRef={histRef} prices={prices} chartAsset={chartAsset} setChartAsset={setChartAsset} chartTf={chartTf} setChartTf={setChartTf} chartType={chartType} setChartType={setChartType} setActiveTab={setActiveTab}/></div>}
-        <div style={{opacity:activeTab==="matrix"?1:0,transition:"opacity 0.25s ease",pointerEvents:activeTab==="matrix"?"all":"none"}}>
+        {/* Charts portal below */}
         {/* ══ TICKERS ════════════════════════════════════════════════════ */}
-        <section className={`sec${mobileTab!=="tickers"?" mh":""}`} id="sec-tickers" style={{display:activeTab==="charts"?"none":""}}>
+        <section className={`sec${mobileTab!=="tickers"?" mh":""}`} id="sec-tickers">
           <div className="tgrid">
             {status==="connecting"?(
               vis.map((_,i)=><TickerSkeleton key={i}/>)
@@ -589,7 +606,6 @@ export default function App(){
           </div>
         </section>
 
-        </div>
       </main>
 
       {/* ══ FOOTER ═════════════════════════════════════════════════════ */}
@@ -692,9 +708,10 @@ export default function App(){
         .window-badge { font-size: 9px; color: var(--tm); letter-spacing: .06em; white-space: nowrap; }
 
         /* MOBILE TABS */
-        .mtabs { display: none; }
+        .mtabs { display: none; gap: 0; border-bottom: 1px solid var(--cb2); background: var(--bg); position: sticky; top: 0; z-index: 10; }
         @media(max-width:768px){
-          .mtabs { display: flex; background: rgba(6,4,16,.95); border-bottom: 1px solid var(--cb); position: relative; z-index: 1; }
+          .mtabs { display: flex; }
+          .mtabs { display: none; gap: 0; border-bottom: 1px solid var(--cb2); background: var(--bg); position: sticky; top: 0; z-index: 10; }
           .mt { flex: 1; padding: 10px; border: none; background: transparent; color: var(--td); font-size: 11px; font-family: var(--fm); cursor: pointer; border-bottom: 2px solid transparent; transition: all .2s; }
           .mt.a { color: var(--pul); border-bottom-color: var(--pu); }
           .mh { display: none !important; }
@@ -873,7 +890,25 @@ export default function App(){
 
 
       `}</style>
+    {/* ── Charts overlay ─── always in DOM, slides in from right ── */}
+    <div style={{
+      position:"fixed", top:62, left:0, right:0, bottom:0,
+      zIndex:500,
+      background:"#070512",
+      transform: activeTab==="charts" ? "translateX(0)" : "translateX(100%)",
+      transition: "transform 0.35s cubic-bezier(0.4,0,0.2,1)",
+      pointerEvents: activeTab==="charts" ? "all" : "none",
+      display:"flex", flexDirection:"column"
+    }}>
+      <ChartsTab
+        assets={ASSETS} ohlcvRef={ohlcvRef} histRef={histRef} prices={prices}
+        chartAsset={chartAsset} setChartAsset={setChartAsset}
+        chartTf={chartTf} setChartTf={setChartTf}
+        chartType={chartType} setChartType={setChartType}
+        setActiveTab={setActiveTab}
+      />
     </div>
+  </div>
   );
 }
 
@@ -1164,13 +1199,11 @@ function ChartsTab({ assets, ohlcvRef, histRef, prices, chartAsset, setChartAsse
     <div style={{display:"flex",flexDirection:"column",width:"100%",height:"100%",background:"#070512",fontFamily:"'Space Mono',monospace"}}>
 
       {/* Top nav row */}
-      <div style={{display:"flex",alignItems:"center",gap:0,flexShrink:0,borderBottom:"1px solid rgba(139,92,246,0.25)",background:"rgba(7,5,18,1)"}}>
-        <button onClick={()=>setActiveTab&&setActiveTab("matrix")}
-          style={{flexShrink:0,padding:"8px 14px",background:"transparent",border:"none",
-            borderRight:"1px solid rgba(139,92,246,0.15)",cursor:"pointer",
-            color:"rgba(139,92,246,0.7)",fontSize:10,fontFamily:"inherit",whiteSpace:"nowrap"}}>
-          ← Matrix
-        </button>
+      <div style={{display:"flex",alignItems:"center",gap:0,flexShrink:0,borderBottom:"1px solid rgba(139,92,246,0.25)",background:"rgba(7,5,18,1)",minHeight:48}}>
+        <div style={{display:"flex",alignItems:"center",gap:8,padding:"0 14px",borderRight:"1px solid rgba(139,92,246,0.15)",flexShrink:0}}>
+          <span style={{fontSize:16,fontFamily:"'Outfit',sans-serif",fontWeight:800,color:"#8b5cf6"}}>PYTH</span>
+          <span style={{fontSize:9,color:"rgba(139,92,246,0.4)",letterSpacing:".1em"}}>CHARTS</span>
+        </div>
         <div style={{display:"flex",overflowX:"auto",flex:1,scrollbarWidth:"none"}}>
         {assets.map(a => {
           const p  = prices[a.symbol];
@@ -1191,6 +1224,15 @@ function ChartsTab({ assets, ohlcvRef, histRef, prices, chartAsset, setChartAsse
           );
         })}
         </div>
+        <button onClick={()=>setActiveTab&&setActiveTab("matrix")}
+          style={{flexShrink:0,padding:"0 16px",background:"transparent",border:"none",
+            borderLeft:"1px solid rgba(139,92,246,0.15)",cursor:"pointer",height:"100%",minHeight:48,
+            color:"rgba(139,92,246,0.6)",fontSize:10,fontFamily:"inherit",whiteSpace:"nowrap",
+            transition:"color .15s"}}
+          onMouseEnter={e=>e.target.style.color="#a78bfa"}
+          onMouseLeave={e=>e.target.style.color="rgba(139,92,246,0.6)"}>
+          ← Matrix
+        </button>
       </div>
 
       {/* Info bar */}
@@ -1235,6 +1277,24 @@ function ChartsTab({ assets, ohlcvRef, histRef, prices, chartAsset, setChartAsse
       <div style={{flex:1,position:"relative",minHeight:0}}>
         <CandleChart bars={bars} chartType={chartType}/>
       </div>
+    {/* ── Charts overlay ─── always in DOM, slides in from right ── */}
+    <div style={{
+      position:"fixed", top:62, left:0, right:0, bottom:0,
+      zIndex:500,
+      background:"#070512",
+      transform: activeTab==="charts" ? "translateX(0)" : "translateX(100%)",
+      transition: "transform 0.35s cubic-bezier(0.4,0,0.2,1)",
+      pointerEvents: activeTab==="charts" ? "all" : "none",
+      display:"flex", flexDirection:"column"
+    }}>
+      <ChartsTab
+        assets={ASSETS} ohlcvRef={ohlcvRef} histRef={histRef} prices={prices}
+        chartAsset={chartAsset} setChartAsset={setChartAsset}
+        chartTf={chartTf} setChartTf={setChartTf}
+        chartType={chartType} setChartType={setChartType}
+        setActiveTab={setActiveTab}
+      />
     </div>
+  </div>
   );
 }
