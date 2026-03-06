@@ -1020,7 +1020,6 @@ function drawCandles(canvas, bars, chartType) {
   }
 }
 
-}
 
 function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChartTf, chartType, setChartType, chartHist, setChartHist, setActiveTab, status}) {
   const canvasRef = useRef();
