@@ -1089,6 +1089,7 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
   const pct  = hist.length && cur ? (cur-hist[0].o)/hist[0].o*100 : null;
   const fmtP = v => !v?"–":v>=10000?"$"+v.toLocaleString(undefined,{maximumFractionDigits:0}):v>=100?"$"+v.toFixed(2):v>=1?"$"+v.toFixed(4):"$"+v.toFixed(6);
   const asset= assets.find(a=>a.symbol===chartAsset)||assets[0];
+  const bars = barsRef.current || [];
 
   return (
     <div style={{display:"flex",flexDirection:"column",width:"100%",height:"100%",background:"#07050f",fontFamily:"'Space Mono',monospace"}}>
