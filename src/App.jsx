@@ -1044,9 +1044,7 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
       {/* Header matching main app style */}
       <div style={{display:"flex",alignItems:"center",padding:"0 16px",height:62,flexShrink:0,borderBottom:"1px solid rgba(139,92,246,0.2)",background:"rgba(7,5,18,0.98)"}}>
         <PythLogo size={32}/>
-        <span style={{marginLeft:10,fontSize:13,fontWeight:800,color:"#a78bfa",letterSpacing:".05em"}}>PYTH</span>
-        <span style={{margin:"0 6px",color:"rgba(139,92,246,0.3)"}}>×</span>
-        <span style={{fontSize:13,fontWeight:800,color:"rgba(200,180,255,0.7)"}}>CHARTS</span>
+        <span style={{marginLeft:10,fontSize:15,fontWeight:800,color:"#a78bfa",letterSpacing:".02em"}}>Pyth</span><span style={{fontSize:15,fontWeight:800,color:"rgba(200,180,255,0.5)"}}>Charts</span>
         <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>
           <span style={{fontSize:10,padding:"3px 8px",borderRadius:4,background:status==="live"?"rgba(52,211,153,0.15)":"rgba(248,113,113,0.1)",color:status==="live"?"#34d399":"#f87171",fontWeight:700}}>● {status==="live"?"LIVE":"DEMO"}</span>
           <button onClick={()=>setActiveTab("matrix")} style={{background:"rgba(139,92,246,0.2)",border:"1px solid rgba(139,92,246,0.35)",borderRadius:6,padding:"5px 14px",color:"#c4b5fd",cursor:"pointer",fontSize:11,fontFamily:"inherit",fontWeight:600}}>← Matrix</button>
@@ -1090,11 +1088,11 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
       </div>
       {/* Canvas */}
       <div style={{flex:1,position:"relative",minHeight:0}}>
-        {/* Pyth watermark */}
-        <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",zIndex:0,opacity:0.07,pointerEvents:"none",filter:"hue-rotate(0deg) saturate(2)",display:"flex",alignItems:"center",justifyContent:"center"}}>
-          <PythLogo size={220}/>
-        </div>
         <canvas ref={canvasRef} style={{position:"absolute",inset:0,width:"100%",height:"100%",zIndex:1}}/>
+        {/* Pyth watermark — above canvas, pointer-events none */}
+        <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",zIndex:2,opacity:0.08,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <PythLogo size={300}/>
+        </div>
       </div>
     </div>
   );
