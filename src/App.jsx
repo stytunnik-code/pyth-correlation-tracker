@@ -355,13 +355,6 @@ export default function App(){
         </div>
       </div>
 
-      {/* ══ MOBILE TABS ════════════════════════════════════════════════ */}
-      <div className="mtabs" style={{display:activeTab==="charts"?"none":"flex"}}>
-        {[["heatmap","Matrix"],["tickers","Prices"],["top","Rankings"]].map(([k,l])=>(
-          <button key={k} className={`mt${mobileTab===k?" a":""}`} onClick={()=>setMobileTab(k)}>{l}</button>
-        ))}
-      </div>
-
       <main className="main" style={{display:activeTab==="charts"?"none":"block"}}>
         {status==="demo"&&errorMsg&&(
           <div className="err-banner" role="alert">
@@ -1048,15 +1041,15 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
 
   return (
     <div style={{display:"flex",flexDirection:"column",width:"100%",height:"100%"}}>
-      {/* Mini header with back button */}
-      <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 16px",borderBottom:"1px solid rgba(139,92,246,0.2)",flexShrink:0,background:"rgba(7,5,18,0.98)"}}>
-        <button onClick={()=>setActiveTab("matrix")} style={{background:"rgba(139,92,246,0.15)",border:"1px solid rgba(139,92,246,0.3)",borderRadius:6,padding:"4px 12px",color:"rgba(180,160,255,0.8)",cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>← Matrix</button>
-        <div style={{display:"flex",alignItems:"center",gap:6,marginLeft:4}}>
-          <PythLogo size={18}/>
-          <span style={{fontSize:11,color:"rgba(139,92,246,0.6)",fontWeight:600}}>CHARTS</span>
-        </div>
-        <div style={{marginLeft:"auto",display:"flex",gap:4}}>
-          <span style={{fontSize:12,color:"rgba(100,80,160,0.5)"}}>{status==="live"?<span style={{color:"#34d399",fontSize:10}}>● LIVE</span>:<span style={{color:"#f87171",fontSize:10}}>● DEMO</span>}</span>
+      {/* Header matching main app style */}
+      <div style={{display:"flex",alignItems:"center",padding:"0 16px",height:62,flexShrink:0,borderBottom:"1px solid rgba(139,92,246,0.2)",background:"rgba(7,5,18,0.98)"}}>
+        <PythLogo size={32}/>
+        <span style={{marginLeft:10,fontSize:13,fontWeight:800,color:"#a78bfa",letterSpacing:".05em"}}>PYTH</span>
+        <span style={{margin:"0 6px",color:"rgba(139,92,246,0.3)"}}>×</span>
+        <span style={{fontSize:13,fontWeight:800,color:"rgba(200,180,255,0.7)"}}>CHARTS</span>
+        <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:10,padding:"3px 8px",borderRadius:4,background:status==="live"?"rgba(52,211,153,0.15)":"rgba(248,113,113,0.1)",color:status==="live"?"#34d399":"#f87171",fontWeight:700}}>● {status==="live"?"LIVE":"DEMO"}</span>
+          <button onClick={()=>setActiveTab("matrix")} style={{background:"rgba(139,92,246,0.2)",border:"1px solid rgba(139,92,246,0.35)",borderRadius:6,padding:"5px 14px",color:"#c4b5fd",cursor:"pointer",fontSize:11,fontFamily:"inherit",fontWeight:600}}>← Matrix</button>
         </div>
       </div>
       {/* Asset tabs */}
@@ -1098,7 +1091,7 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
       {/* Canvas */}
       <div style={{flex:1,position:"relative",minHeight:0}}>
         {/* Pyth watermark */}
-        <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",zIndex:0,opacity:0.04,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}>
+        <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",zIndex:0,opacity:0.07,pointerEvents:"none",filter:"hue-rotate(0deg) saturate(2)",display:"flex",alignItems:"center",justifyContent:"center"}}>
           <PythLogo size={220}/>
         </div>
         <canvas ref={canvasRef} style={{position:"absolute",inset:0,width:"100%",height:"100%",zIndex:1}}/>
