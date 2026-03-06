@@ -854,28 +854,27 @@ const TF_SECS = {"1m":60,"5m":300,"15m":900,"1h":3600,"4h":14400,"1d":86400};
 const BN_SYM  = {"BTC":"BTCUSDT","ETH":"ETHUSDT","SOL":"SOLUSDT","DOGE":"DOGEUSDT","USDC":"USDCUSDT","XAU/USD":"XAUUSDT","EUR/USD":"EURUSDT","GBP/USD":"GBPUSDT"};
 
 function drawCandles(canvas, bars, chartType) {
-  if (!canvas || !bars || bars.length < 2) {
-    if (canvas) {
-      const ctx = canvas.getContext("2d");
-      canvas.width = canvas.parentElement.clientWidth;
-      canvas.height = canvas.parentElement.clientHeight;
-      ctx.fillStyle = "#070512"; ctx.fillRect(0,0,canvas.width,canvas.height);
-      ctx.fillStyle = "rgba(139,92,246,0.5)"; ctx.font = "14px monospace";
-      ctx.textAlign = "center"; ctx.textBaseline = "middle";
-      ctx.fillText("Loading…", canvas.width/2, canvas.height/2);
-    }
-    return;
-  }
+  if (!canvas) return;
   const par = canvas.parentElement;
+  if (!par) return;
   const W = par.clientWidth, H = par.clientHeight;
   if (W < 10 || H < 10) return;
   canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d");
-  ctx.fillStyle = "#070512"; ctx.fillRect(0,0,W,H);
 
-  const PAD = {t:16,r:72,b:28,l:4};
-  const PH = (H - PAD.t - PAD.b) * 0.8;
-  const VH = (H - PAD.t - PAD.b) * 0.16;
+  // Background
+  ctx.fillStyle = "#07050f"; ctx.fillRect(0,0,W,H);
+
+  if (!bars || bars.length < 2) {
+    ctx.fillStyle = "rgba(124,58,237,0.3)"; ctx.font = "12px 'Space Mono',monospace";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("Loading data…", W/2, H/2);
+    return;
+  }
+
+  const PAD = {t:12, r:80, b:32, l:8};
+  const PH = (H - PAD.t - PAD.b) * 0.78;
+  const VH = (H - PAD.t - PAD.b) * 0.14;
   const CW = W - PAD.l - PAD.r;
   const vis = bars.slice(-200);
   const N = vis.length;
@@ -884,90 +883,105 @@ function drawCandles(canvas, bars, chartType) {
   const lo = Math.min(...vis.map(b=>b.l));
   const hi = Math.max(...vis.map(b=>b.h));
   const rng = hi - lo || hi * 0.002 || 1;
-  const yMin = lo - rng*0.04, yMax = hi + rng*0.08;
+  const yMin = lo - rng*0.03, yMax = hi + rng*0.06;
   const toY = v => PAD.t + PH * (1 - (v-yMin)/(yMax-yMin));
   const toX = i => PAD.l + (i+0.5)*colW;
 
-  // Grid
-  ctx.setLineDash([2,4]); ctx.lineWidth=1;
-  for (let i=0;i<=5;i++) {
-    const v = yMin + (yMax-yMin)/5*i;
+  // Grid lines + price labels
+  const gridCount = 6;
+  for (let i=0;i<=gridCount;i++) {
+    const v = yMin + (yMax-yMin)/gridCount*i;
     const y = toY(v);
-    ctx.strokeStyle="rgba(139,92,246,0.09)";
-    ctx.beginPath(); ctx.moveTo(PAD.l,y); ctx.lineTo(W-PAD.r,y); ctx.stroke();
-    const s = v>=10000?v.toFixed(0):v>=100?v.toFixed(2):v>=1?v.toFixed(4):v.toFixed(6);
-    ctx.fillStyle="rgba(110,90,170,0.6)"; ctx.font="9px monospace";
-    ctx.textAlign="left"; ctx.textBaseline="middle";
-    ctx.fillText(s, W-PAD.r+4, y);
+    if (y < PAD.t || y > PAD.t+PH) continue;
+    // Grid line
+    ctx.strokeStyle = "rgba(255,255,255,0.04)";
+    ctx.lineWidth = 1; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(W-PAD.r, y); ctx.stroke();
+    // Price label
+    const s = v>=100000?v.toFixed(0):v>=10000?v.toFixed(0):v>=100?v.toFixed(2):v>=1?v.toFixed(4):v.toFixed(6);
+    ctx.fillStyle = "rgba(255,255,255,0.2)"; ctx.font = "9px 'Space Mono',monospace";
+    ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.fillText(s, W-PAD.r+8, y);
   }
-  ctx.setLineDash([]);
 
-  // Volume
-  const volBase = PAD.t + PH + (H-PAD.t-PAD.b)*0.04 + VH;
+  // Volume bars
+  const volTop = PAD.t + PH + (H-PAD.t-PAD.b)*0.05;
+  const volBase = volTop + VH;
   const maxV = Math.max(...vis.map(b=>b.v||0), 1);
   vis.forEach((b,i)=>{
-    const vh = ((b.v||0)/maxV)*VH;
+    const vh = ((b.v||0)/maxV) * VH;
     if (vh < 0.5) return;
-    ctx.fillStyle = b.c>=b.o ? "rgba(52,211,153,0.2)" : "rgba(248,113,113,0.2)";
-    ctx.fillRect(toX(i)-colW*0.35, volBase-vh, colW*0.7, vh);
+    ctx.fillStyle = b.c>=b.o ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.2)";
+    ctx.fillRect(toX(i)-colW*0.38, volBase-vh, colW*0.76, vh);
   });
 
-  // Candles / line
+  // Candles or Line
   if (chartType === "line") {
     const up = vis[vis.length-1].c >= vis[0].o;
-    const col = up ? "#34d399" : "#f87171";
+    const col = up ? "#10b981" : "#ef4444";
     const grd = ctx.createLinearGradient(0,PAD.t,0,PAD.t+PH);
-    grd.addColorStop(0, up?"rgba(52,211,153,0.15)":"rgba(248,113,113,0.15)");
+    grd.addColorStop(0, up?"rgba(16,185,129,0.12)":"rgba(239,68,68,0.12)");
     grd.addColorStop(1,"rgba(0,0,0,0)");
     ctx.beginPath();
     vis.forEach((b,i)=>{ const x=toX(i),y=toY(b.c); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
     ctx.lineTo(toX(N-1),PAD.t+PH); ctx.lineTo(toX(0),PAD.t+PH);
     ctx.closePath(); ctx.fillStyle=grd; ctx.fill();
-    ctx.strokeStyle=col; ctx.lineWidth=1.5;
+    ctx.strokeStyle=col; ctx.lineWidth=1.5; ctx.lineJoin="round";
     ctx.beginPath();
     vis.forEach((b,i)=>{ const x=toX(i),y=toY(b.c); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
     ctx.stroke();
   } else {
-    const bw = Math.max(1, colW*0.65);
+    const bw = Math.max(1, colW * 0.6);
     vis.forEach((b,i)=>{
       const x=toX(i), up=b.c>=b.o;
-      const col = up?"rgba(52,211,153,0.9)":"rgba(248,113,113,0.9)";
-      ctx.strokeStyle=col; ctx.lineWidth=1;
-      ctx.beginPath(); ctx.moveTo(x,Math.max(PAD.t,toY(b.h))); ctx.lineTo(x,Math.min(PAD.t+PH,toY(b.l))); ctx.stroke();
-      const by=Math.max(PAD.t,Math.min(toY(b.o),toY(b.c)));
-      const bh=Math.max(1,Math.min(Math.abs(toY(b.o)-toY(b.c)),PAD.t+PH-by));
-      ctx.fillStyle=col; ctx.fillRect(x-bw/2,by,bw,bh);
+      const upCol = "#10b981", dnCol = "#ef4444";
+      const col = up ? upCol : dnCol;
+      // Wick
+      ctx.strokeStyle = col; ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(x, Math.max(PAD.t, toY(b.h)));
+      ctx.lineTo(x, Math.min(PAD.t+PH, toY(b.l)));
+      ctx.stroke();
+      // Body
+      const by = Math.max(PAD.t, Math.min(toY(b.o), toY(b.c)));
+      const bh = Math.max(1, Math.min(Math.abs(toY(b.o)-toY(b.c)), PAD.t+PH-by));
+      ctx.fillStyle = up ? "rgba(16,185,129,0.85)" : "rgba(239,68,68,0.85)";
+      ctx.fillRect(x-bw/2, by, bw, bh);
     });
   }
 
-  // Time
+  // Time axis
   const step = Math.max(1, Math.floor(N/8));
-  ctx.fillStyle="rgba(100,80,160,0.5)"; ctx.font="8px monospace";
-  ctx.textAlign="center"; ctx.textBaseline="top";
+  ctx.fillStyle = "rgba(255,255,255,0.2)"; ctx.font = "8px 'Space Mono',monospace";
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
   vis.forEach((b,i)=>{
     if (i%step!==0) return;
-    const d=new Date(b.t*1000);
-    const tf=b.tfs||60;
-    const s=tf>=86400?d.toLocaleDateString("en",{month:"short",day:"numeric"}):d.toLocaleTimeString("en",{hour:"2-digit",minute:"2-digit",hour12:false});
-    ctx.fillText(s, toX(i), volBase+3);
+    const d = new Date(b.t*1000);
+    const tfs = b.tfs||60;
+    const s = tfs>=86400
+      ? d.toLocaleDateString("en",{month:"short",day:"numeric"})
+      : d.toLocaleTimeString("en",{hour:"2-digit",minute:"2-digit",hour12:false});
+    ctx.fillText(s, toX(i), volBase+4);
   });
 
-  // Last price line
+  // Current price line
   const last = vis[vis.length-1].c;
   const ly = toY(last);
   if (ly>=PAD.t && ly<=PAD.t+PH) {
-    const up = last>=vis[0].o;
-    ctx.strokeStyle=up?"rgba(52,211,153,0.5)":"rgba(248,113,113,0.5)";
-    ctx.lineWidth=1; ctx.setLineDash([3,3]);
-    ctx.beginPath(); ctx.moveTo(PAD.l,ly); ctx.lineTo(W-PAD.r,ly); ctx.stroke();
+    const up = last >= vis[0].o;
+    ctx.strokeStyle = up ? "rgba(16,185,129,0.4)" : "rgba(239,68,68,0.4)";
+    ctx.lineWidth = 1; ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(PAD.l, ly); ctx.lineTo(W-PAD.r, ly); ctx.stroke();
     ctx.setLineDash([]);
-    const s=last>=10000?last.toFixed(0):last>=100?last.toFixed(2):last>=1?last.toFixed(4):last.toFixed(6);
-    ctx.fillStyle=up?"#34d399":"#f87171";
-    ctx.fillRect(W-PAD.r+2,ly-7,PAD.r-4,14);
-    ctx.fillStyle="#000"; ctx.font="bold 8px monospace";
-    ctx.textAlign="left"; ctx.textBaseline="middle";
-    ctx.fillText(s, W-PAD.r+5, ly);
+    const s = last>=100000?last.toFixed(0):last>=10000?last.toFixed(0):last>=100?last.toFixed(2):last>=1?last.toFixed(4):last.toFixed(6);
+    ctx.fillStyle = up ? "#10b981" : "#ef4444";
+    ctx.fillRect(W-PAD.r+1, ly-8, PAD.r-3, 16);
+    ctx.fillStyle = "#fff"; ctx.font = "bold 9px 'Space Mono',monospace";
+    ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.fillText(s, W-PAD.r+6, ly);
   }
+}
+
 }
 
 function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChartTf, chartType, setChartType, chartHist, setChartHist, setActiveTab, status}) {
@@ -1040,60 +1054,84 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
   const asset= assets.find(a=>a.symbol===chartAsset)||assets[0];
 
   return (
-    <div style={{display:"flex",flexDirection:"column",width:"100%",height:"100%"}}>
-      {/* Header matching main app style */}
-      <div style={{display:"flex",alignItems:"center",padding:"0 16px",height:62,flexShrink:0,borderBottom:"1px solid rgba(139,92,246,0.2)",background:"rgba(7,5,18,0.98)"}}>
-        <PythLogo size={32}/>
-        <span style={{marginLeft:10,fontSize:15,fontWeight:800,color:"#a78bfa",letterSpacing:".02em"}}>Pyth</span><span style={{fontSize:15,fontWeight:800,color:"rgba(200,180,255,0.5)"}}>Charts</span>
+    <div style={{display:"flex",flexDirection:"column",width:"100%",height:"100%",background:"#07050f",fontFamily:"'Space Mono',monospace"}}>
+
+      {/* ── TOP BAR ─────────────────────────────────────────────────────── */}
+      <div style={{display:"flex",alignItems:"center",height:48,padding:"0 16px",borderBottom:"1px solid rgba(255,255,255,0.06)",background:"#0b0917",flexShrink:0,gap:16}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <PythLogo size={22}/>
+          <span style={{fontSize:13,fontWeight:700,color:"#7c3aed",letterSpacing:".06em"}}>PYTH</span>
+          <span style={{fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.25)"}}>CHARTS</span>
+        </div>
+        <div style={{width:1,height:20,background:"rgba(255,255,255,0.08)"}}/>
+        {/* Asset symbol + price + pct */}
+        <div style={{display:"flex",alignItems:"baseline",gap:8}}>
+          <span style={{fontSize:13,fontWeight:700,color:"#fff",letterSpacing:".04em"}}>{asset.symbol}</span>
+          <span style={{fontSize:20,fontWeight:700,color:"#fff",letterSpacing:"-.01em"}}>{fmtP(cur)}</span>
+          {pct!=null&&<span style={{fontSize:12,fontWeight:600,color:pct>=0?"#10b981":"#ef4444"}}>{pct>=0?"+":""}{pct.toFixed(2)}%</span>}
+        </div>
         <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>
-          <span style={{fontSize:10,padding:"3px 8px",borderRadius:4,background:status==="live"?"rgba(52,211,153,0.15)":"rgba(248,113,113,0.1)",color:status==="live"?"#34d399":"#f87171",fontWeight:700}}>● {status==="live"?"LIVE":"DEMO"}</span>
-          <button onClick={()=>setActiveTab("matrix")} style={{background:"rgba(139,92,246,0.2)",border:"1px solid rgba(139,92,246,0.35)",borderRadius:6,padding:"5px 14px",color:"#c4b5fd",cursor:"pointer",fontSize:11,fontFamily:"inherit",fontWeight:600}}>← Matrix</button>
+          <div style={{display:"flex",alignItems:"center",gap:5,padding:"3px 8px",borderRadius:3,background:status==="live"?"rgba(16,185,129,0.1)":"rgba(239,68,68,0.1)",border:`1px solid ${status==="live"?"rgba(16,185,129,0.25)":"rgba(239,68,68,0.25)"}`}}>
+            <span style={{width:5,height:5,borderRadius:"50%",background:status==="live"?"#10b981":"#ef4444",display:"inline-block"}}/>
+            <span style={{fontSize:10,fontWeight:700,letterSpacing:".08em",color:status==="live"?"#10b981":"#ef4444"}}>{status==="live"?"LIVE":"DEMO"}</span>
+          </div>
+          <button onClick={()=>setActiveTab("matrix")} style={{background:"transparent",border:"1px solid rgba(255,255,255,0.12)",borderRadius:3,padding:"4px 12px",color:"rgba(255,255,255,0.5)",cursor:"pointer",fontSize:10,fontFamily:"inherit",fontWeight:600,letterSpacing:".05em",transition:"all .15s"}}
+            onMouseEnter={e=>{e.target.style.borderColor="rgba(124,58,237,0.6)";e.target.style.color="#a78bfa";}}
+            onMouseLeave={e=>{e.target.style.borderColor="rgba(255,255,255,0.12)";e.target.style.color="rgba(255,255,255,0.5)";}}>
+            ← MATRIX
+          </button>
         </div>
       </div>
-      {/* Asset tabs */}
-      <div style={{display:"flex",overflowX:"auto",flexShrink:0,borderBottom:"1px solid rgba(139,92,246,0.2)",scrollbarWidth:"none"}}>
+
+      {/* ── SYMBOL STRIP ────────────────────────────────────────────────── */}
+      <div style={{display:"flex",alignItems:"center",height:36,padding:"0 0",borderBottom:"1px solid rgba(255,255,255,0.05)",background:"#080614",flexShrink:0,overflowX:"auto",scrollbarWidth:"none"}}>
         {assets.map(a=>{
           const p=prices[a.symbol];
           const h=(chartHist[a.symbol]||{})[chartTf]||[];
           const pc=h.length&&p?(p-h[0].o)/h[0].o*100:null;
           const sel=chartAsset===a.symbol;
           return (
-            <button key={a.symbol} onClick={()=>setChartAsset(a.symbol)} style={{flexShrink:0,padding:"8px 12px",background:"transparent",border:"none",borderBottom:sel?`2px solid ${a.color}`:"2px solid transparent",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"flex-start",gap:1}}>
-              <span style={{fontSize:11,fontWeight:700,color:sel?a.color:"rgba(160,140,200,0.5)"}}>{a.symbol}</span>
-              <span style={{fontSize:9,color:sel?"#ccc":"rgba(120,100,160,0.4)"}}>{fmtP(p)}</span>
-              {pc!=null&&<span style={{fontSize:8,color:pc>=0?"#34d399":"#f87171"}}>{pc>=0?"+":""}{pc.toFixed(2)}%</span>}
+            <button key={a.symbol} onClick={()=>setChartAsset(a.symbol)} style={{flexShrink:0,display:"flex",alignItems:"center",gap:6,padding:"0 14px",height:"100%",background:sel?"rgba(124,58,237,0.12)":"transparent",border:"none",borderBottom:sel?"2px solid #7c3aed":"2px solid transparent",cursor:"pointer",transition:"all .15s"}}>
+              <span style={{fontSize:11,fontWeight:700,color:sel?"#c4b5fd":"rgba(255,255,255,0.35)",letterSpacing:".03em"}}>{a.symbol}</span>
+              {pc!=null&&<span style={{fontSize:9,color:pc>=0?"#10b981":"#ef4444",fontWeight:600}}>{pc>=0?"+":""}{pc.toFixed(2)}%</span>}
             </button>
           );
         })}
       </div>
-      {/* Info */}
-      <div style={{display:"flex",alignItems:"center",gap:10,padding:"6px 14px",flexShrink:0,borderBottom:"1px solid rgba(139,92,246,0.1)",flexWrap:"wrap"}}>
-        <span style={{color:asset.color,fontSize:16}}>{asset.icon}</span>
-        <span style={{color:asset.color,fontWeight:800,fontSize:14}}>{asset.symbol}</span>
-        <span style={{color:"#f0eaff",fontWeight:800,fontSize:18}}>{fmtP(cur)}</span>
-        {pct!=null&&<span style={{fontSize:11,padding:"2px 7px",borderRadius:4,fontWeight:700,color:pct>=0?"#34d399":"#f87171",background:pct>=0?"rgba(52,211,153,0.1)":"rgba(248,113,113,0.1)"}}>{pct>=0?"+":""}{pct.toFixed(3)}%</span>}
-      </div>
-      {/* Controls */}
-      <div style={{display:"flex",gap:4,padding:"5px 14px",flexShrink:0,borderBottom:"1px solid rgba(139,92,246,0.08)"}}>
-        <div style={{display:"flex",gap:1,background:"rgba(0,0,0,0.5)",borderRadius:5,padding:2}}>
-          {TF_LIST.map(tf=>(
-            <button key={tf} onClick={()=>setChartTf(tf)} style={{background:chartTf===tf?"rgba(139,92,246,0.4)":"transparent",border:"none",borderRadius:4,cursor:"pointer",color:chartTf===tf?"#fff":"rgba(100,80,160,0.5)",fontSize:10,padding:"3px 9px",fontFamily:"inherit",fontWeight:chartTf===tf?700:400}}>{tf}</button>
-          ))}
+
+      {/* ── CONTROLS ROW ────────────────────────────────────────────────── */}
+      <div style={{display:"flex",alignItems:"center",height:34,padding:"0 12px",borderBottom:"1px solid rgba(255,255,255,0.05)",background:"#07050f",flexShrink:0,gap:2}}>
+        {/* Timeframes */}
+        {TF_LIST.map(tf=>(
+          <button key={tf} onClick={()=>setChartTf(tf)} style={{background:chartTf===tf?"rgba(124,58,237,0.25)":"transparent",border:"none",borderRadius:2,cursor:"pointer",color:chartTf===tf?"#c4b5fd":"rgba(255,255,255,0.3)",fontSize:10,padding:"3px 10px",fontFamily:"inherit",fontWeight:chartTf===tf?700:500,letterSpacing:".04em",transition:"all .15s"}}>
+            {tf}
+          </button>
+        ))}
+        <div style={{width:1,height:16,background:"rgba(255,255,255,0.08)",margin:"0 8px"}}/>
+        {/* Chart type */}
+        {[["candle","Candles"],["line","Line"]].map(([k,label])=>(
+          <button key={k} onClick={()=>setChartType(k)} style={{background:chartType===k?"rgba(124,58,237,0.25)":"transparent",border:"none",borderRadius:2,cursor:"pointer",color:chartType===k?"#c4b5fd":"rgba(255,255,255,0.3)",fontSize:10,padding:"3px 10px",fontFamily:"inherit",fontWeight:chartType===k?700:500,letterSpacing:".04em",transition:"all .15s"}}>
+            {label}
+          </button>
+        ))}
+        {/* Stats */}
+        <div style={{marginLeft:"auto",display:"flex",gap:16,fontSize:9,letterSpacing:".04em"}}>
+          {bars.length>0&&<span style={{color:"rgba(255,255,255,0.25)"}}>H: <span style={{color:"#10b981"}}>{fmtP(Math.max(...bars.map(b=>b.h)))}</span></span>}
+          {bars.length>0&&<span style={{color:"rgba(255,255,255,0.25)"}}>L: <span style={{color:"#ef4444"}}>{fmtP(Math.min(...bars.map(b=>b.l)))}</span></span>}
+          <span style={{color:"rgba(255,255,255,0.2)"}}>{bars.length} bars · Binance + Pyth</span>
         </div>
-        <div style={{display:"flex",gap:1,background:"rgba(0,0,0,0.5)",borderRadius:5,padding:2}}>
-          {[["candle","🕯"],["line","📈"]].map(([k,ic])=>(
-            <button key={k} onClick={()=>setChartType(k)} style={{background:chartType===k?"rgba(139,92,246,0.4)":"transparent",border:"none",borderRadius:4,cursor:"pointer",fontSize:10,padding:"3px 10px",fontFamily:"inherit"}}>{ic}</button>
-          ))}
-        </div>
       </div>
-      {/* Canvas */}
+
+      {/* ── CHART AREA ──────────────────────────────────────────────────── */}
       <div style={{flex:1,position:"relative",minHeight:0}}>
-        <canvas ref={canvasRef} style={{position:"absolute",inset:0,width:"100%",height:"100%",zIndex:1}}/>
-        {/* Pyth watermark — above canvas, pointer-events none */}
-        <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",zIndex:2,opacity:0.08,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}>
-          <PythLogo size={300}/>
+        <canvas ref={canvasRef} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>
+        {/* Subtle Pyth watermark */}
+        <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",zIndex:2,opacity:0.04,pointerEvents:"none"}}>
+          <PythLogo size={320}/>
         </div>
       </div>
+
     </div>
   );
 }
+
