@@ -572,8 +572,8 @@ export default function App(){
 
       </main>
 
-      {activeTab==="charts"&&<div style={{position:"fixed",top:62,left:0,right:0,bottom:0,background:"#070512",zIndex:100,display:"flex",flexDirection:"column",fontFamily:"'Space Mono',monospace"}}>
-        <ChartView assets={ASSETS} prices={prices} chartAsset={chartAsset} setChartAsset={setChartAsset} chartTf={chartTf} setChartTf={setChartTf} chartType={chartType} setChartType={setChartType} chartHist={chartHist} setChartHist={setChartHist}/>
+      {activeTab==="charts"&&<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#070512",zIndex:200,display:"flex",flexDirection:"column",fontFamily:"'Space Mono',monospace"}}>
+        <ChartView assets={ASSETS} prices={prices} chartAsset={chartAsset} setChartAsset={setChartAsset} chartTf={chartTf} setChartTf={setChartTf} chartType={chartType} setChartType={setChartType} chartHist={chartHist} setChartHist={setChartHist} setActiveTab={setActiveTab} status={status}/>
       </div>}
 
       {/* ══ FOOTER ═════════════════════════════════════════════════════ */}
@@ -977,7 +977,7 @@ function drawCandles(canvas, bars, chartType) {
   }
 }
 
-function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChartTf, chartType, setChartType, chartHist, setChartHist}) {
+function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChartTf, chartType, setChartType, chartHist, setChartHist, setActiveTab, status}) {
   const canvasRef = useRef();
   const barsRef   = useRef([]);
   const [, redraw] = useState(0);
@@ -1048,6 +1048,17 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
 
   return (
     <div style={{display:"flex",flexDirection:"column",width:"100%",height:"100%"}}>
+      {/* Mini header with back button */}
+      <div style={{display:"flex",alignItems:"center",gap:8,padding:"10px 16px",borderBottom:"1px solid rgba(139,92,246,0.2)",flexShrink:0,background:"rgba(7,5,18,0.98)"}}>
+        <button onClick={()=>setActiveTab("matrix")} style={{background:"rgba(139,92,246,0.15)",border:"1px solid rgba(139,92,246,0.3)",borderRadius:6,padding:"4px 12px",color:"rgba(180,160,255,0.8)",cursor:"pointer",fontSize:11,fontFamily:"inherit"}}>← Matrix</button>
+        <div style={{display:"flex",alignItems:"center",gap:6,marginLeft:4}}>
+          <PythLogo size={18}/>
+          <span style={{fontSize:11,color:"rgba(139,92,246,0.6)",fontWeight:600}}>CHARTS</span>
+        </div>
+        <div style={{marginLeft:"auto",display:"flex",gap:4}}>
+          <span style={{fontSize:12,color:"rgba(100,80,160,0.5)"}}>{status==="live"?<span style={{color:"#34d399",fontSize:10}}>● LIVE</span>:<span style={{color:"#f87171",fontSize:10}}>● DEMO</span>}</span>
+        </div>
+      </div>
       {/* Asset tabs */}
       <div style={{display:"flex",overflowX:"auto",flexShrink:0,borderBottom:"1px solid rgba(139,92,246,0.2)",scrollbarWidth:"none"}}>
         {assets.map(a=>{
@@ -1086,7 +1097,11 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
       </div>
       {/* Canvas */}
       <div style={{flex:1,position:"relative",minHeight:0}}>
-        <canvas ref={canvasRef} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>
+        {/* Pyth watermark */}
+        <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",zIndex:0,opacity:0.04,pointerEvents:"none",display:"flex",alignItems:"center",justifyContent:"center"}}>
+          <PythLogo size={220}/>
+        </div>
+        <canvas ref={canvasRef} style={{position:"absolute",inset:0,width:"100%",height:"100%",zIndex:1}}/>
       </div>
     </div>
   );
