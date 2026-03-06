@@ -980,6 +980,44 @@ function drawCandles(canvas, bars, chartType) {
     ctx.textAlign = "left"; ctx.textBaseline = "middle";
     ctx.fillText(s, W-PAD.r+6, ly);
   }
+
+  // ── Watermark: Pyth logo + PythNetwork text ─────────────────────────────
+  {
+    ctx.save();
+    const cx = PAD.l + CW * 0.5;
+    const cy = PAD.t + PH * 0.5;
+    const alpha = 0.055;
+
+    // Draw "PythNetwork" text
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = "#ffffff";
+    const fontSize = Math.min(CW * 0.06, 42);
+    ctx.font = `700 ${fontSize}px 'Outfit','Space Mono',sans-serif`;
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("PythNetwork", cx + fontSize * 1.4, cy);
+
+    // Draw Pyth "P" circle logo shape to the left of text
+    const r = fontSize * 0.9;
+    const lx = cx - ctx.measureText("PythNetwork").width * 0.5;
+    // Outer ring
+    ctx.strokeStyle = "#a78bfa";
+    ctx.lineWidth = r * 0.12;
+    ctx.beginPath();
+    ctx.arc(lx, cy, r, 0, Math.PI * 2);
+    ctx.stroke();
+    // Inner ring
+    ctx.lineWidth = r * 0.10;
+    ctx.beginPath();
+    ctx.arc(lx, cy, r * 0.55, 0, Math.PI * 2);
+    ctx.stroke();
+    // Gap cut (mimics Pyth P shape)
+    ctx.fillStyle = "#07050f";
+    ctx.globalAlpha = alpha * 1.2;
+    ctx.fillRect(lx - r*0.08, cy - r, r*0.16, r*0.7);
+
+    ctx.restore();
+  }
 }
 
 }
@@ -1125,10 +1163,7 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
       {/* ── CHART AREA ──────────────────────────────────────────────────── */}
       <div style={{flex:1,position:"relative",minHeight:0}}>
         <canvas ref={canvasRef} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>
-        {/* Subtle Pyth watermark */}
-        <div style={{position:"absolute",top:"50%",left:"50%",transform:"translate(-50%,-50%)",zIndex:2,opacity:0.04,pointerEvents:"none"}}>
-          <PythLogo size={320}/>
-        </div>
+
       </div>
 
     </div>
