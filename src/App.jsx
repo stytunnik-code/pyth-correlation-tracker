@@ -333,7 +333,7 @@ export default function App(){
         <div className="hdr-r">
           <div className="hdr-upd">{lastUpdate?`UPD ${lastUpdate.toLocaleTimeString()}`:""}</div>
           <div style={{display:"flex",gap:2,background:"rgba(0,0,0,0.4)",borderRadius:6,padding:3,marginRight:6}}>
-            {[["matrix","Matrix"],["charts","Charts"]].map(([k,l])=>(
+            {[["matrix","Matrix"],["charts","Charts"],["corr","Correlation"]].map(([k,l])=>(
               <button key={k} onClick={()=>setActiveTab(k)} style={{background:activeTab===k?"rgba(139,92,246,0.35)":"transparent",border:"none",borderRadius:4,padding:"4px 12px",fontFamily:"inherit",fontSize:11,fontWeight:600,color:activeTab===k?"#e2d9f3":"rgba(139,92,246,0.5)",cursor:"pointer"}}>{l}</button>
             ))}
           </div>
@@ -343,7 +343,7 @@ export default function App(){
       </header>
 
       {/* ══ FILTER BAR ══════════════════════════════════════════════════ */}
-      <div className="fbar" style={{display:activeTab==="charts"?"none":"flex"}}>
+      <div className="fbar" style={{display:activeTab==="charts"||activeTab==="corr"?"none":"flex"}}>
         {["all","crypto","fx","commodity","equity"].map(c=>(
           <button key={c} className={`fbtn${filter===c?" a":""}`} onClick={()=>setFilter(c)}>
             {c==="all"?"All Assets":c==="fx"?"FX Pairs":c==="commodity"?"Commodities":c.charAt(0).toUpperCase()+c.slice(1)}
@@ -355,7 +355,7 @@ export default function App(){
         </div>
       </div>
 
-      <main className="main" style={{display:activeTab==="charts"?"none":"block"}}>
+      <main className="main" style={{display:activeTab==="charts"||activeTab==="corr"?"none":"block"}}>
         {status==="demo"&&errorMsg&&(
           <div className="err-banner" role="alert">
             <span className="err-banner-icon">⚠</span>
@@ -567,6 +567,10 @@ export default function App(){
 
       {activeTab==="charts"&&<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#070512",zIndex:200,display:"flex",flexDirection:"column",fontFamily:"'Space Mono',monospace"}}>
         <ChartView assets={ASSETS} prices={prices} chartAsset={chartAsset} setChartAsset={setChartAsset} chartTf={chartTf} setChartTf={setChartTf} chartType={chartType} setChartType={setChartType} chartHist={chartHist} setChartHist={setChartHist} setActiveTab={setActiveTab} status={status}/>
+      </div>}
+
+      {activeTab==="corr"&&<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#07050f",zIndex:200,display:"flex",flexDirection:"column"}}>
+        <CorrView histRef={histRef} prices={prices} assets={ASSETS} setActiveTab={setActiveTab} status={status}/>
       </div>}
 
       {/* ══ FOOTER ═════════════════════════════════════════════════════ */}
@@ -1170,3 +1174,321 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
   );
 }
 
+
+/* ─── CORRELATION VIEW ───────────────────────────────────────────────────── */
+function drawCorrChart(canvas, ha, hb, symA, symB, colorA, colorB) {
+  if (!canvas) return;
+  const par = canvas.parentElement;
+  if (!par) return;
+  const W = par.clientWidth, H = par.clientHeight;
+  if (W < 10 || H < 10) return;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#07050f"; ctx.fillRect(0,0,W,H);
+
+  const n = Math.min(ha.length, hb.length);
+  if (n < 10) {
+    ctx.fillStyle = "rgba(124,58,237,0.4)";
+    ctx.font = "13px 'Space Mono',monospace";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("Accumulating data… (" + n + "/10 ticks)", W/2, H/2);
+    return;
+  }
+
+  const PAD = {t:40, r:60, b:50, l:60};
+  const CW = W - PAD.l - PAD.r;
+  const CH = H - PAD.t - PAD.b;
+
+  // Normalise both series to % returns
+  const retA = ha.slice(-n).map((v,i,a)=> i===0 ? 0 : (v - a[i-1]) / a[i-1] * 100);
+  const retB = hb.slice(-n).map((v,i,a)=> i===0 ? 0 : (v - a[i-1]) / a[i-1] * 100);
+  const pts   = retA.slice(1).map((v,i)=>({x:v, y:retB[i+1]}));
+
+  const minX = Math.min(...pts.map(p=>p.x));
+  const maxX = Math.max(...pts.map(p=>p.x));
+  const minY = Math.min(...pts.map(p=>p.y));
+  const maxY = Math.max(...pts.map(p=>p.y));
+  const padX = (maxX - minX) * 0.12 || 0.1;
+  const padY = (maxY - minY) * 0.12 || 0.1;
+  const xMin = minX - padX, xMax = maxX + padX;
+  const yMin = minY - padY, yMax = maxY + padY;
+
+  const toX = v => PAD.l + (v - xMin) / (xMax - xMin) * CW;
+  const toY = v => PAD.t + CH - (v - yMin) / (yMax - yMin) * CH;
+
+  // Grid
+  ctx.strokeStyle = "rgba(255,255,255,0.04)"; ctx.lineWidth = 1;
+  for (let i=0; i<=4; i++) {
+    const xv = xMin + (xMax-xMin)/4*i, yv = yMin + (yMax-yMin)/4*i;
+    ctx.beginPath(); ctx.moveTo(toX(xv), PAD.t); ctx.lineTo(toX(xv), PAD.t+CH); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(PAD.l, toY(yv)); ctx.lineTo(PAD.l+CW, toY(yv)); ctx.stroke();
+  }
+
+  // Zero axes
+  if (xMin < 0 && xMax > 0) {
+    const x0 = toX(0);
+    ctx.strokeStyle = "rgba(255,255,255,0.12)"; ctx.lineWidth = 1;
+    ctx.setLineDash([3,4]);
+    ctx.beginPath(); ctx.moveTo(x0, PAD.t); ctx.lineTo(x0, PAD.t+CH); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  if (yMin < 0 && yMax > 0) {
+    const y0 = toY(0);
+    ctx.strokeStyle = "rgba(255,255,255,0.12)"; ctx.lineWidth = 1;
+    ctx.setLineDash([3,4]);
+    ctx.beginPath(); ctx.moveTo(PAD.l, y0); ctx.lineTo(PAD.l+CW, y0); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Regression line
+  const meanX = pts.reduce((s,p)=>s+p.x,0)/pts.length;
+  const meanY = pts.reduce((s,p)=>s+p.y,0)/pts.length;
+  const num   = pts.reduce((s,p)=>s+(p.x-meanX)*(p.y-meanY),0);
+  const den   = pts.reduce((s,p)=>s+(p.x-meanX)**2,0);
+  if (den !== 0) {
+    const slope = num/den, intercept = meanY - slope*meanX;
+    const x1=xMin, y1=slope*x1+intercept;
+    const x2=xMax, y2=slope*x2+intercept;
+    ctx.strokeStyle = "rgba(167,139,250,0.5)"; ctx.lineWidth = 1.5;
+    ctx.setLineDash([6,4]);
+    ctx.beginPath(); ctx.moveTo(toX(x1), toY(y1)); ctx.lineTo(toX(x2), toY(y2)); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Scatter dots — colour by time (old=dim, new=bright)
+  pts.forEach((p, i) => {
+    const age = i / (pts.length - 1);
+    const alpha = 0.15 + age * 0.7;
+    const r = 2.5 + age * 1.5;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = age > 0.7 ? colorA : "rgba(100,80,140,1)";
+    ctx.beginPath(); ctx.arc(toX(p.x), toY(p.y), r, 0, Math.PI*2); ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+
+  // Axis labels
+  ctx.fillStyle = "rgba(255,255,255,0.2)"; ctx.font = "9px 'Space Mono',monospace";
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  ctx.fillText(symA + " returns (%)", PAD.l + CW/2, PAD.t + CH + 18);
+  ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  ctx.save(); ctx.translate(PAD.l - 28, PAD.t + CH/2);
+  ctx.rotate(-Math.PI/2); ctx.fillText(symB + " returns (%)", 0, 0); ctx.restore();
+
+  // Tick labels X
+  ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.fillStyle = "rgba(255,255,255,0.15)";
+  ctx.font = "8px 'Space Mono',monospace";
+  for (let i=0; i<=4; i++) {
+    const v = xMin + (xMax-xMin)/4*i;
+    ctx.fillText(v.toFixed(1), toX(v), PAD.t+CH+4);
+  }
+  // Tick labels Y
+  ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  for (let i=0; i<=4; i++) {
+    const v = yMin + (yMax-yMin)/4*i;
+    ctx.fillText(v.toFixed(1), PAD.l-6, toY(v));
+  }
+}
+
+function drawRollingCorr(canvas, ha, hb, window=30) {
+  if (!canvas) return;
+  const par = canvas.parentElement;
+  if (!par) return;
+  const W = par.clientWidth, H = par.clientHeight;
+  if (W < 10 || H < 10) return;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#07050f"; ctx.fillRect(0,0,W,H);
+
+  const n = Math.min(ha.length, hb.length);
+  if (n < window + 2) {
+    ctx.fillStyle = "rgba(124,58,237,0.3)"; ctx.font = "11px 'Space Mono',monospace";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("Need " + (window+2) + " ticks for rolling corr", W/2, H/2);
+    return;
+  }
+
+  const PAD = {t:16, r:60, b:28, l:40};
+  const CW = W - PAD.l - PAD.r;
+  const CH = H - PAD.t - PAD.b;
+  const toY = v => PAD.t + CH * (1 - (v+1)/2);
+  const toX = i => PAD.l + (i / (pts.length-1)) * CW;
+
+  const pts = [];
+  for (let i = window; i <= n; i++) {
+    const v = pearson(ha.slice(i-window, i), hb.slice(i-window, i));
+    if (v !== null) pts.push(v);
+  }
+  if (pts.length < 2) return;
+
+  // Bands
+  [1, 0.5, 0, -0.5, -1].forEach(v => {
+    const y = toY(v);
+    ctx.strokeStyle = v===0 ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.04)";
+    ctx.lineWidth = v===0 ? 1 : 1; ctx.setLineDash(v===0?[]:[3,4]);
+    ctx.beginPath(); ctx.moveTo(PAD.l,y); ctx.lineTo(PAD.l+CW,y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = "rgba(255,255,255,0.18)"; ctx.font = "8px 'Space Mono',monospace";
+    ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    ctx.fillText(v.toFixed(1), PAD.l-4, y);
+  });
+
+  // Fill area
+  const last = pts[pts.length-1];
+  const grd = ctx.createLinearGradient(0,PAD.t,0,PAD.t+CH);
+  grd.addColorStop(0, last>=0 ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)");
+  grd.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.beginPath();
+  pts.forEach((v,i)=>{ const x=toX(i),y=toY(v); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
+  ctx.lineTo(toX(pts.length-1), toY(0)); ctx.lineTo(toX(0), toY(0));
+  ctx.closePath(); ctx.fillStyle=grd; ctx.fill();
+
+  // Line
+  const lg = ctx.createLinearGradient(0,0,W,0);
+  lg.addColorStop(0,"rgba(124,58,237,0.8)");
+  lg.addColorStop(1, last>=0?"#10b981":"#ef4444");
+  ctx.strokeStyle=lg; ctx.lineWidth=2; ctx.lineJoin="round";
+  ctx.beginPath();
+  pts.forEach((v,i)=>{ const x=toX(i),y=toY(v); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
+  ctx.stroke();
+
+  // Current dot + label
+  const lx=toX(pts.length-1), ly=toY(last);
+  ctx.fillStyle = last>=0?"#10b981":"#ef4444";
+  ctx.beginPath(); ctx.arc(lx,ly,4,0,Math.PI*2); ctx.fill();
+  ctx.fillRect(W-PAD.r+2,ly-8,PAD.r-4,16);
+  ctx.fillStyle="#fff"; ctx.font="bold 9px 'Space Mono',monospace";
+  ctx.textAlign="left"; ctx.textBaseline="middle";
+  ctx.fillText(last.toFixed(3), W-PAD.r+5, ly);
+}
+
+function CorrView({histRef, prices, assets, setActiveTab, status}) {
+  const scatterRef = useRef();
+  const rollingRef = useRef();
+  const [pairs, setPairs] = useState([["BTC","ETH"]]);
+  const [activePair, setActivePair] = useState(0);
+  const [, tick] = useState(0);
+
+  const ALL_PAIRS = [
+    ["BTC","ETH"],["BTC","SOL"],["BTC","DOGE"],
+    ["ETH","SOL"],["ETH","DOGE"],["SOL","DOGE"],
+    ["BTC","XAU/USD"],["BTC","EUR/USD"],
+  ];
+
+  useEffect(()=>{
+    const iv = setInterval(()=>tick(n=>n+1), 2000);
+    return ()=>clearInterval(iv);
+  },[]);
+
+  useEffect(()=>{
+    const [symA, symB] = ALL_PAIRS[activePair];
+    const ha = histRef.current[symA]||[];
+    const hb = histRef.current[symB]||[];
+    const aAsset = assets.find(a=>a.symbol===symA)||assets[0];
+    const bAsset = assets.find(a=>a.symbol===symB)||assets[0];
+    drawCorrChart(scatterRef.current, ha, hb, symA, symB, aAsset.color, bAsset.color);
+    drawRollingCorr(rollingRef.current, ha, hb, 20);
+  });
+
+  useEffect(()=>{
+    const redrawS = ()=>{ const [symA,symB]=ALL_PAIRS[activePair]; drawCorrChart(scatterRef.current, histRef.current[symA]||[], histRef.current[symB]||[], symA, symB, assets.find(a=>a.symbol===symA)?.color||"#fff", assets.find(a=>a.symbol===symB)?.color||"#fff"); };
+    const redrawR = ()=>{ const [symA,symB]=ALL_PAIRS[activePair]; drawRollingCorr(rollingRef.current, histRef.current[symA]||[], histRef.current[symB]||[], 20); };
+    const ro1 = new ResizeObserver(redrawS); const ro2 = new ResizeObserver(redrawR);
+    if(scatterRef.current?.parentElement) ro1.observe(scatterRef.current.parentElement);
+    if(rollingRef.current?.parentElement) ro2.observe(rollingRef.current.parentElement);
+    return ()=>{ ro1.disconnect(); ro2.disconnect(); };
+  },[activePair]);
+
+  const [symA, symB] = ALL_PAIRS[activePair];
+  const ha = histRef.current[symA]||[];
+  const hb = histRef.current[symB]||[];
+  const n  = Math.min(ha.length, hb.length);
+  const corrVal = n>=4 ? pearson(ha.slice(-Math.min(n,60)), hb.slice(-Math.min(n,60))) : null;
+  const aAsset  = assets.find(a=>a.symbol===symA)||assets[0];
+  const bAsset  = assets.find(a=>a.symbol===symB)||assets[0];
+  const fmtP = v => !v?"–":v>=10000?"$"+v.toLocaleString(undefined,{maximumFractionDigits:0}):v>=100?"$"+v.toFixed(2):v>=1?"$"+v.toFixed(4):"$"+v.toFixed(6);
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",width:"100%",height:"100%",background:"#07050f",fontFamily:"'Space Mono',monospace",overflow:"hidden"}}>
+
+      {/* Top bar */}
+      <div style={{display:"flex",alignItems:"center",height:48,padding:"0 16px",borderBottom:"1px solid rgba(255,255,255,0.06)",background:"#0b0917",flexShrink:0,gap:16}}>
+        <PythLogo size={22}/>
+        <span style={{fontSize:13,fontWeight:700,color:"#7c3aed",letterSpacing:".06em"}}>PYTH</span>
+        <span style={{fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.25)"}}>CORRELATION</span>
+        <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>
+          <div style={{display:"flex",alignItems:"center",gap:5,padding:"3px 8px",borderRadius:3,background:status==="live"?"rgba(16,185,129,0.1)":"rgba(239,68,68,0.1)",border:`1px solid ${status==="live"?"rgba(16,185,129,0.25)":"rgba(239,68,68,0.25)"}`}}>
+            <span style={{width:5,height:5,borderRadius:"50%",background:status==="live"?"#10b981":"#ef4444",display:"inline-block"}}/>
+            <span style={{fontSize:10,fontWeight:700,letterSpacing:".08em",color:status==="live"?"#10b981":"#ef4444"}}>{status==="live"?"LIVE":"DEMO"}</span>
+          </div>
+          <button onClick={()=>setActiveTab("matrix")} style={{background:"transparent",border:"1px solid rgba(255,255,255,0.12)",borderRadius:3,padding:"4px 12px",color:"rgba(255,255,255,0.5)",cursor:"pointer",fontSize:10,fontFamily:"inherit",fontWeight:600,letterSpacing:".05em"}}
+            onMouseEnter={e=>{e.target.style.borderColor="rgba(124,58,237,0.6)";e.target.style.color="#a78bfa";}}
+            onMouseLeave={e=>{e.target.style.borderColor="rgba(255,255,255,0.12)";e.target.style.color="rgba(255,255,255,0.5)";}}>
+            ← MATRIX
+          </button>
+        </div>
+      </div>
+
+      {/* Pair selector */}
+      <div style={{display:"flex",alignItems:"center",height:38,padding:"0 12px",borderBottom:"1px solid rgba(255,255,255,0.05)",background:"#080614",flexShrink:0,gap:2,overflowX:"auto",scrollbarWidth:"none"}}>
+        {ALL_PAIRS.map(([a,b],i)=>{
+          const sel = i===activePair;
+          return (
+            <button key={i} onClick={()=>setActivePair(i)} style={{flexShrink:0,background:sel?"rgba(124,58,237,0.2)":"transparent",border:"none",borderRadius:3,padding:"3px 12px",cursor:"pointer",fontSize:10,fontWeight:sel?700:500,color:sel?"#c4b5fd":"rgba(255,255,255,0.3)",fontFamily:"inherit",letterSpacing:".04em",borderBottom:sel?"2px solid #7c3aed":"2px solid transparent"}}>
+              {a} / {b}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Stats bar */}
+      <div style={{display:"flex",alignItems:"center",gap:24,padding:"8px 16px",borderBottom:"1px solid rgba(255,255,255,0.04)",flexShrink:0,flexWrap:"wrap"}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:12,fontWeight:700,color:aAsset.color}}>{symA}</span>
+          <span style={{fontSize:16,fontWeight:700,color:"#fff"}}>{fmtP(prices[symA])}</span>
+        </div>
+        <div style={{width:1,height:20,background:"rgba(255,255,255,0.08)"}}/>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <span style={{fontSize:12,fontWeight:700,color:bAsset.color}}>{symB}</span>
+          <span style={{fontSize:16,fontWeight:700,color:"#fff"}}>{fmtP(prices[symB])}</span>
+        </div>
+        <div style={{width:1,height:20,background:"rgba(255,255,255,0.08)"}}/>
+        <div style={{display:"flex",flexDirection:"column",alignItems:"center"}}>
+          <span style={{fontSize:9,color:"rgba(255,255,255,0.3)",letterSpacing:".06em"}}>PEARSON r</span>
+          <span style={{fontSize:20,fontWeight:800,color:corrVal===null?"rgba(255,255,255,0.2)":corrVal>=0.7?"#10b981":corrVal>=0.3?"#f59e0b":corrVal>=-0.3?"rgba(255,255,255,0.5)":corrVal>=-0.7?"#f59e0b":"#ef4444",letterSpacing:"-.01em"}}>
+            {corrVal===null?"–":corrVal.toFixed(3)}
+          </span>
+        </div>
+        <div style={{marginLeft:"auto",fontSize:9,color:"rgba(255,255,255,0.2)"}}>
+          {n} ticks · rolling 20
+        </div>
+      </div>
+
+      {/* Charts area — scatter left, rolling right */}
+      <div style={{flex:1,display:"flex",gap:1,minHeight:0,padding:"1px"}}>
+
+        {/* Scatter plot */}
+        <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
+          <div style={{padding:"8px 16px 4px",flexShrink:0}}>
+            <span style={{fontSize:9,color:"rgba(255,255,255,0.3)",letterSpacing:".08em"}}>SCATTER — RETURNS</span>
+          </div>
+          <div style={{flex:1,position:"relative",minHeight:0}}>
+            <canvas ref={scatterRef} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>
+          </div>
+        </div>
+
+        <div style={{width:1,background:"rgba(255,255,255,0.05)",flexShrink:0}}/>
+
+        {/* Rolling correlation */}
+        <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
+          <div style={{padding:"8px 16px 4px",flexShrink:0}}>
+            <span style={{fontSize:9,color:"rgba(255,255,255,0.3)",letterSpacing:".08em"}}>ROLLING CORRELATION (20 ticks)</span>
+          </div>
+          <div style={{flex:1,position:"relative",minHeight:0}}>
+            <canvas ref={rollingRef} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  );
+}
