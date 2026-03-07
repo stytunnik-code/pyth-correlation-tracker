@@ -1361,51 +1361,253 @@ function drawRollingCorr(canvas, ha, hb, window=30) {
   ctx.fillText(last.toFixed(3), W-PAD.r+5, ly);
 }
 
+/* ─── CORRELATION VIEW ───────────────────────────────────────────────────── */
+const CORR_PAIRS = [
+  ["BTC","ETH"],["BTC","SOL"],["BTC","DOGE"],
+  ["ETH","SOL"],["ETH","DOGE"],["SOL","DOGE"],
+  ["BTC","XAU/USD"],["BTC","EUR/USD"],
+];
+const BN_SYM2 = {"BTC":"BTCUSDT","ETH":"ETHUSDT","SOL":"SOLUSDT","DOGE":"DOGEUSDT",
+  "USDC":"USDCUSDT","XAU/USD":"XAUUSDT","EUR/USD":"EURUSDT","GBP/USD":"GBPUSDT"};
+
+async function fetchCloses(sym, tf="1m", limit=200) {
+  const bn = BN_SYM2[sym];
+  if (!bn) return [];
+  const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${bn}&interval=${tf}&limit=${limit}`);
+  const d = await r.json();
+  return d.map(k => parseFloat(k[4])); // closes
+}
+
+function pctReturns(closes) {
+  const r = [];
+  for (let i=1;i<closes.length;i++) r.push((closes[i]-closes[i-1])/closes[i-1]*100);
+  return r;
+}
+
+function rollingPearson(ra, rb, win) {
+  const n = Math.min(ra.length, rb.length);
+  const pts = [];
+  for (let i=win; i<=n; i++) {
+    const v = pearson(ra.slice(i-win,i), rb.slice(i-win,i));
+    if (v !== null) pts.push(v);
+  }
+  return pts;
+}
+
+function drawScatter(canvas, ra, rb, symA, symB, colA, colB) {
+  if (!canvas) return;
+  const par = canvas.parentElement; if (!par) return;
+  const W = par.clientWidth, H = par.clientHeight;
+  if (W<10||H<10) return;
+  canvas.width=W; canvas.height=H;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle="#07050f"; ctx.fillRect(0,0,W,H);
+
+  const pts = ra.slice(-Math.min(ra.length,rb.length,200))
+                .map((v,i)=>({x:v,y:rb[rb.length-Math.min(ra.length,rb.length,200)+i]}))
+                .filter(p=>isFinite(p.x)&&isFinite(p.y));
+  if (pts.length < 4) {
+    ctx.fillStyle="rgba(124,58,237,0.4)"; ctx.font="12px 'Space Mono',monospace";
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText("Loading data…", W/2, H/2); return;
+  }
+
+  const PAD={t:32,r:24,b:48,l:56};
+  const CW=W-PAD.l-PAD.r, CH=H-PAD.t-PAD.b;
+
+  const xs=pts.map(p=>p.x), ys=pts.map(p=>p.y);
+  const xPad=(Math.max(...xs)-Math.min(...xs))*0.15||0.05;
+  const yPad=(Math.max(...ys)-Math.min(...ys))*0.15||0.05;
+  const xMin=Math.min(...xs)-xPad, xMax=Math.max(...xs)+xPad;
+  const yMin=Math.min(...ys)-yPad, yMax=Math.max(...ys)+yPad;
+  const toX=v=>PAD.l+(v-xMin)/(xMax-xMin)*CW;
+  const toY=v=>PAD.t+CH-(v-yMin)/(yMax-yMin)*CH;
+
+  // Grid
+  ctx.strokeStyle="rgba(255,255,255,0.04)"; ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const xv=xMin+(xMax-xMin)/4*i, yv=yMin+(yMax-yMin)/4*i;
+    ctx.beginPath();ctx.moveTo(toX(xv),PAD.t);ctx.lineTo(toX(xv),PAD.t+CH);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(PAD.l,toY(yv));ctx.lineTo(PAD.l+CW,toY(yv));ctx.stroke();
+  }
+  // Zero lines
+  if(xMin<0&&xMax>0){ctx.strokeStyle="rgba(255,255,255,0.1)";ctx.setLineDash([3,4]);ctx.beginPath();ctx.moveTo(toX(0),PAD.t);ctx.lineTo(toX(0),PAD.t+CH);ctx.stroke();ctx.setLineDash([]);}
+  if(yMin<0&&yMax>0){ctx.strokeStyle="rgba(255,255,255,0.1)";ctx.setLineDash([3,4]);ctx.beginPath();ctx.moveTo(PAD.l,toY(0));ctx.lineTo(PAD.l+CW,toY(0));ctx.stroke();ctx.setLineDash([]);}
+
+  // Regression
+  const mX=xs.reduce((s,v)=>s+v,0)/xs.length, mY=ys.reduce((s,v)=>s+v,0)/ys.length;
+  const num=pts.reduce((s,p)=>s+(p.x-mX)*(p.y-mY),0);
+  const den=pts.reduce((s,p)=>s+(p.x-mX)**2,0);
+  if(den){
+    const sl=num/den, ic=mY-sl*mX;
+    ctx.strokeStyle="rgba(167,139,250,0.45)"; ctx.lineWidth=1.5; ctx.setLineDash([5,4]);
+    ctx.beginPath();ctx.moveTo(toX(xMin),toY(sl*xMin+ic));ctx.lineTo(toX(xMax),toY(sl*xMax+ic));ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Dots — recent = brighter & larger
+  pts.forEach((p,i)=>{
+    const age=i/(pts.length-1);
+    ctx.globalAlpha=0.15+age*0.75;
+    ctx.fillStyle=age>0.6?colA:"rgba(100,80,150,1)";
+    ctx.beginPath();ctx.arc(toX(p.x),toY(p.y),1.8+age*2.2,0,Math.PI*2);ctx.fill();
+  });
+  ctx.globalAlpha=1;
+
+  // Axis labels
+  ctx.fillStyle="rgba(255,255,255,0.2)"; ctx.font="9px 'Space Mono',monospace";
+  ctx.textAlign="center"; ctx.textBaseline="top";
+  ctx.fillText(symA+" return %", PAD.l+CW/2, PAD.t+CH+20);
+  ctx.save();ctx.translate(PAD.l-36,PAD.t+CH/2);ctx.rotate(-Math.PI/2);
+  ctx.fillText(symB+" return %",0,0);ctx.restore();
+
+  // Axis ticks
+  ctx.fillStyle="rgba(255,255,255,0.15)"; ctx.font="8px 'Space Mono',monospace";
+  ctx.textAlign="center"; ctx.textBaseline="top";
+  for(let i=0;i<=4;i++){const v=xMin+(xMax-xMin)/4*i;ctx.fillText(v.toFixed(1),toX(v),PAD.t+CH+5);}
+  ctx.textAlign="right"; ctx.textBaseline="middle";
+  for(let i=0;i<=4;i++){const v=yMin+(yMax-yMin)/4*i;ctx.fillText(v.toFixed(1),PAD.l-6,toY(v));}
+}
+
+function drawRolling(canvas, pts) {
+  if (!canvas) return;
+  const par=canvas.parentElement; if(!par) return;
+  const W=par.clientWidth, H=par.clientHeight;
+  if(W<10||H<10) return;
+  canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext("2d");
+  ctx.fillStyle="#07050f"; ctx.fillRect(0,0,W,H);
+
+  if(!pts||pts.length<2){
+    ctx.fillStyle="rgba(124,58,237,0.3)"; ctx.font="11px 'Space Mono',monospace";
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText("Accumulating…",W/2,H/2); return;
+  }
+
+  const PAD={t:16,r:60,b:28,l:40};
+  const CW=W-PAD.l-PAD.r, CH=H-PAD.t-PAD.b;
+  const toY=v=>PAD.t+CH*(1-(v+1)/2);
+  const toX=i=>PAD.l+(i/(pts.length-1))*CW;
+
+  // Bands
+  [-1,-0.5,0,0.5,1].forEach(v=>{
+    const y=toY(v);
+    ctx.strokeStyle=v===0?"rgba(255,255,255,0.1)":"rgba(255,255,255,0.04)";
+    ctx.lineWidth=1; ctx.setLineDash(v===0?[]:[3,4]);
+    ctx.beginPath();ctx.moveTo(PAD.l,y);ctx.lineTo(PAD.l+CW,y);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle="rgba(255,255,255,0.2)"; ctx.font="8px 'Space Mono',monospace";
+    ctx.textAlign="right"; ctx.textBaseline="middle";
+    ctx.fillText(v.toFixed(1),PAD.l-4,y);
+  });
+
+  const last=pts[pts.length-1];
+  const col=last>=0.7?"#10b981":last>=0?"#f59e0b":"#ef4444";
+
+  // Fill
+  const grd=ctx.createLinearGradient(0,PAD.t,0,PAD.t+CH);
+  grd.addColorStop(0,last>=0?"rgba(16,185,129,0.18)":"rgba(239,68,68,0.18)");
+  grd.addColorStop(1,"rgba(0,0,0,0)");
+  ctx.beginPath();
+  pts.forEach((v,i)=>{const x=toX(i),y=toY(v);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+  ctx.lineTo(toX(pts.length-1),toY(0));ctx.lineTo(toX(0),toY(0));
+  ctx.closePath();ctx.fillStyle=grd;ctx.fill();
+
+  // Line
+  const lg=ctx.createLinearGradient(0,0,W,0);
+  lg.addColorStop(0,"rgba(124,58,237,0.7)");lg.addColorStop(1,col);
+  ctx.strokeStyle=lg;ctx.lineWidth=2;ctx.lineJoin="round";
+  ctx.beginPath();
+  pts.forEach((v,i)=>{const x=toX(i),y=toY(v);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+  ctx.stroke();
+
+  // Current badge
+  const lx=toX(pts.length-1),ly=toY(last);
+  ctx.fillStyle=col; ctx.beginPath();ctx.arc(lx,ly,4,0,Math.PI*2);ctx.fill();
+  ctx.fillRect(W-PAD.r+2,ly-8,PAD.r-4,16);
+  ctx.fillStyle="#fff"; ctx.font="bold 9px 'Space Mono',monospace";
+  ctx.textAlign="left"; ctx.textBaseline="middle";
+  ctx.fillText(last.toFixed(3),W-PAD.r+5,ly);
+}
+
 function CorrView({histRef, prices, assets, setActiveTab, status}) {
   const scatterRef = useRef();
   const rollingRef = useRef();
-  const [pairs, setPairs] = useState([["BTC","ETH"]]);
   const [activePair, setActivePair] = useState(0);
+  const [closes, setCloses] = useState({});   // {SYM: float[]}
+  const [loading, setLoading] = useState(false);
   const [, tick] = useState(0);
 
-  const ALL_PAIRS = [
-    ["BTC","ETH"],["BTC","SOL"],["BTC","DOGE"],
-    ["ETH","SOL"],["ETH","DOGE"],["SOL","DOGE"],
-    ["BTC","XAU/USD"],["BTC","EUR/USD"],
-  ];
+  const [symA, symB] = CORR_PAIRS[activePair];
 
+  // Fetch Binance closes for active pair
   useEffect(()=>{
-    const iv = setInterval(()=>tick(n=>n+1), 2000);
-    return ()=>clearInterval(iv);
+    let dead=false;
+    const toFetch=[symA,symB].filter(s=>!closes[s]);
+    if(!toFetch.length) return;
+    setLoading(true);
+    Promise.all(toFetch.map(s=>fetchCloses(s,"1m",300)))
+      .then(results=>{
+        if(dead) return;
+        const upd={};
+        toFetch.forEach((s,i)=>{upd[s]=results[i];});
+        setCloses(p=>({...p,...upd}));
+      })
+      .catch(()=>{})
+      .finally(()=>{if(!dead)setLoading(false);});
+    return()=>{dead=true;};
+  },[symA,symB]);
+
+  // Merge live Pyth ticks into closes
+  const getCloses = (sym) => {
+    const base = closes[sym] || [];
+    const live = histRef.current[sym] || [];
+    if (!base.length) return live;
+    // append recent live ticks not yet in base
+    return [...base, ...live].slice(-300);
+  };
+
+  // Redraw every 2s
+  useEffect(()=>{
+    const iv=setInterval(()=>tick(n=>n+1),2000);
+    return()=>clearInterval(iv);
   },[]);
 
+  // Draw
   useEffect(()=>{
-    const [symA, symB] = ALL_PAIRS[activePair];
-    const ha = histRef.current[symA]||[];
-    const hb = histRef.current[symB]||[];
-    const aAsset = assets.find(a=>a.symbol===symA)||assets[0];
-    const bAsset = assets.find(a=>a.symbol===symB)||assets[0];
-    drawCorrChart(scatterRef.current, ha, hb, symA, symB, aAsset.color, bAsset.color);
-    drawRollingCorr(rollingRef.current, ha, hb, 20);
+    const cA=getCloses(symA), cB=getCloses(symB);
+    const ra=pctReturns(cA), rb=pctReturns(cB);
+    const aAsset=assets.find(a=>a.symbol===symA)||assets[0];
+    drawScatter(scatterRef.current, ra, rb, symA, symB, aAsset.color, "#a78bfa");
+    const WIN=20;
+    const rpts=rollingPearson(ra,rb,WIN);
+    drawRolling(rollingRef.current, rpts);
   });
 
+  // Resize observers
   useEffect(()=>{
-    const redrawS = ()=>{ const [symA,symB]=ALL_PAIRS[activePair]; drawCorrChart(scatterRef.current, histRef.current[symA]||[], histRef.current[symB]||[], symA, symB, assets.find(a=>a.symbol===symA)?.color||"#fff", assets.find(a=>a.symbol===symB)?.color||"#fff"); };
-    const redrawR = ()=>{ const [symA,symB]=ALL_PAIRS[activePair]; drawRollingCorr(rollingRef.current, histRef.current[symA]||[], histRef.current[symB]||[], 20); };
-    const ro1 = new ResizeObserver(redrawS); const ro2 = new ResizeObserver(redrawR);
+    const redraw=()=>{
+      const cA=getCloses(symA),cB=getCloses(symB);
+      const ra=pctReturns(cA),rb=pctReturns(cB);
+      const aAsset=assets.find(a=>a.symbol===symA)||assets[0];
+      drawScatter(scatterRef.current,ra,rb,symA,symB,aAsset.color,"#a78bfa");
+      drawRolling(rollingRef.current,rollingPearson(ra,rb,20));
+    };
+    const ro1=new ResizeObserver(redraw),ro2=new ResizeObserver(redraw);
     if(scatterRef.current?.parentElement) ro1.observe(scatterRef.current.parentElement);
     if(rollingRef.current?.parentElement) ro2.observe(rollingRef.current.parentElement);
-    return ()=>{ ro1.disconnect(); ro2.disconnect(); };
-  },[activePair]);
+    return()=>{ro1.disconnect();ro2.disconnect();};
+  },[activePair,closes]);
 
-  const [symA, symB] = ALL_PAIRS[activePair];
-  const ha = histRef.current[symA]||[];
-  const hb = histRef.current[symB]||[];
-  const n  = Math.min(ha.length, hb.length);
-  const corrVal = n>=4 ? pearson(ha.slice(-Math.min(n,60)), hb.slice(-Math.min(n,60))) : null;
-  const aAsset  = assets.find(a=>a.symbol===symA)||assets[0];
-  const bAsset  = assets.find(a=>a.symbol===symB)||assets[0];
-  const fmtP = v => !v?"–":v>=10000?"$"+v.toLocaleString(undefined,{maximumFractionDigits:0}):v>=100?"$"+v.toFixed(2):v>=1?"$"+v.toFixed(4):"$"+v.toFixed(6);
+  const cA=getCloses(symA),cB=getCloses(symB);
+  const ra=pctReturns(cA),rb=pctReturns(cB);
+  const n=Math.min(ra.length,rb.length);
+  const corrVal=n>=4?pearson(ra.slice(-Math.min(n,60)),rb.slice(-Math.min(n,60))):null;
+  const aAsset=assets.find(a=>a.symbol===symA)||assets[0];
+  const bAsset=assets.find(a=>a.symbol===symB)||assets[0];
+  const fmtP=v=>!v?"–":v>=10000?"$"+v.toLocaleString(undefined,{maximumFractionDigits:0}):v>=100?"$"+v.toFixed(2):v>=1?"$"+v.toFixed(4):"$"+v.toFixed(6);
+  const corrColor=corrVal===null?"rgba(255,255,255,0.2)":corrVal>=0.7?"#10b981":corrVal>=0.3?"#f59e0b":corrVal>=-0.3?"rgba(255,255,255,0.5)":corrVal>=-0.7?"#f59e0b":"#ef4444";
+  const corrLabel=corrVal===null?"–":corrVal>=0.7?"Strong +":corrVal>=0.3?"Moderate +":corrVal>=-0.3?"Weak":corrVal>=-0.7?"Moderate −":"Strong −";
 
   return (
     <div style={{display:"flex",flexDirection:"column",width:"100%",height:"100%",background:"#07050f",fontFamily:"'Space Mono',monospace",overflow:"hidden"}}>
@@ -1416,6 +1618,7 @@ function CorrView({histRef, prices, assets, setActiveTab, status}) {
         <span style={{fontSize:13,fontWeight:700,color:"#7c3aed",letterSpacing:".06em"}}>PYTH</span>
         <span style={{fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.25)"}}>CORRELATION</span>
         <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>
+          {loading&&<span style={{fontSize:9,color:"rgba(124,58,237,0.6)",letterSpacing:".06em"}}>LOADING…</span>}
           <div style={{display:"flex",alignItems:"center",gap:5,padding:"3px 8px",borderRadius:3,background:status==="live"?"rgba(16,185,129,0.1)":"rgba(239,68,68,0.1)",border:`1px solid ${status==="live"?"rgba(16,185,129,0.25)":"rgba(239,68,68,0.25)"}`}}>
             <span style={{width:5,height:5,borderRadius:"50%",background:status==="live"?"#10b981":"#ef4444",display:"inline-block"}}/>
             <span style={{fontSize:10,fontWeight:700,letterSpacing:".08em",color:status==="live"?"#10b981":"#ef4444"}}>{status==="live"?"LIVE":"DEMO"}</span>
@@ -1430,64 +1633,67 @@ function CorrView({histRef, prices, assets, setActiveTab, status}) {
 
       {/* Pair selector */}
       <div style={{display:"flex",alignItems:"center",height:38,padding:"0 12px",borderBottom:"1px solid rgba(255,255,255,0.05)",background:"#080614",flexShrink:0,gap:2,overflowX:"auto",scrollbarWidth:"none"}}>
-        {ALL_PAIRS.map(([a,b],i)=>{
-          const sel = i===activePair;
+        {CORR_PAIRS.map(([a,b],i)=>{
+          const sel=i===activePair;
+          const aA=assets.find(x=>x.symbol===a)||assets[0];
           return (
-            <button key={i} onClick={()=>setActivePair(i)} style={{flexShrink:0,background:sel?"rgba(124,58,237,0.2)":"transparent",border:"none",borderRadius:3,padding:"3px 12px",cursor:"pointer",fontSize:10,fontWeight:sel?700:500,color:sel?"#c4b5fd":"rgba(255,255,255,0.3)",fontFamily:"inherit",letterSpacing:".04em",borderBottom:sel?"2px solid #7c3aed":"2px solid transparent"}}>
-              {a} / {b}
+            <button key={i} onClick={()=>setActivePair(i)} style={{flexShrink:0,background:sel?"rgba(124,58,237,0.2)":"transparent",border:"none",borderRadius:3,padding:"3px 14px",cursor:"pointer",fontSize:10,fontWeight:sel?700:500,color:sel?"#c4b5fd":"rgba(255,255,255,0.3)",fontFamily:"inherit",letterSpacing:".04em",borderBottom:sel?"2px solid #7c3aed":"2px solid transparent"}}>
+              <span style={{color:sel?aA.color:"inherit"}}>{a}</span> / {b}
             </button>
           );
         })}
       </div>
 
       {/* Stats bar */}
-      <div style={{display:"flex",alignItems:"center",gap:24,padding:"8px 16px",borderBottom:"1px solid rgba(255,255,255,0.04)",flexShrink:0,flexWrap:"wrap"}}>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <span style={{fontSize:12,fontWeight:700,color:aAsset.color}}>{symA}</span>
-          <span style={{fontSize:16,fontWeight:700,color:"#fff"}}>{fmtP(prices[symA])}</span>
+      <div style={{display:"flex",alignItems:"center",gap:0,padding:"0 16px",height:56,borderBottom:"1px solid rgba(255,255,255,0.04)",flexShrink:0}}>
+        <div style={{display:"flex",alignItems:"baseline",gap:6,marginRight:20}}>
+          <span style={{fontSize:11,fontWeight:700,color:aAsset.color,letterSpacing:".04em"}}>{symA}</span>
+          <span style={{fontSize:18,fontWeight:700,color:"#fff"}}>{fmtP(prices[symA])}</span>
         </div>
-        <div style={{width:1,height:20,background:"rgba(255,255,255,0.08)"}}/>
-        <div style={{display:"flex",alignItems:"center",gap:8}}>
-          <span style={{fontSize:12,fontWeight:700,color:bAsset.color}}>{symB}</span>
-          <span style={{fontSize:16,fontWeight:700,color:"#fff"}}>{fmtP(prices[symB])}</span>
+        <div style={{width:1,height:24,background:"rgba(255,255,255,0.06)",marginRight:20}}/>
+        <div style={{display:"flex",alignItems:"baseline",gap:6,marginRight:24}}>
+          <span style={{fontSize:11,fontWeight:700,color:bAsset.color,letterSpacing:".04em"}}>{symB}</span>
+          <span style={{fontSize:18,fontWeight:700,color:"#fff"}}>{fmtP(prices[symB])}</span>
         </div>
-        <div style={{width:1,height:20,background:"rgba(255,255,255,0.08)"}}/>
-        <div style={{display:"flex",flexDirection:"column",alignItems:"center"}}>
-          <span style={{fontSize:9,color:"rgba(255,255,255,0.3)",letterSpacing:".06em"}}>PEARSON r</span>
-          <span style={{fontSize:20,fontWeight:800,color:corrVal===null?"rgba(255,255,255,0.2)":corrVal>=0.7?"#10b981":corrVal>=0.3?"#f59e0b":corrVal>=-0.3?"rgba(255,255,255,0.5)":corrVal>=-0.7?"#f59e0b":"#ef4444",letterSpacing:"-.01em"}}>
-            {corrVal===null?"–":corrVal.toFixed(3)}
-          </span>
+        <div style={{width:1,height:24,background:"rgba(255,255,255,0.06)",marginRight:24}}/>
+        {/* Correlation gauge */}
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{display:"flex",flexDirection:"column"}}>
+            <span style={{fontSize:8,color:"rgba(255,255,255,0.3)",letterSpacing:".1em"}}>PEARSON r</span>
+            <span style={{fontSize:24,fontWeight:800,color:corrColor,lineHeight:1,letterSpacing:"-.02em"}}>{corrVal===null?"–":corrVal.toFixed(3)}</span>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:3}}>
+            <span style={{fontSize:9,padding:"2px 8px",borderRadius:2,background:corrColor==="rgba(255,255,255,0.2)"?"rgba(255,255,255,0.05)":`${corrColor}22`,color:corrColor,fontWeight:700,letterSpacing:".06em"}}>{corrLabel}</span>
+            <span style={{fontSize:8,color:"rgba(255,255,255,0.2)"}}>last 60 ticks · {n} pts</span>
+          </div>
         </div>
-        <div style={{marginLeft:"auto",fontSize:9,color:"rgba(255,255,255,0.2)"}}>
-          {n} ticks · rolling 20
-        </div>
+        {/* Mini correlation bar */}
+        {corrVal!==null&&<div style={{marginLeft:"auto",width:120,height:6,borderRadius:3,background:"rgba(255,255,255,0.06)",overflow:"hidden"}}>
+          <div style={{width:`${((corrVal+1)/2)*100}%`,height:"100%",background:`linear-gradient(90deg,#ef4444,#f59e0b,#10b981)`,borderRadius:3}}/>
+        </div>}
       </div>
 
-      {/* Charts area — scatter left, rolling right */}
-      <div style={{flex:1,display:"flex",gap:1,minHeight:0,padding:"1px"}}>
-
-        {/* Scatter plot */}
+      {/* Charts side by side */}
+      <div style={{flex:1,display:"flex",gap:1,minHeight:0}}>
         <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
-          <div style={{padding:"8px 16px 4px",flexShrink:0}}>
-            <span style={{fontSize:9,color:"rgba(255,255,255,0.3)",letterSpacing:".08em"}}>SCATTER — RETURNS</span>
+          <div style={{padding:"8px 16px 4px",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <span style={{fontSize:9,color:"rgba(255,255,255,0.25)",letterSpacing:".08em"}}>SCATTER — RETURNS ({n} pts)</span>
+            <span style={{fontSize:8,color:"rgba(255,255,255,0.15)"}}>recent = brighter</span>
           </div>
           <div style={{flex:1,position:"relative",minHeight:0}}>
             <canvas ref={scatterRef} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>
           </div>
         </div>
-
         <div style={{width:1,background:"rgba(255,255,255,0.05)",flexShrink:0}}/>
-
-        {/* Rolling correlation */}
         <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
-          <div style={{padding:"8px 16px 4px",flexShrink:0}}>
-            <span style={{fontSize:9,color:"rgba(255,255,255,0.3)",letterSpacing:".08em"}}>ROLLING CORRELATION (20 ticks)</span>
+          <div style={{padding:"8px 16px 4px",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <span style={{fontSize:9,color:"rgba(255,255,255,0.25)",letterSpacing:".08em"}}>ROLLING CORRELATION (win=20)</span>
+            <span style={{fontSize:8,color:"rgba(255,255,255,0.15)"}}>{rollingPearson(pctReturns(cA),pctReturns(cB),20).length} pts</span>
           </div>
           <div style={{flex:1,position:"relative",minHeight:0}}>
             <canvas ref={rollingRef} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>
           </div>
         </div>
-
       </div>
     </div>
   );
