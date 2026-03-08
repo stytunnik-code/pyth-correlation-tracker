@@ -333,7 +333,7 @@ export default function App(){
         <div className="hdr-r">
           <div className="hdr-upd">{lastUpdate?`UPD ${lastUpdate.toLocaleTimeString()}`:""}</div>
           <div style={{display:"flex",gap:2,background:"rgba(0,0,0,0.4)",borderRadius:6,padding:3,marginRight:6}}>
-            {[["matrix","Matrix"],["charts","Charts"],["corr","Correlation"]].map(([k,l])=>(
+            {[["matrix","Matrix"],["charts","Charts"],["corr","Correlation"],["entropy","Entropy"]].map(([k,l])=>(
               <button key={k} onClick={()=>setActiveTab(k)} style={{background:activeTab===k?"rgba(139,92,246,0.35)":"transparent",border:"none",borderRadius:4,padding:"4px 12px",fontFamily:"inherit",fontSize:11,fontWeight:600,color:activeTab===k?"#e2d9f3":"rgba(139,92,246,0.5)",cursor:"pointer"}}>{l}</button>
             ))}
           </div>
@@ -343,7 +343,7 @@ export default function App(){
       </header>
 
       {/* ══ FILTER BAR ══════════════════════════════════════════════════ */}
-      <div className="fbar" style={{display:activeTab==="charts"||activeTab==="corr"?"none":"flex"}}>
+      <div className="fbar" style={{display:activeTab==="charts"||activeTab==="corr"||activeTab==="entropy"?"none":"flex"}}>
         {["all","crypto","fx","commodity","equity"].map(c=>(
           <button key={c} className={`fbtn${filter===c?" a":""}`} onClick={()=>setFilter(c)}>
             {c==="all"?"All Assets":c==="fx"?"FX Pairs":c==="commodity"?"Commodities":c.charAt(0).toUpperCase()+c.slice(1)}
@@ -355,7 +355,7 @@ export default function App(){
         </div>
       </div>
 
-      <main className="main" style={{display:activeTab==="charts"||activeTab==="corr"?"none":"block"}}>
+      <main className="main" style={{display:activeTab==="charts"||activeTab==="corr"||activeTab==="entropy"?"none":"block"}}>
         {status==="demo"&&errorMsg&&(
           <div className="err-banner" role="alert">
             <span className="err-banner-icon">⚠</span>
@@ -571,6 +571,10 @@ export default function App(){
 
       {activeTab==="corr"&&<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#07050f",zIndex:200,display:"flex",flexDirection:"column"}}>
         <CorrView histRef={histRef} prices={prices} assets={ASSETS} setActiveTab={setActiveTab} status={status}/>
+      </div>}
+
+      {activeTab==="entropy"&&<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#07050f",zIndex:200,display:"flex",flexDirection:"column"}}>
+        <EntropyView histRef={histRef} prices={prices} assets={ASSETS} setActiveTab={setActiveTab} status={status}/>
       </div>}
 
       {/* ══ FOOTER ═════════════════════════════════════════════════════ */}
@@ -1694,6 +1698,602 @@ function CorrView({histRef, prices, assets, setActiveTab, status}) {
             <canvas ref={rollingRef} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>
           </div>
         </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ENTROPY MODULE
+   Pipeline: Binance closes → pct returns → quantile bins →
+             Shannon H(X) → MI(X,Y) → NMI → Bootstrap CI
+             Seed: mulberry32 PRNG seeded from Pyth live prices + timestamp
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Math helpers ─────────────────────────────────────────────────────────── */
+function mulberry32(seed) {
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function pythSeed(prices) {
+  // Hash live Pyth prices + timestamp → deterministic but "live" seed
+  const syms = ["BTC","ETH","SOL","DOGE","XAU/USD"];
+  let h = Date.now() & 0xFFFFFF;
+  for (const s of syms) {
+    const v = prices[s];
+    if (v) h = Math.imul(h ^ 0x9e3779b9, Math.floor(v * 100) | 0);
+  }
+  return h >>> 0;
+}
+
+function quantileBins(arr, nBins = 8) {
+  // Assign each value to a quantile bin (robust to outliers)
+  const sorted = [...arr].sort((a, b) => a - b);
+  return arr.map(v => {
+    const rank = sorted.filter(x => x <= v).length - 1;
+    return Math.min(Math.floor(rank / sorted.length * nBins), nBins - 1);
+  });
+}
+
+function shannonH(bins, nBins = 8) {
+  // Shannon entropy in bits
+  const counts = new Array(nBins).fill(0);
+  for (const b of bins) counts[b]++;
+  let H = 0;
+  for (const c of counts) {
+    if (c > 0) { const p = c / bins.length; H -= p * Math.log2(p); }
+  }
+  return H;
+}
+
+function jointH(binsX, binsY, nBins = 8) {
+  const counts = {};
+  for (let i = 0; i < binsX.length; i++) {
+    const k = binsX[i] * nBins + binsY[i];
+    counts[k] = (counts[k] || 0) + 1;
+  }
+  let H = 0;
+  for (const c of Object.values(counts)) {
+    const p = c / binsX.length; H -= p * Math.log2(p);
+  }
+  return H;
+}
+
+function computeMI(ra, rb, nBins = 8) {
+  const n = Math.min(ra.length, rb.length);
+  if (n < 20) return null;
+  const a = ra.slice(-n), b = rb.slice(-n);
+  const bA = quantileBins(a, nBins), bB = quantileBins(b, nBins);
+  const hA = shannonH(bA, nBins), hB = shannonH(bB, nBins);
+  const hAB = jointH(bA, bB, nBins);
+  const mi = hA + hB - hAB;
+  const nmi = Math.sqrt(hA * hB) > 0 ? mi / Math.sqrt(hA * hB) : 0;
+  return { mi: Math.max(0, mi), nmi: Math.max(0, Math.min(1, nmi)), hA, hB };
+}
+
+function bootstrapEntropy(returns, seed, nIter = 40, sampleSize = 120, nBins = 8) {
+  // Returns {mean, std, ci95lo, ci95hi} for each asset's Shannon H
+  const rng = mulberry32(seed);
+  const results = {}; // sym → []
+  const syms = Object.keys(returns);
+  for (const s of syms) results[s] = [];
+
+  for (let iter = 0; iter < nIter; iter++) {
+    const n = Math.min(...syms.map(s => returns[s]?.length || 0), sampleSize * 2);
+    if (n < sampleSize) { // not enough data, use all
+      for (const s of syms) {
+        const arr = returns[s];
+        if (!arr || arr.length < 8) continue;
+        const bins = quantileBins(arr, nBins);
+        results[s].push(shannonH(bins, nBins));
+      }
+      continue;
+    }
+    // Random sample indices
+    const indices = [];
+    while (indices.length < sampleSize) {
+      indices.push(Math.floor(rng() * n));
+    }
+    for (const s of syms) {
+      const arr = returns[s];
+      if (!arr || arr.length < 8) continue;
+      const sample = indices.map(i => arr[Math.min(i, arr.length - 1)]);
+      const bins = quantileBins(sample, nBins);
+      results[s].push(shannonH(bins, nBins));
+    }
+  }
+
+  const out = {};
+  for (const s of syms) {
+    const vals = results[s];
+    if (!vals.length) { out[s] = null; continue; }
+    const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
+    const std = Math.sqrt(vals.reduce((a, v) => a + (v - mean) ** 2, 0) / vals.length);
+    const sorted = [...vals].sort((a, b) => a - b);
+    out[s] = {
+      mean,
+      std,
+      ci95lo: sorted[Math.floor(vals.length * 0.025)] ?? mean - std,
+      ci95hi: sorted[Math.floor(vals.length * 0.975)] ?? mean + std,
+      raw: vals
+    };
+  }
+  return out;
+}
+
+/* ── Canvas draws ─────────────────────────────────────────────────────────── */
+function drawEntropyBars(canvas, ranking, assets, maxH) {
+  if (!canvas) return;
+  const par = canvas.parentElement; if (!par) return;
+  const W = par.clientWidth, H = par.clientHeight;
+  if (W < 10 || H < 10) return;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#07050f"; ctx.fillRect(0, 0, W, H);
+
+  if (!ranking.length) {
+    ctx.fillStyle = "rgba(124,58,237,0.4)"; ctx.font = "12px 'Space Mono',monospace";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("Computing…", W / 2, H / 2); return;
+  }
+
+  const PAD = { t: 16, r: 20, b: 24, l: 64 };
+  const CW = W - PAD.l - PAD.r;
+  const rowH = (H - PAD.t - PAD.b) / ranking.length;
+  const barH = Math.min(rowH * 0.55, 18);
+
+  ranking.forEach(({ sym, data }, i) => {
+    if (!data) return;
+    const asset = assets.find(a => a.symbol === sym);
+    const y = PAD.t + i * rowH + rowH / 2;
+    const barW = (data.mean / maxH) * CW;
+    const ciLo = (data.ci95lo / maxH) * CW;
+    const ciHi = (data.ci95hi / maxH) * CW;
+
+    // Rank number
+    ctx.fillStyle = "rgba(255,255,255,0.15)"; ctx.font = `700 9px 'Space Mono',monospace`;
+    ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    ctx.fillText(`#${i + 1}`, PAD.l - 44, y);
+
+    // Symbol label
+    ctx.fillStyle = asset?.color || "#a78bfa";
+    ctx.font = `700 10px 'Space Mono',monospace`;
+    ctx.fillText(sym, PAD.l - 6, y);
+
+    // Bar background track
+    ctx.fillStyle = "rgba(255,255,255,0.04)";
+    ctx.fillRect(PAD.l, y - barH / 2, CW, barH);
+
+    // Bar fill — gradient low=green(predictable) high=red(chaotic)
+    const t = data.mean / maxH; // 0=predictable, 1=chaotic
+    const r = Math.floor(16 + t * 223), g = Math.floor(185 - t * 117), b2 = Math.floor(129 - t * 95);
+    const grad = ctx.createLinearGradient(PAD.l, 0, PAD.l + barW, 0);
+    grad.addColorStop(0, `rgba(${r},${g},${b2},0.9)`);
+    grad.addColorStop(1, `rgba(${r},${g},${b2},0.5)`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(PAD.l, y - barH / 2, barW, barH);
+
+    // CI band
+    ctx.fillStyle = "rgba(255,255,255,0.12)";
+    ctx.fillRect(PAD.l + ciLo, y - barH / 2 - 2, ciHi - ciLo, barH + 4);
+
+    // CI whiskers
+    ctx.strokeStyle = "rgba(255,255,255,0.4)"; ctx.lineWidth = 1.5;
+    ctx.beginPath(); ctx.moveTo(PAD.l + ciLo, y - barH / 2 - 3); ctx.lineTo(PAD.l + ciLo, y + barH / 2 + 3); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(PAD.l + ciHi, y - barH / 2 - 3); ctx.lineTo(PAD.l + ciHi, y + barH / 2 + 3); ctx.stroke();
+
+    // Value label
+    ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.font = `9px 'Space Mono',monospace`;
+    ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.fillText(`${data.mean.toFixed(2)} ±${data.std.toFixed(2)}`, PAD.l + barW + 6, y);
+  });
+
+  // X axis labels
+  ctx.fillStyle = "rgba(255,255,255,0.15)"; ctx.font = "8px 'Space Mono',monospace";
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  for (let i = 0; i <= 4; i++) {
+    const v = maxH / 4 * i;
+    ctx.fillText(v.toFixed(1), PAD.l + (v / maxH) * CW, H - PAD.b + 4);
+  }
+  ctx.fillStyle = "rgba(255,255,255,0.1)"; ctx.font = "8px 'Space Mono',monospace";
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  ctx.fillText("H(X) bits  ←  predictable   chaotic  →", PAD.l + CW / 2, H - PAD.b + 14);
+}
+
+function drawNMIHeatmap(canvas, assets, nmiMatrix) {
+  if (!canvas) return;
+  const par = canvas.parentElement; if (!par) return;
+  const W = par.clientWidth, H = par.clientHeight;
+  if (W < 10 || H < 10) return;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#07050f"; ctx.fillRect(0, 0, W, H);
+
+  const n = assets.length;
+  const PAD = { t: 28, r: 8, b: 8, l: 48 };
+  const cellW = (W - PAD.l - PAD.r) / n;
+  const cellH = (H - PAD.t - PAD.b) / n;
+
+  // Column headers
+  ctx.font = `700 ${Math.min(cellW * 0.35, 9)}px 'Space Mono',monospace`;
+  ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+  assets.forEach((a, j) => {
+    ctx.fillStyle = a.color || "#a78bfa";
+    ctx.fillText(a.symbol.replace("/USD", ""), PAD.l + j * cellW + cellW / 2, PAD.t - 3);
+  });
+
+  // Row labels
+  ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  ctx.font = `700 ${Math.min(cellH * 0.4, 9)}px 'Space Mono',monospace`;
+  assets.forEach((a, i) => {
+    ctx.fillStyle = a.color || "#a78bfa";
+    ctx.fillText(a.symbol.replace("/USD", ""), PAD.l - 3, PAD.t + i * cellH + cellH / 2);
+  });
+
+  // Cells
+  assets.forEach((aI, i) => {
+    assets.forEach((aJ, j) => {
+      const v = nmiMatrix[i]?.[j] ?? 0;
+      const diag = i === j;
+      const x = PAD.l + j * cellW, y = PAD.t + i * cellH;
+
+      if (diag) {
+        ctx.fillStyle = "rgba(124,58,237,0.25)";
+        ctx.fillRect(x, y, cellW - 1, cellH - 1);
+        ctx.fillStyle = "#c4b5fd"; ctx.font = `700 ${Math.min(cellW * 0.3, 9)}px 'Space Mono',monospace`;
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText("—", x + cellW / 2, y + cellH / 2);
+        return;
+      }
+
+      // Color: 0=dark, 0.5=purple, 1=bright green
+      const alpha = 0.08 + v * 0.8;
+      const r = Math.floor(16 + (1 - v) * 100);
+      const g2 = Math.floor(v * 185);
+      const b2 = Math.floor(129 + (1 - v) * 80);
+      ctx.fillStyle = v > 0.5
+        ? `rgba(16,${Math.floor(v * 185)},${Math.floor(129 * (1 - v) + 80 * v)},${alpha})`
+        : `rgba(${100 + Math.floor(v * 100)},${Math.floor(v * 100)},${180 - Math.floor(v * 60)},${alpha})`;
+      ctx.fillRect(x, y, cellW - 1, cellH - 1);
+
+      // Value text
+      if (cellW > 30) {
+        ctx.fillStyle = v > 0.4 ? `rgba(255,255,255,0.85)` : `rgba(255,255,255,0.35)`;
+        ctx.font = `${Math.min(cellW * 0.28, 9)}px 'Space Mono',monospace`;
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(v > 0 ? v.toFixed(2) : "–", x + cellW / 2, y + cellH / 2);
+      }
+
+      // Highlight border for high NMI where Pearson is low (hidden connections)
+      if (v > 0.4) {
+        ctx.strokeStyle = `rgba(167,139,250,${(v - 0.4) * 0.8})`;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y, cellW - 1, cellH - 1);
+      }
+    });
+  });
+}
+
+function drawHiddenConnections(canvas, assets, nmiMatrix, pearsonMatrix) {
+  if (!canvas) return;
+  const par = canvas.parentElement; if (!par) return;
+  const W = par.clientWidth, H = par.clientHeight;
+  if (W < 10 || H < 10) return;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#07050f"; ctx.fillRect(0, 0, W, H);
+
+  // Find pairs where |pearson| < 0.3 but NMI > 0.35
+  const hidden = [];
+  for (let i = 0; i < assets.length; i++) {
+    for (let j = i + 1; j < assets.length; j++) {
+      const nmi = nmiMatrix[i]?.[j] ?? 0;
+      const r = Math.abs(pearsonMatrix[i]?.[j] ?? 0);
+      if (nmi > 0.30 && r < 0.35) {
+        hidden.push({ i, j, nmi, r, symA: assets[i].symbol, symB: assets[j].symbol });
+      }
+    }
+  }
+  hidden.sort((a, b) => (b.nmi - b.r) - (a.nmi - a.r));
+
+  if (!hidden.length) {
+    ctx.fillStyle = "rgba(255,255,255,0.15)"; ctx.font = "11px 'Space Mono',monospace";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("No hidden connections detected", W / 2, H / 2);
+    ctx.fillStyle = "rgba(255,255,255,0.08)"; ctx.font = "9px 'Space Mono',monospace";
+    ctx.fillText("(all high-NMI pairs also have high Pearson r)", W / 2, H / 2 + 20);
+    return;
+  }
+
+  const rowH = Math.min((H - 16) / Math.min(hidden.length, 6), 36);
+  const maxShow = Math.min(hidden.length, Math.floor((H - 16) / rowH));
+
+  hidden.slice(0, maxShow).forEach(({ symA, symB, nmi, r }, idx) => {
+    const y = 16 + idx * rowH;
+    const strength = nmi - r;
+
+    // Row bg
+    ctx.fillStyle = idx % 2 === 0 ? "rgba(124,58,237,0.05)" : "transparent";
+    ctx.fillRect(0, y, W, rowH);
+
+    // Lightning bolt icon
+    ctx.fillStyle = "#f59e0b"; ctx.font = "12px sans-serif";
+    ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.fillText("⚡", 10, y + rowH / 2);
+
+    // Pair names
+    const aAsset = assets.find(a => a.symbol === symA);
+    const bAsset = assets.find(a => a.symbol === symB);
+    ctx.font = `700 10px 'Space Mono',monospace`;
+    ctx.fillStyle = aAsset?.color || "#a78bfa";
+    ctx.fillText(symA, 30, y + rowH / 2 - 6);
+    ctx.fillStyle = "rgba(255,255,255,0.3)"; ctx.font = `9px 'Space Mono',monospace`;
+    ctx.fillText("/", 30 + ctx.measureText(symA).width + 2, y + rowH / 2 - 6);
+    ctx.fillStyle = bAsset?.color || "#7c3aed";
+    ctx.font = `700 10px 'Space Mono',monospace`;
+    ctx.fillText(symB, 30 + ctx.measureText(symA).width + 10, y + rowH / 2 - 6);
+
+    // Metrics row
+    ctx.font = `8px 'Space Mono',monospace`;
+    ctx.fillStyle = "rgba(255,255,255,0.3)";
+    ctx.fillText(`r=${r.toFixed(2)}`, 30, y + rowH / 2 + 6);
+    ctx.fillStyle = "#a78bfa";
+    ctx.fillText(`NMI=${nmi.toFixed(2)}`, 80, y + rowH / 2 + 6);
+
+    // Strength bar
+    const barX = 160, barW = W - barX - 80;
+    ctx.fillStyle = "rgba(255,255,255,0.05)";
+    ctx.fillRect(barX, y + rowH / 2 - 3, barW, 6);
+    const grad = ctx.createLinearGradient(barX, 0, barX + barW, 0);
+    grad.addColorStop(0, "rgba(124,58,237,0.8)");
+    grad.addColorStop(1, "#f59e0b");
+    ctx.fillStyle = grad;
+    ctx.fillRect(barX, y + rowH / 2 - 3, Math.min(strength / 0.6, 1) * barW, 6);
+
+    // Label
+    const label = nmi > 0.6 ? "strong nonlinear" : nmi > 0.45 ? "regime corr" : "weak nonlinear";
+    ctx.fillStyle = "rgba(245,158,11,0.7)"; ctx.font = `700 8px 'Space Mono',monospace`;
+    ctx.textAlign = "right";
+    ctx.fillText(label, W - 6, y + rowH / 2);
+    ctx.textAlign = "left";
+  });
+}
+
+/* ── EntropyView component ────────────────────────────────────────────────── */
+function EntropyView({ histRef, prices, assets, setActiveTab, status }) {
+  const barRef     = useRef();
+  const heatRef    = useRef();
+  const hiddenRef  = useRef();
+  const [entropyData, setEntropyData] = useState(null); // bootstrap results
+  const [nmiMatrix,   setNmiMatrix]   = useState([]);
+  const [pearsonMat,  setPearsonMat]  = useState([]);
+  const [closes,      setCloses]      = useState({});
+  const [loading,     setLoading]     = useState(false);
+  const [seedInfo,    setSeedInfo]    = useState(null);
+  const [lastRun,     setLastRun]     = useState(null);
+  const [autoRun,     setAutoRun]     = useState(true);
+  const [, tick]                      = useState(0);
+
+  const BINS = 8, N_ITER = 40, SAMPLE = 120;
+
+  // Fetch Binance closes for all assets
+  useEffect(() => {
+    let dead = false;
+    const needed = assets.filter(a => !closes[a.symbol] && BN_SYM2[a.symbol]);
+    if (!needed.length) return;
+    setLoading(true);
+    Promise.all(needed.map(a => fetchCloses(a.symbol, "1m", 300)))
+      .then(results => {
+        if (dead) return;
+        const upd = {};
+        needed.forEach((a, i) => { upd[a.symbol] = results[i]; });
+        setCloses(p => ({ ...p, ...upd }));
+      })
+      .catch(() => {})
+      .finally(() => { if (!dead) setLoading(false); });
+    return () => { dead = true; };
+  }, []);
+
+  // Merge Binance + live Pyth ticks
+  const getReturns = () => {
+    const ret = {};
+    for (const a of assets) {
+      const base  = closes[a.symbol] || [];
+      const live  = histRef.current[a.symbol] || [];
+      const merged = base.length ? [...base, ...live].slice(-300) : live;
+      if (merged.length >= 10) ret[a.symbol] = pctReturns(merged);
+    }
+    return ret;
+  };
+
+  // Run analysis
+  const runAnalysis = () => {
+    const returns = getReturns();
+    if (Object.keys(returns).length < 2) return;
+
+    const seed = pythSeed(prices);
+    setSeedInfo({ value: seed, hex: seed.toString(16).padStart(8, "0").toUpperCase(), ts: new Date() });
+
+    // Bootstrap entropy
+    const bsResult = bootstrapEntropy(returns, seed, N_ITER, SAMPLE, BINS);
+    const validSyms = Object.keys(bsResult).filter(s => bsResult[s]);
+    const ranking = validSyms
+      .map(sym => ({ sym, data: bsResult[sym] }))
+      .sort((a, b) => a.data.mean - b.data.mean); // ascending = most predictable first
+    setEntropyData(ranking);
+
+    // NMI matrix (full n×n)
+    const n = assets.length;
+    const nmi = Array.from({ length: n }, () => new Array(n).fill(0));
+    const pears = Array.from({ length: n }, () => new Array(n).fill(0));
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) {
+        if (i === j) { nmi[i][j] = 1; pears[i][j] = 1; continue; }
+        const rA = returns[assets[i].symbol], rB = returns[assets[j].symbol];
+        if (!rA || !rB) continue;
+        const mi = computeMI(rA, rB, BINS);
+        nmi[i][j] = mi?.nmi ?? 0;
+        pears[i][j] = Math.abs(pearson(rA, rB) ?? 0);
+      }
+    }
+    setNmiMatrix(nmi);
+    setPearsonMat(pears);
+    setLastRun(new Date());
+  };
+
+  // Auto-run when data loads
+  useEffect(() => {
+    if (!loading && Object.keys(closes).length > 0 && autoRun) {
+      runAnalysis();
+      setAutoRun(false);
+    }
+  }, [loading, closes]);
+
+  // Redraw on data change
+  useEffect(() => {
+    if (!entropyData) return;
+    const maxH = Math.log2(BINS) + 0.2;
+    drawEntropyBars(barRef.current, entropyData, assets, maxH);
+    drawNMIHeatmap(heatRef.current, assets, nmiMatrix);
+    drawHiddenConnections(hiddenRef.current, assets, nmiMatrix, pearsonMat);
+  }, [entropyData, nmiMatrix]);
+
+  // Resize observers
+  useEffect(() => {
+    if (!entropyData) return;
+    const maxH = Math.log2(BINS) + 0.2;
+    const redraw = () => {
+      drawEntropyBars(barRef.current, entropyData, assets, maxH);
+      drawNMIHeatmap(heatRef.current, assets, nmiMatrix);
+      drawHiddenConnections(hiddenRef.current, assets, nmiMatrix, pearsonMat);
+    };
+    const obs = [barRef, heatRef, hiddenRef].map(r => {
+      const ro = new ResizeObserver(redraw);
+      if (r.current?.parentElement) ro.observe(r.current.parentElement);
+      return ro;
+    });
+    return () => obs.forEach(ro => ro.disconnect());
+  }, [entropyData, nmiMatrix]);
+
+  // Live tick
+  useEffect(() => {
+    const iv = setInterval(() => tick(n => n + 1), 3000);
+    return () => clearInterval(iv);
+  }, []);
+
+  const returns = getReturns();
+  const nAssets = Object.keys(returns).length;
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",width:"100%",height:"100%",background:"#07050f",fontFamily:"'Space Mono',monospace",overflow:"hidden"}}>
+
+      {/* ── Top bar ─────────────────────────────────────────────────── */}
+      <div style={{display:"flex",alignItems:"center",height:48,padding:"0 16px",borderBottom:"1px solid rgba(255,255,255,0.06)",background:"#0b0917",flexShrink:0,gap:12}}>
+        <PythLogo size={22}/>
+        <span style={{fontSize:13,fontWeight:700,color:"#7c3aed",letterSpacing:".06em"}}>PYTH</span>
+        <span style={{fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.25)"}}>ENTROPY</span>
+        <div style={{height:16,width:1,background:"rgba(255,255,255,0.08)"}}/>
+        {seedInfo && (
+          <div style={{display:"flex",alignItems:"center",gap:6,padding:"2px 8px",borderRadius:3,background:"rgba(124,58,237,0.1)",border:"1px solid rgba(124,58,237,0.2)"}}>
+            <span style={{fontSize:8,color:"rgba(167,139,250,0.6)",letterSpacing:".08em"}}>SEED</span>
+            <span style={{fontSize:10,fontWeight:700,color:"#c4b5fd",letterSpacing:".04em"}}>0x{seedInfo.hex}</span>
+            <span style={{fontSize:8,color:"rgba(255,255,255,0.2)"}}>Pyth live</span>
+          </div>
+        )}
+        <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>
+          {loading && <span style={{fontSize:9,color:"rgba(124,58,237,0.6)",letterSpacing:".06em",animation:"pulse 1s infinite"}}>LOADING DATA…</span>}
+          {lastRun && <span style={{fontSize:8,color:"rgba(255,255,255,0.2)"}}>ran {lastRun.toLocaleTimeString()}</span>}
+          <div style={{display:"flex",alignItems:"center",gap:5,padding:"3px 8px",borderRadius:3,background:status==="live"?"rgba(16,185,129,0.1)":"rgba(239,68,68,0.1)",border:`1px solid ${status==="live"?"rgba(16,185,129,0.25)":"rgba(239,68,68,0.25)"}`}}>
+            <span style={{width:5,height:5,borderRadius:"50%",background:status==="live"?"#10b981":"#ef4444",display:"inline-block"}}/>
+            <span style={{fontSize:10,fontWeight:700,color:status==="live"?"#10b981":"#ef4444"}}>{status==="live"?"LIVE":"DEMO"}</span>
+          </div>
+          <button onClick={runAnalysis} style={{background:"rgba(124,58,237,0.2)",border:"1px solid rgba(124,58,237,0.4)",borderRadius:3,padding:"4px 14px",color:"#c4b5fd",cursor:"pointer",fontSize:10,fontFamily:"inherit",fontWeight:700,letterSpacing:".06em"}}
+            onMouseEnter={e=>{e.target.style.background="rgba(124,58,237,0.35)";}}
+            onMouseLeave={e=>{e.target.style.background="rgba(124,58,237,0.2)";}}>
+            ▶ RUN
+          </button>
+          <button onClick={()=>setActiveTab("matrix")} style={{background:"transparent",border:"1px solid rgba(255,255,255,0.12)",borderRadius:3,padding:"4px 12px",color:"rgba(255,255,255,0.5)",cursor:"pointer",fontSize:10,fontFamily:"inherit",fontWeight:600,letterSpacing:".05em"}}
+            onMouseEnter={e=>{e.target.style.borderColor="rgba(124,58,237,0.6)";e.target.style.color="#a78bfa";}}
+            onMouseLeave={e=>{e.target.style.borderColor="rgba(255,255,255,0.12)";e.target.style.color="rgba(255,255,255,0.5)";}}>
+            ← MATRIX
+          </button>
+        </div>
+      </div>
+
+      {/* ── Config bar ──────────────────────────────────────────────── */}
+      <div style={{display:"flex",alignItems:"center",gap:20,padding:"6px 16px",borderBottom:"1px solid rgba(255,255,255,0.04)",background:"#080614",flexShrink:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <span style={{fontSize:8,color:"rgba(255,255,255,0.2)",letterSpacing:".08em"}}>BOOTSTRAP</span>
+          <span style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.5)"}}>{N_ITER} iter × {SAMPLE} samples</span>
+        </div>
+        <div style={{width:1,height:14,background:"rgba(255,255,255,0.06)"}}/>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <span style={{fontSize:8,color:"rgba(255,255,255,0.2)",letterSpacing:".08em"}}>BINS</span>
+          <span style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.5)"}}>{BINS} quantile</span>
+        </div>
+        <div style={{width:1,height:14,background:"rgba(255,255,255,0.06)"}}/>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <span style={{fontSize:8,color:"rgba(255,255,255,0.2)",letterSpacing:".08em"}}>ASSETS</span>
+          <span style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.5)"}}>{nAssets} / {assets.length} ready</span>
+        </div>
+        <div style={{width:1,height:14,background:"rgba(255,255,255,0.06)"}}/>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <span style={{fontSize:8,color:"rgba(255,255,255,0.2)",letterSpacing:".08em"}}>SEED SOURCE</span>
+          <span style={{fontSize:10,fontWeight:700,color:"#a78bfa"}}>Pyth price ticks</span>
+        </div>
+        <div style={{marginLeft:"auto",fontSize:8,color:"rgba(255,255,255,0.15)"}}>
+          MI(X,Y) = H(X)+H(Y)−H(X,Y) · NMI = MI/√(H(X)·H(Y))
+        </div>
+      </div>
+
+      {/* ── Main grid ───────────────────────────────────────────────── */}
+      <div style={{flex:1,display:"grid",gridTemplateColumns:"1fr 1fr",gridTemplateRows:"1fr 200px",gap:1,minHeight:0,background:"rgba(255,255,255,0.04)"}}>
+
+        {/* Entropy Ranking bar chart */}
+        <div style={{display:"flex",flexDirection:"column",background:"#07050f",minHeight:0}}>
+          <div style={{padding:"8px 16px 4px",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <span style={{fontSize:9,color:"rgba(255,255,255,0.25)",letterSpacing:".08em"}}>ENTROPY RANKING — H(X) bits</span>
+            <div style={{display:"flex",gap:8,fontSize:8,color:"rgba(255,255,255,0.2)"}}>
+              <span style={{color:"#10b981"}}>■ low = predictable</span>
+              <span style={{color:"#ef4444"}}>■ high = chaotic</span>
+            </div>
+          </div>
+          <div style={{flex:1,position:"relative",minHeight:0}}>
+            <canvas ref={barRef} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>
+          </div>
+        </div>
+
+        {/* NMI Heatmap */}
+        <div style={{display:"flex",flexDirection:"column",background:"#07050f",minHeight:0}}>
+          <div style={{padding:"8px 16px 4px",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <span style={{fontSize:9,color:"rgba(255,255,255,0.25)",letterSpacing:".08em"}}>NMI HEATMAP — normalized mutual information</span>
+            <div style={{display:"flex",gap:8,fontSize:8,color:"rgba(255,255,255,0.2)"}}>
+              <span style={{color:"rgba(100,80,180,0.8)"}}>■ 0.0</span>
+              <span style={{color:"#a78bfa"}}>■ 0.5</span>
+              <span style={{color:"#10b981"}}>■ 1.0</span>
+            </div>
+          </div>
+          <div style={{flex:1,position:"relative",minHeight:0}}>
+            <canvas ref={heatRef} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>
+          </div>
+        </div>
+
+        {/* Hidden connections — spans full width */}
+        <div style={{display:"flex",flexDirection:"column",background:"#07050f",minHeight:0,gridColumn:"1 / -1"}}>
+          <div style={{padding:"8px 16px 4px",flexShrink:0,display:"flex",alignItems:"center",gap:12}}>
+            <span style={{fontSize:9,color:"rgba(255,255,255,0.25)",letterSpacing:".08em"}}>⚡ HIDDEN CONNECTIONS</span>
+            <span style={{fontSize:8,color:"rgba(255,255,255,0.15)"}}>pairs where |Pearson r| &lt; 0.35 but NMI &gt; 0.30 — non-linear dependency not captured by correlation</span>
+          </div>
+          <div style={{flex:1,position:"relative",minHeight:0}}>
+            <canvas ref={hiddenRef} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>
+          </div>
+        </div>
+
       </div>
     </div>
   );
