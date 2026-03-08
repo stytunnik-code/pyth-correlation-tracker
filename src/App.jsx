@@ -1371,8 +1371,11 @@ const CORR_PAIRS = [
   ["ETH","SOL"],["ETH","DOGE"],["SOL","DOGE"],
   ["BTC","XAU/USD"],["BTC","EUR/USD"],
 ];
-const BN_SYM2 = {"BTC":"BTCUSDT","ETH":"ETHUSDT","SOL":"SOLUSDT","DOGE":"DOGEUSDT",
-  "USDC":"USDCUSDT","XAU/USD":"XAUUSDT","EUR/USD":"EURUSDT","GBP/USD":"GBPUSDT"};
+const BN_SYM2 = {
+  "BTC":"BTCUSDT","ETH":"ETHUSDT","SOL":"SOLUSDT",
+  "DOGE":"DOGEUSDT","USDC":"USDCUSDT",
+  // XAU/EUR/GBP/WTI/AAPL blocked by Binance CORS from Vercel — use Pyth ticks only
+};
 
 async function fetchCloses(sym, tf="1m", limit=300) {
   const bn = BN_SYM2[sym];
@@ -1795,25 +1798,20 @@ function bootstrapEntropy(returns, seed, nIter = 40, sampleSize = 120, nBins = 8
   for (const s of syms) results[s] = [];
 
   for (let iter = 0; iter < nIter; iter++) {
-    const n = Math.min(...syms.map(s => returns[s]?.length || 0), sampleSize * 2);
-    if (n < sampleSize) { // not enough data, use all
-      for (const s of syms) {
-        const arr = returns[s];
-        if (!arr || arr.length < 8) continue;
-        const bins = quantileBins(arr, nBins);
-        results[s].push(shannonH(bins, nBins));
-      }
-      continue;
-    }
-    // Random sample indices
+    const n = Math.min(...syms.map(s => returns[s]?.length || 0));
+    if (n < 8) continue; // not enough data at all
+    // Use min(sampleSize, n*0.8) to ensure variance between iterations
+    const actualSample = Math.min(sampleSize, Math.max(10, Math.floor(n * 0.75)));
+    // Random sample WITH replacement (bootstrap proper)
     const indices = [];
-    while (indices.length < sampleSize) {
+    for (let k = 0; k < actualSample; k++) {
       indices.push(Math.floor(rng() * n));
     }
     for (const s of syms) {
       const arr = returns[s];
       if (!arr || arr.length < 8) continue;
-      const sample = indices.map(i => arr[Math.min(i, arr.length - 1)]);
+      const latest = arr.slice(-n); // align all series to same length
+      const sample = indices.map(i => latest[i % latest.length]);
       const bins = quantileBins(sample, nBins);
       results[s].push(shannonH(bins, nBins));
     }
@@ -1852,6 +1850,8 @@ function drawEntropyBars(canvas, ranking, assets, maxH) {
     ctx.textAlign = "center"; ctx.textBaseline = "middle";
     ctx.fillText("Computing…", W / 2, H / 2); return;
   }
+  // Filter out zero-entropy assets (no data) for display purposes
+  // They show as greyed-out rows at top
 
   const PAD = { t: 16, r: 20, b: 24, l: 64 };
   const CW = W - PAD.l - PAD.r;
@@ -1862,26 +1862,38 @@ function drawEntropyBars(canvas, ranking, assets, maxH) {
     if (!data) return;
     const asset = assets.find(a => a.symbol === sym);
     const y = PAD.t + i * rowH + rowH / 2;
-    const barW = (data.mean / maxH) * CW;
-    const ciLo = (data.ci95lo / maxH) * CW;
-    const ciHi = (data.ci95hi / maxH) * CW;
+    const noData = data.mean < 0.01 && data.std < 0.01;
 
     // Rank number
-    ctx.fillStyle = "rgba(255,255,255,0.15)"; ctx.font = `700 9px 'Space Mono',monospace`;
+    ctx.fillStyle = noData ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.15)";
+    ctx.font = `700 9px 'Space Mono',monospace`;
     ctx.textAlign = "right"; ctx.textBaseline = "middle";
     ctx.fillText(`#${i + 1}`, PAD.l - 44, y);
 
     // Symbol label
-    ctx.fillStyle = asset?.color || "#a78bfa";
+    ctx.fillStyle = noData ? "rgba(255,255,255,0.15)" : (asset?.color || "#a78bfa");
     ctx.font = `700 10px 'Space Mono',monospace`;
     ctx.fillText(sym, PAD.l - 6, y);
 
     // Bar background track
-    ctx.fillStyle = "rgba(255,255,255,0.04)";
+    ctx.fillStyle = "rgba(255,255,255,0.03)";
     ctx.fillRect(PAD.l, y - barH / 2, CW, barH);
 
+    if (noData) {
+      // No data — show placeholder
+      ctx.fillStyle = "rgba(255,255,255,0.07)";
+      ctx.font = `8px 'Space Mono',monospace`;
+      ctx.textAlign = "left"; ctx.textBaseline = "middle";
+      ctx.fillText("awaiting Pyth ticks…", PAD.l + 6, y);
+      return;
+    }
+
+    const barW = (data.mean / maxH) * CW;
+    const ciLo = (data.ci95lo / maxH) * CW;
+    const ciHi = (data.ci95hi / maxH) * CW;
+
     // Bar fill — gradient low=green(predictable) high=red(chaotic)
-    const t = data.mean / maxH; // 0=predictable, 1=chaotic
+    const t = data.mean / maxH;
     const r = Math.floor(16 + t * 223), g = Math.floor(185 - t * 117), b2 = Math.floor(129 - t * 95);
     const grad = ctx.createLinearGradient(PAD.l, 0, PAD.l + barW, 0);
     grad.addColorStop(0, `rgba(${r},${g},${b2},0.9)`);
@@ -1889,19 +1901,20 @@ function drawEntropyBars(canvas, ranking, assets, maxH) {
     ctx.fillStyle = grad;
     ctx.fillRect(PAD.l, y - barH / 2, barW, barH);
 
-    // CI band
-    ctx.fillStyle = "rgba(255,255,255,0.12)";
-    ctx.fillRect(PAD.l + ciLo, y - barH / 2 - 2, ciHi - ciLo, barH + 4);
-
-    // CI whiskers
-    ctx.strokeStyle = "rgba(255,255,255,0.4)"; ctx.lineWidth = 1.5;
-    ctx.beginPath(); ctx.moveTo(PAD.l + ciLo, y - barH / 2 - 3); ctx.lineTo(PAD.l + ciLo, y + barH / 2 + 3); ctx.stroke();
-    ctx.beginPath(); ctx.moveTo(PAD.l + ciHi, y - barH / 2 - 3); ctx.lineTo(PAD.l + ciHi, y + barH / 2 + 3); ctx.stroke();
+    // CI band (only meaningful if std > 0)
+    if (data.std > 0.01) {
+      ctx.fillStyle = "rgba(255,255,255,0.10)";
+      ctx.fillRect(PAD.l + ciLo, y - barH / 2 - 2, Math.max(ciHi - ciLo, 2), barH + 4);
+      ctx.strokeStyle = "rgba(255,255,255,0.4)"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(PAD.l + ciLo, y - barH / 2 - 3); ctx.lineTo(PAD.l + ciLo, y + barH / 2 + 3); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(PAD.l + ciHi, y - barH / 2 - 3); ctx.lineTo(PAD.l + ciHi, y + barH / 2 + 3); ctx.stroke();
+    }
 
     // Value label
+    const ciStr = data.std > 0.01 ? ` ±${data.std.toFixed(2)}` : "";
     ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.font = `9px 'Space Mono',monospace`;
     ctx.textAlign = "left"; ctx.textBaseline = "middle";
-    ctx.fillText(`${data.mean.toFixed(2)} ±${data.std.toFixed(2)}`, PAD.l + barW + 6, y);
+    ctx.fillText(`${data.mean.toFixed(2)}${ciStr}`, PAD.l + barW + 6, y);
   });
 
   // X axis labels
