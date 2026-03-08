@@ -1374,12 +1374,23 @@ const CORR_PAIRS = [
 const BN_SYM2 = {"BTC":"BTCUSDT","ETH":"ETHUSDT","SOL":"SOLUSDT","DOGE":"DOGEUSDT",
   "USDC":"USDCUSDT","XAU/USD":"XAUUSDT","EUR/USD":"EURUSDT","GBP/USD":"GBPUSDT"};
 
-async function fetchCloses(sym, tf="1m", limit=200) {
+async function fetchCloses(sym, tf="1m", limit=300) {
   const bn = BN_SYM2[sym];
   if (!bn) return [];
-  const r = await fetch(`https://api.binance.com/api/v3/klines?symbol=${bn}&interval=${tf}&limit=${limit}`);
-  const d = await r.json();
-  return d.map(k => parseFloat(k[4])); // closes
+  // Try multiple endpoints for CORS compatibility
+  const direct = `https://api.binance.com/api/v3/klines?symbol=${bn}&interval=${tf}&limit=${limit}`;
+  const proxy  = `https://api.allorigins.win/raw?url=${encodeURIComponent(direct)}`;
+  const urls = [direct, proxy];
+  for (const url of urls) {
+    try {
+      const r = await fetch(url);
+      if (!r.ok) continue;
+      const d = await r.json();
+      if (!Array.isArray(d) || !d.length) continue;
+      return d.map(k => parseFloat(k[4]));
+    } catch(e) { continue; }
+  }
+  return []; // fall back to Pyth ticks only
 }
 
 function pctReturns(closes) {
@@ -2146,13 +2157,25 @@ function EntropyView({ histRef, prices, assets, setActiveTab, status }) {
     setLastRun(new Date());
   };
 
-  // Auto-run when data loads
+  // Auto-run when data loads, or after timeout fallback
   useEffect(() => {
-    if (!loading && Object.keys(closes).length > 0 && autoRun) {
-      runAnalysis();
-      setAutoRun(false);
+    if (!loading && autoRun) {
+      // Run even if some Binance fetches failed — use Pyth ticks as fallback
+      setTimeout(() => {
+        const ret = getReturns();
+        if (Object.keys(ret).length >= 2) { runAnalysis(); setAutoRun(false); }
+      }, 200);
     }
   }, [loading, closes]);
+
+  // Safety: run after 4s even if still loading (CORS blocked some assets)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const ret = getReturns();
+      if (Object.keys(ret).length >= 2 && !entropyData) { runAnalysis(); }
+    }, 4000);
+    return () => clearTimeout(t);
+  }, []);
 
   // Redraw on data change
   useEffect(() => {
