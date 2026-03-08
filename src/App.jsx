@@ -1735,7 +1735,6 @@ function mulberry32(seed) {
 }
 
 function pythSeed(prices) {
-  // Hash live Pyth prices + timestamp → deterministic but "live" seed
   const syms = ["BTC","ETH","SOL","DOGE","XAU/USD"];
   let h = Date.now() & 0xFFFFFF;
   for (const s of syms) {
@@ -1745,36 +1744,42 @@ function pythSeed(prices) {
   return h >>> 0;
 }
 
+// ── Gaussian Differential Entropy: H = 0.5·ln(2πe·σ²)
+// Physically meaningful, gives clear separation between assets:
+// USDC (σ≈0.001%) → very low H; BTC/DOGE (σ≈2-3%) → high H
+function gaussianEntropy(arr) {
+  if (!arr || arr.length < 4) return null;
+  const mean = arr.reduce((s,v)=>s+v,0)/arr.length;
+  const variance = arr.reduce((s,v)=>s+(v-mean)**2,0)/arr.length;
+  if (variance <= 0) return 0;
+  return 0.5 * Math.log(2 * Math.PI * Math.E * variance);
+}
+
+// ── Quantile bins on POPULATION edges (for MI/NMI computation only)
 function quantileBins(arr, nBins = 8) {
-  // Assign each value to a quantile bin (robust to outliers)
-  const sorted = [...arr].sort((a, b) => a - b);
-  return arr.map(v => {
-    const rank = sorted.filter(x => x <= v).length - 1;
-    return Math.min(Math.floor(rank / sorted.length * nBins), nBins - 1);
-  });
+  const sorted = [...arr].sort((a,b)=>a-b);
+  const n = sorted.length;
+  const edges = [];
+  for (let i=1; i<nBins; i++) edges.push(sorted[Math.min(Math.floor(i/nBins*n), n-1)]);
+  return arr.map(v => { let b=0; for(const e of edges){if(v>e)b++;else break;} return b; });
 }
 
 function shannonH(bins, nBins = 8) {
-  // Shannon entropy in bits
   const counts = new Array(nBins).fill(0);
   for (const b of bins) counts[b]++;
   let H = 0;
-  for (const c of counts) {
-    if (c > 0) { const p = c / bins.length; H -= p * Math.log2(p); }
-  }
+  for (const c of counts) { if(c>0){const p=c/bins.length; H-=p*Math.log2(p);} }
   return H;
 }
 
 function jointH(binsX, binsY, nBins = 8) {
   const counts = {};
-  for (let i = 0; i < binsX.length; i++) {
-    const k = binsX[i] * nBins + binsY[i];
-    counts[k] = (counts[k] || 0) + 1;
+  for (let i=0; i<binsX.length; i++) {
+    const k = binsX[i]*nBins+binsY[i];
+    counts[k] = (counts[k]||0)+1;
   }
-  let H = 0;
-  for (const c of Object.values(counts)) {
-    const p = c / binsX.length; H -= p * Math.log2(p);
-  }
+  let H=0;
+  for (const c of Object.values(counts)){const p=c/binsX.length; H-=p*Math.log2(p);}
   return H;
 }
 
@@ -1782,61 +1787,67 @@ function computeMI(ra, rb, nBins = 8) {
   const n = Math.min(ra.length, rb.length);
   if (n < 20) return null;
   const a = ra.slice(-n), b = rb.slice(-n);
-  const bA = quantileBins(a, nBins), bB = quantileBins(b, nBins);
-  const hA = shannonH(bA, nBins), hB = shannonH(bB, nBins);
-  const hAB = jointH(bA, bB, nBins);
-  const mi = hA + hB - hAB;
-  const nmi = Math.sqrt(hA * hB) > 0 ? mi / Math.sqrt(hA * hB) : 0;
-  return { mi: Math.max(0, mi), nmi: Math.max(0, Math.min(1, nmi)), hA, hB };
+  const bA = quantileBins(a,nBins), bB = quantileBins(b,nBins);
+  const hA = shannonH(bA,nBins), hB = shannonH(bB,nBins);
+  const hAB = jointH(bA,bB,nBins);
+  const mi = hA+hB-hAB;
+  const nmi = Math.sqrt(hA*hB) > 0 ? mi/Math.sqrt(hA*hB) : 0;
+  return { mi:Math.max(0,mi), nmi:Math.max(0,Math.min(1,nmi)), hA, hB };
 }
 
-function bootstrapEntropy(returns, seed, nIter = 40, sampleSize = 120, nBins = 8) {
-  // Returns {mean, std, ci95lo, ci95hi} for each asset's Shannon H
-  const rng = mulberry32(seed);
-  const results = {}; // sym → []
+// ── Bootstrap Gaussian Entropy
+// Point estimate = gaussianEntropy of FULL returns series (stable, asset-specific)
+// CI = variation across bootstrap resamples (with-replacement, per-asset RNG)
+function bootstrapEntropy(returns, seed, nIter = 60) {
   const syms = Object.keys(returns);
-  for (const s of syms) results[s] = [];
-
-  for (let iter = 0; iter < nIter; iter++) {
-    const n = Math.min(...syms.map(s => returns[s]?.length || 0));
-    if (n < 8) continue; // not enough data at all
-    // Use min(sampleSize, n*0.8) to ensure variance between iterations
-    const actualSample = Math.min(sampleSize, Math.max(10, Math.floor(n * 0.75)));
-    // Random sample WITH replacement (bootstrap proper)
-    const indices = [];
-    for (let k = 0; k < actualSample; k++) {
-      indices.push(Math.floor(rng() * n));
-    }
-    for (const s of syms) {
-      const arr = returns[s];
-      if (!arr || arr.length < 8) continue;
-      const latest = arr.slice(-n); // align all series to same length
-      const sample = indices.map(i => latest[i % latest.length]);
-      const bins = quantileBins(sample, nBins);
-      results[s].push(shannonH(bins, nBins));
-    }
-  }
-
   const out = {};
-  for (const s of syms) {
-    const vals = results[s];
-    if (!vals.length) { out[s] = null; continue; }
-    const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
-    const std = Math.sqrt(vals.reduce((a, v) => a + (v - mean) ** 2, 0) / vals.length);
-    const sorted = [...vals].sort((a, b) => a - b);
+
+  for (let si = 0; si < syms.length; si++) {
+    const s = syms[si];
+    const arr = returns[s];
+    if (!arr || arr.length < 10) { out[s] = null; continue; }
+    const n = arr.length;
+
+    // Point estimate: gaussian differential entropy of full series
+    // H = 0.5 * ln(2πe * σ²) — meaningful, asset-specific
+    const hFull = gaussianEntropy(arr);
+    if (hFull === null) { out[s] = null; continue; }
+
+    // Per-asset RNG: seed xored with asset index → independent streams
+    const rng = mulberry32((seed ^ (si * 0x9E3779B9)) >>> 0);
+
+    // Bootstrap CI: with-replacement resamples to estimate uncertainty
+    const resampleSize = Math.min(150, Math.max(20, Math.floor(n * 0.7)));
+    const hVals = [];
+    for (let iter = 0; iter < nIter; iter++) {
+      // Sample WITH replacement — true bootstrap
+      let sumV = 0, sumV2 = 0;
+      for (let k = 0; k < resampleSize; k++) {
+        const v = arr[Math.floor(rng() * n)];
+        sumV += v; sumV2 += v * v;
+      }
+      const mean = sumV / resampleSize;
+      const variance = sumV2 / resampleSize - mean * mean;
+      if (variance > 0) hVals.push(0.5 * Math.log(2 * Math.PI * Math.E * variance));
+    }
+
+    if (!hVals.length) { out[s] = null; continue; }
+    const hMean = hVals.reduce((a,b)=>a+b,0)/hVals.length;
+    const hStd = Math.sqrt(hVals.reduce((a,v)=>a+(v-hMean)**2,0)/hVals.length);
+    const sorted = [...hVals].sort((a,b)=>a-b);
     out[s] = {
-      mean,
-      std,
-      ci95lo: sorted[Math.floor(vals.length * 0.025)] ?? mean - std,
-      ci95hi: sorted[Math.floor(vals.length * 0.975)] ?? mean + std,
-      raw: vals
+      mean: hFull,  // point estimate from full data
+      std: hStd,
+      ci95lo: sorted[Math.floor(hVals.length*0.025)] ?? hFull - hStd*1.96,
+      ci95hi: sorted[Math.floor(hVals.length*0.975)] ?? hFull + hStd*1.96,
     };
   }
   return out;
 }
 
 /* ── Canvas draws ─────────────────────────────────────────────────────────── */
-function drawEntropyBars(canvas, ranking, assets, maxH) {
+function drawEntropyBars(canvas, ranking, assets, minH, maxH) {
+  if (minH === undefined) { minH = 0; }
   if (!canvas) return;
   const par = canvas.parentElement; if (!par) return;
   const W = par.clientWidth, H = par.clientHeight;
@@ -1862,7 +1873,7 @@ function drawEntropyBars(canvas, ranking, assets, maxH) {
     if (!data) return;
     const asset = assets.find(a => a.symbol === sym);
     const y = PAD.t + i * rowH + rowH / 2;
-    const noData = data.mean < 0.01 && data.std < 0.01;
+    const noData = (data.std === 0 && data.mean === data.ci95lo && data.mean === data.ci95hi);
 
     // Rank number
     ctx.fillStyle = noData ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.15)";
@@ -1888,9 +1899,10 @@ function drawEntropyBars(canvas, ranking, assets, maxH) {
       return;
     }
 
-    const barW = (data.mean / maxH) * CW;
-    const ciLo = (data.ci95lo / maxH) * CW;
-    const ciHi = (data.ci95hi / maxH) * CW;
+    const range = maxH - minH || 1;
+    const barW = Math.max(0, (data.mean - minH) / range * CW);
+    const ciLo = Math.max(0, (data.ci95lo - minH) / range * CW);
+    const ciHi = Math.max(0, (data.ci95hi - minH) / range * CW);
 
     // Bar fill — gradient low=green(predictable) high=red(chaotic)
     const t = data.mean / maxH;
@@ -1920,13 +1932,14 @@ function drawEntropyBars(canvas, ranking, assets, maxH) {
   // X axis labels
   ctx.fillStyle = "rgba(255,255,255,0.15)"; ctx.font = "8px 'Space Mono',monospace";
   ctx.textAlign = "center"; ctx.textBaseline = "top";
+  const range2 = maxH - minH || 1;
   for (let i = 0; i <= 4; i++) {
-    const v = maxH / 4 * i;
-    ctx.fillText(v.toFixed(1), PAD.l + (v / maxH) * CW, H - PAD.b + 4);
+    const v = minH + range2 / 4 * i;
+    ctx.fillText(v.toFixed(1), PAD.l + (i / 4) * CW, H - PAD.b + 4);
   }
   ctx.fillStyle = "rgba(255,255,255,0.1)"; ctx.font = "8px 'Space Mono',monospace";
   ctx.textAlign = "center"; ctx.textBaseline = "top";
-  ctx.fillText("H(X) bits  ←  predictable   chaotic  →", PAD.l + CW / 2, H - PAD.b + 14);
+  ctx.fillText("H(X) = ½·ln(2πeσ²)  nats   ←  predictable · · · chaotic  →", PAD.l + CW / 2, H - PAD.b + 14);
 }
 
 function drawNMIHeatmap(canvas, assets, nmiMatrix) {
@@ -2100,6 +2113,8 @@ function EntropyView({ histRef, prices, assets, setActiveTab, status }) {
   const [loading,     setLoading]     = useState(false);
   const [seedInfo,    setSeedInfo]    = useState(null);
   const [lastRun,     setLastRun]     = useState(null);
+  const [chainSeed,   setChainSeed]   = useState(null);   // {hex, block, ts}
+  const [chainLoading,setChainLoading]= useState(false);
   const [autoRun,     setAutoRun]     = useState(true);
   const [, tick]                      = useState(0);
 
@@ -2136,24 +2151,57 @@ function EntropyView({ histRef, prices, assets, setActiveTab, status }) {
   };
 
   // Run analysis
-  const runAnalysis = () => {
+  // ── On-chain entropy seed via MetaMask ─────────────────────────────────
+  const fetchChainSeed = async () => {
+    if (!window.ethereum) {
+      alert("MetaMask not found. Install MetaMask to use on-chain entropy.");
+      return;
+    }
+    try {
+      setChainLoading(true);
+      // Request accounts (prompts MetaMask connect if needed)
+      await window.ethereum.request({ method: "eth_requestAccounts" });
+      // Get latest block hash from Ethereum mainnet
+      const blockNum = await window.ethereum.request({ method: "eth_blockNumber" });
+      const block = await window.ethereum.request({
+        method: "eth_getBlockByNumber",
+        params: [blockNum, false]
+      });
+      const hashHex = block.hash; // 0x + 64 hex chars
+      // Convert first 8 hex chars to uint32 seed
+      const seed32 = parseInt(hashHex.slice(2, 10), 16);
+      setChainSeed({
+        hex: hashHex.slice(2, 10).toUpperCase(),
+        full: hashHex,
+        block: parseInt(blockNum, 16),
+        ts: new Date()
+      });
+      // Auto-run analysis with chain seed
+      runAnalysisWithSeed(seed32);
+    } catch (e) {
+      console.error("Chain seed error:", e);
+      alert("Failed to fetch block hash: " + (e.message || e));
+    } finally {
+      setChainLoading(false);
+    }
+  };
+
+  const runAnalysisWithSeed = (seedOverride) => {
     const returns = getReturns();
     if (Object.keys(returns).length < 2) return;
-
-    const seed = pythSeed(prices);
-    setSeedInfo({ value: seed, hex: seed.toString(16).padStart(8, "0").toUpperCase(), ts: new Date() });
-
-    // Bootstrap entropy
-    const bsResult = bootstrapEntropy(returns, seed, N_ITER, SAMPLE, BINS);
+    const seed = seedOverride ?? pythSeed(prices);
+    if (!seedOverride) {
+      setSeedInfo({ value: seed, hex: seed.toString(16).padStart(8, "0").toUpperCase(), ts: new Date() });
+      setChainSeed(null); // clear chain seed badge
+    }
+    const bsResult = bootstrapEntropy(returns, seed, N_ITER);
     const validSyms = Object.keys(bsResult).filter(s => bsResult[s]);
     const ranking = validSyms
       .map(sym => ({ sym, data: bsResult[sym] }))
-      .sort((a, b) => a.data.mean - b.data.mean); // ascending = most predictable first
+      .sort((a, b) => a.data.mean - b.data.mean);
     setEntropyData(ranking);
-
-    // NMI matrix (full n×n)
     const n = assets.length;
-    const nmi = Array.from({ length: n }, () => new Array(n).fill(0));
+    const nmi  = Array.from({ length: n }, () => new Array(n).fill(0));
     const pears = Array.from({ length: n }, () => new Array(n).fill(0));
     for (let i = 0; i < n; i++) {
       for (let j = 0; j < n; j++) {
@@ -2161,7 +2209,7 @@ function EntropyView({ histRef, prices, assets, setActiveTab, status }) {
         const rA = returns[assets[i].symbol], rB = returns[assets[j].symbol];
         if (!rA || !rB) continue;
         const mi = computeMI(rA, rB, BINS);
-        nmi[i][j] = mi?.nmi ?? 0;
+        nmi[i][j]  = mi?.nmi ?? 0;
         pears[i][j] = Math.abs(pearson(rA, rB) ?? 0);
       }
     }
@@ -2169,6 +2217,8 @@ function EntropyView({ histRef, prices, assets, setActiveTab, status }) {
     setPearsonMat(pears);
     setLastRun(new Date());
   };
+
+  const runAnalysis = () => runAnalysisWithSeed(null);;
 
   // Auto-run when data loads, or after timeout fallback
   useEffect(() => {
@@ -2193,8 +2243,11 @@ function EntropyView({ histRef, prices, assets, setActiveTab, status }) {
   // Redraw on data change
   useEffect(() => {
     if (!entropyData) return;
-    const maxH = Math.log2(BINS) + 0.2;
-    drawEntropyBars(barRef.current, entropyData, assets, maxH);
+    // Gaussian entropy range: compute from actual data
+    const allH = entropyData.filter(d=>d.data).map(d=>d.data.mean);
+    const minH = allH.length ? Math.min(...allH) : -6;
+    const maxH = allH.length ? Math.max(...allH) + 0.5 : 4;
+    drawEntropyBars(barRef.current, entropyData, assets, minH, maxH);
     drawNMIHeatmap(heatRef.current, assets, nmiMatrix);
     drawHiddenConnections(hiddenRef.current, assets, nmiMatrix, pearsonMat);
   }, [entropyData, nmiMatrix]);
@@ -2202,9 +2255,11 @@ function EntropyView({ histRef, prices, assets, setActiveTab, status }) {
   // Resize observers
   useEffect(() => {
     if (!entropyData) return;
-    const maxH = Math.log2(BINS) + 0.2;
+    const allH = entropyData.filter(d=>d.data).map(d=>d.data.mean);
+    const minH = allH.length ? Math.min(...allH) : -6;
+    const maxH = allH.length ? Math.max(...allH) + 0.5 : 4;
     const redraw = () => {
-      drawEntropyBars(barRef.current, entropyData, assets, maxH);
+      drawEntropyBars(barRef.current, entropyData, assets, minH, maxH);
       drawNMIHeatmap(heatRef.current, assets, nmiMatrix);
       drawHiddenConnections(hiddenRef.current, assets, nmiMatrix, pearsonMat);
     };
