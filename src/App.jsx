@@ -862,7 +862,52 @@ export default function App(){
 /* ─── CHART VIEW ─────────────────────────────────────────────────────────── */
 const TF_LIST = ["1m","5m","15m","1h","4h","1d"];
 const TF_SECS = {"1m":60,"5m":300,"15m":900,"1h":3600,"4h":14400,"1d":86400};
-const BN_SYM  = {"BTC":"BTCUSDT","ETH":"ETHUSDT","SOL":"SOLUSDT","DOGE":"DOGEUSDT","USDC":"USDCUSDT","XAU/USD":"XAUUSDT","EUR/USD":"EURUSDT","GBP/USD":"GBPUSDT"};
+
+// Pyth Benchmarks symbol map — covers ALL assets (crypto + forex + metals + stocks)
+const PYTH_SYM = {
+  "BTC":     "Crypto.BTC/USD",
+  "ETH":     "Crypto.ETH/USD",
+  "SOL":     "Crypto.SOL/USD",
+  "DOGE":    "Crypto.DOGE/USD",
+  "USDC":    "Crypto.USDC/USD",
+  "XAU/USD": "Metal.XAU/USD",
+  "EUR/USD": "FX.EUR/USD",
+  "GBP/USD": "FX.GBP/USD",
+  "WTI/USD": "Energy.WTI/USD",
+  "AAPL":    "Equity.US.AAPL/USD",
+  "BTI":     "Equity.US.BTI/USD",
+};
+
+// Pyth Benchmarks resolution map (TradingView-compatible)
+const PYTH_RES = {"1m":"1","5m":"5","15m":"15","1h":"60","4h":"240","1d":"D"};
+
+// Fetch OHLCV from Pyth Benchmarks API
+// Returns [{t,o,h,l,c,v,tfs}] same shape as Binance klines
+async function fetchPyth(symbol, tf = "1m", countback = 300) {
+  const pythSym = PYTH_SYM[symbol];
+  if (!pythSym) return [];
+  const res  = PYTH_RES[tf] || "1";
+  const now  = Math.floor(Date.now() / 1000);
+  const from = now - TF_SECS[tf] * countback;
+  const url  = `https://benchmarks.pyth.network/v1/shims/tradingview/history`
+    + `?symbol=${encodeURIComponent(pythSym)}&resolution=${res}`
+    + `&from=${from}&to=${now}&countback=${countback}`;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    const d = await r.json();
+    if (d.s !== "ok" || !d.t?.length) return [];
+    const tfs = TF_SECS[tf] || 60;
+    return d.t.map((t, i) => ({
+      t, tfs,
+      o: d.o[i], h: d.h[i], l: d.l[i], c: d.c[i],
+      v: d.v?.[i] ?? 0,
+    }));
+  } catch(e) {
+    console.warn("fetchPyth error:", symbol, e.message);
+    return [];
+  }
+}
 
 function drawCandles(canvas, bars, chartType) {
   if (!canvas) return;
@@ -1037,24 +1082,13 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
   const barsRef   = useRef([]);
   const [, redraw] = useState(0);
 
-  // Fetch Binance history
+  // Fetch history from Pyth Benchmarks (all assets: crypto + metals + forex + stocks)
   useEffect(()=>{
     let dead = false;
-    const sym = BN_SYM[chartAsset];
-    if (!sym) return;
-    fetch("https://api.binance.com/api/v3/klines?symbol="+sym+"&interval="+chartTf+"&limit=300")
-      .then(r=>r.json())
-      .then(raw=>{
-        if (dead) return;
-        const candles = raw.map(k=>({
-          t:Math.floor(k[0]/1000), o:parseFloat(k[1]),
-          h:parseFloat(k[2]), l:parseFloat(k[3]),
-          c:parseFloat(k[4]), v:parseFloat(k[5]),
-          tfs: TF_SECS[chartTf]||60
-        }));
-        setChartHist(p=>({...p,[chartAsset]:{...(p[chartAsset]||{}),[chartTf]:candles}}));
-      })
-      .catch(()=>{});
+    fetchPyth(chartAsset, chartTf, 300).then(candles => {
+      if (dead || !candles.length) return;
+      setChartHist(p=>({...p,[chartAsset]:{...(p[chartAsset]||{}),[chartTf]:candles}}));
+    });
     return ()=>{dead=true;};
   },[chartAsset, chartTf]);
 
@@ -1370,34 +1404,24 @@ function drawRollingCorr(canvas, ha, hb, window=30) {
 
 /* ─── CORRELATION VIEW ───────────────────────────────────────────────────── */
 const CORR_PAIRS = [
+  // Crypto pairs
   ["BTC","ETH"],["BTC","SOL"],["BTC","DOGE"],
-  ["ETH","SOL"],["ETH","DOGE"],["SOL","DOGE"],
-  ["BTC","XAU/USD"],["BTC","EUR/USD"],
+  ["ETH","SOL"],["SOL","DOGE"],
+  // Crypto vs Macro
+  ["BTC","XAU/USD"],["ETH","XAU/USD"],
+  ["BTC","EUR/USD"],["ETH","EUR/USD"],
+  // Macro pairs
+  ["XAU/USD","EUR/USD"],["XAU/USD","GBP/USD"],
+  // Crypto vs Equity
+  ["BTC","AAPL"],["ETH","AAPL"],
 ];
-const BN_SYM2 = {
-  "BTC":"BTCUSDT","ETH":"ETHUSDT","SOL":"SOLUSDT",
-  "DOGE":"DOGEUSDT","USDC":"USDCUSDT",
-  // XAU/EUR/GBP/WTI/AAPL blocked by Binance CORS from Vercel — use Pyth ticks only
-};
-
-async function fetchCloses(sym, tf="1m", limit=300) {
-  const bn = BN_SYM2[sym];
-  if (!bn) return [];
-  // Try multiple endpoints for CORS compatibility
-  const direct = `https://api.binance.com/api/v3/klines?symbol=${bn}&interval=${tf}&limit=${limit}`;
-  const proxy  = `https://api.allorigins.win/raw?url=${encodeURIComponent(direct)}`;
-  const urls = [direct, proxy];
-  for (const url of urls) {
-    try {
-      const r = await fetch(url);
-      if (!r.ok) continue;
-      const d = await r.json();
-      if (!Array.isArray(d) || !d.length) continue;
-      return d.map(k => parseFloat(k[4]));
-    } catch(e) { continue; }
-  }
-  return []; // fall back to Pyth ticks only
+// fetchCloses: uses Pyth Benchmarks for ALL assets — no CORS, no Binance dependency
+// Returns array of close prices (same interface as before)
+async function fetchCloses(sym, tf = "1m", limit = 300) {
+  const bars = await fetchPyth(sym, tf, limit);
+  return bars.map(b => b.c);
 }
+
 
 function pctReturns(closes) {
   const r = [];
@@ -2124,7 +2148,7 @@ function EntropyView({ histRef, prices, assets, setActiveTab, status }) {
   // Fetch Binance closes for all assets
   useEffect(() => {
     let dead = false;
-    const needed = assets.filter(a => !closes[a.symbol] && BN_SYM2[a.symbol]);
+    const needed = assets.filter(a => !closes[a.symbol] && PYTH_SYM[a.symbol]);
     if (!needed.length) return;
     setLoading(true);
     Promise.all(needed.map(a => fetchCloses(a.symbol, "1m", 300)))
