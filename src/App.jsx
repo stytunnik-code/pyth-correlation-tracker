@@ -345,21 +345,21 @@ function drawEntropyHistory(canvas, entropyHistory) {
 
 // ── ChainView component ────────────────────────────────────────────────────
 function ChainView({ setActiveTab }) {
-  const [connected,  setConnected]  = React.useState(false);
-  const [account,    setAccount]    = React.useState(null);
-  const [network,    setNetwork]    = React.useState(null);
-  const [blocks,     setBlocks]     = React.useState([]);      // [{number, hash, ts, txCount, gasUsed}]
-  const [hashes,     setHashes]     = React.useState([]);      // raw 0x... strings
-  const [entropyHist,setEntropyHist]= React.useState([]);      // H per block
-  const [polling,    setPolling]    = React.useState(false);
-  const [lastBlock,  setLastBlock]  = React.useState(null);
-  const [error,      setError]      = React.useState(null);
-  const [sessionH,   setSessionH]   = React.useState(null);   // session composite hash
+  const [connected,  setConnected]  = useState(false);
+  const [account,    setAccount]    = useState(null);
+  const [network,    setNetwork]    = useState(null);
+  const [blocks,     setBlocks]     = useState([]);      // [{number, hash, ts, txCount, gasUsed}]
+  const [hashes,     setHashes]     = useState([]);      // raw 0x... strings
+  const [entropyHist,setEntropyHist]= useState([]);      // H per block
+  const [polling,    setPolling]    = useState(false);
+  const [lastBlock,  setLastBlock]  = useState(null);
+  const [error,      setError]      = useState(null);
+  const [sessionH,   setSessionH]   = useState(null);   // session composite hash
 
-  const bitmapRef  = React.useRef(null);
-  const histRef2   = React.useRef(null);
-  const histoRef   = React.useRef(null);
-  const pollRef    = React.useRef(null);
+  const bitmapRef  = useRef(null);
+  const histRef2   = useRef(null);
+  const histoRef   = useRef(null);
+  const pollRef    = useRef(null);
 
   // ── Compute Shannon H of byte distribution from hashes
   const computeH = (hashList) => {
@@ -453,7 +453,7 @@ function ChainView({ setActiveTab }) {
   };
 
   // ── Poll for new blocks
-  const startPolling = React.useCallback(() => {
+  const startPolling = useCallback(() => {
     if (pollRef.current) return;
     setPolling(true);
     pollRef.current = setInterval(async () => {
@@ -493,17 +493,17 @@ function ChainView({ setActiveTab }) {
     clearInterval(pollRef.current); pollRef.current = null; setPolling(false);
   };
 
-  React.useEffect(() => () => clearInterval(pollRef.current), []);
+  useEffect(() => () => clearInterval(pollRef.current), []);
 
   // ── Redraw canvases
-  React.useEffect(() => {
+  useEffect(() => {
     drawHashBitmap(bitmapRef.current, hashes);
     drawByteHistogram(histoRef.current, hashes);
     drawEntropyHistory(histRef2.current, entropyHist);
   }, [hashes, entropyHist]);
 
   // ── Resize
-  React.useEffect(() => {
+  useEffect(() => {
     const redraw = () => {
       drawHashBitmap(bitmapRef.current, hashes);
       drawByteHistogram(histoRef.current, hashes);
