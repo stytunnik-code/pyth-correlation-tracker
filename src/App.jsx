@@ -2289,13 +2289,36 @@ function EntropyView({ histRef, prices, assets, setActiveTab, status }) {
         <span style={{fontSize:13,fontWeight:700,color:"#7c3aed",letterSpacing:".06em"}}>PYTH</span>
         <span style={{fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.25)"}}>ENTROPY</span>
         <div style={{height:16,width:1,background:"rgba(255,255,255,0.08)"}}/>
-        {seedInfo && (
-          <div style={{display:"flex",alignItems:"center",gap:6,padding:"2px 8px",borderRadius:3,background:"rgba(124,58,237,0.1)",border:"1px solid rgba(124,58,237,0.2)"}}>
-            <span style={{fontSize:8,color:"rgba(167,139,250,0.6)",letterSpacing:".08em"}}>SEED</span>
-            <span style={{fontSize:10,fontWeight:700,color:"#c4b5fd",letterSpacing:".04em"}}>0x{seedInfo.hex}</span>
-            <span style={{fontSize:8,color:"rgba(255,255,255,0.2)"}}>Pyth live</span>
+        {/* Seed badge — shows chain seed if available, else Pyth live */}
+        {(seedInfo || chainSeed) && (
+          <div style={{display:"flex",alignItems:"center",gap:6,padding:"2px 8px",borderRadius:3,
+            background: chainSeed ? "rgba(16,185,129,0.08)" : "rgba(124,58,237,0.1)",
+            border: chainSeed ? "1px solid rgba(16,185,129,0.25)" : "1px solid rgba(124,58,237,0.2)"}}>
+            <span style={{fontSize:8,color: chainSeed?"rgba(52,211,153,0.7)":"rgba(167,139,250,0.6)",letterSpacing:".08em"}}>SEED</span>
+            <span style={{fontSize:10,fontWeight:700,color: chainSeed?"#34d399":"#c4b5fd",letterSpacing:".04em",fontFamily:"'Space Mono',monospace"}}>
+              0x{chainSeed ? chainSeed.hex : seedInfo?.hex}
+            </span>
+            {chainSeed
+              ? <span style={{fontSize:8,color:"rgba(52,211,153,0.5)"}}>⛓ block #{chainSeed.block}</span>
+              : <span style={{fontSize:8,color:"rgba(255,255,255,0.2)"}}>Pyth live</span>
+            }
           </div>
         )}
+        {/* On-chain entropy button */}
+        <button
+          onClick={fetchChainSeed}
+          disabled={chainLoading}
+          title="Use Ethereum block hash as entropy seed via MetaMask"
+          style={{display:"flex",alignItems:"center",gap:5,padding:"3px 10px",
+            background: chainSeed ? "rgba(16,185,129,0.15)" : "rgba(255,255,255,0.04)",
+            border: chainSeed ? "1px solid rgba(16,185,129,0.35)" : "1px solid rgba(255,255,255,0.1)",
+            borderRadius:3,cursor:"pointer",color: chainSeed?"#34d399":"rgba(255,255,255,0.4)",
+            fontSize:10,fontFamily:"inherit",fontWeight:700,letterSpacing:".05em",
+            opacity: chainLoading ? 0.6 : 1, transition:"all .2s"}}
+          onMouseEnter={e=>{if(!chainLoading){e.currentTarget.style.borderColor="rgba(16,185,129,0.5)";e.currentTarget.style.color="#34d399";}}}
+          onMouseLeave={e=>{if(!chainSeed){e.currentTarget.style.borderColor="rgba(255,255,255,0.1)";e.currentTarget.style.color="rgba(255,255,255,0.4)";}}}>
+          {chainLoading ? "…" : "⛓"} CHAIN
+        </button>
         <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>
           {loading && <span style={{fontSize:9,color:"rgba(124,58,237,0.6)",letterSpacing:".06em",animation:"pulse 1s infinite"}}>LOADING DATA…</span>}
           {lastRun && <span style={{fontSize:8,color:"rgba(255,255,255,0.2)"}}>ran {lastRun.toLocaleTimeString()}</span>}
@@ -2334,8 +2357,10 @@ function EntropyView({ histRef, prices, assets, setActiveTab, status }) {
         </div>
         <div style={{width:1,height:14,background:"rgba(255,255,255,0.06)"}}/>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
-          <span style={{fontSize:8,color:"rgba(255,255,255,0.2)",letterSpacing:".08em"}}>SEED SOURCE</span>
-          <span style={{fontSize:10,fontWeight:700,color:"#a78bfa"}}>Pyth price ticks</span>
+          <span style={{fontSize:8,color: chainSeed?"rgba(52,211,153,0.5)":"rgba(255,255,255,0.2)",letterSpacing:".08em"}}>SEED SOURCE</span>
+          <span style={{fontSize:10,fontWeight:700,color: chainSeed ? "#34d399" : "#a78bfa"}}>
+            {chainSeed ? `⛓ ETH block #${chainSeed.block}` : "Pyth price ticks"}
+          </span>
         </div>
         <div style={{marginLeft:"auto",fontSize:8,color:"rgba(255,255,255,0.15)"}}>
           MI(X,Y) = H(X)+H(Y)−H(X,Y) · NMI = MI/√(H(X)·H(Y))
