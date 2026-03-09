@@ -826,7 +826,13 @@ export default function App(){
   const [tickCount,setTickCount]=useState(0);
   const [lastUpdate,setLastUpdate]=useState(null);
   const [errorMsg,setErrorMsg]=useState(null);
+  const [entropyLiveRun,setEntropyLiveRun]=useState(false);
+  const [corrAlertEnabled,setCorrAlertEnabled]=useState(false);
+  const [corrAlertPair,setCorrAlertPair]=useState("BTC-ETH");
+  const [corrAlertThreshold,setCorrAlertThreshold]=useState(0.8);
+  const [corrAlertHit,setCorrAlertHit]=useState(false);
   const histRef=useRef({});
+  const corrTraceRef=useRef({});
 
   useEffect(()=>{setTimeout(()=>setMounted(true),80);},[]);
 
@@ -901,9 +907,35 @@ export default function App(){
       nc[`${a.symbol}-${b.symbol}`]=pearson(histRef.current[a.symbol]||[],histRef.current[b.symbol]||[]);
     }));
     setCorr(nc);
+
+    for(let i=0;i<ASSETS.length;i++)for(let j=i+1;j<ASSETS.length;j++){
+      const key=`${ASSETS[i].symbol}-${ASSETS[j].symbol}`;
+      const v=nc[key];
+      if(v==null || !isFinite(v)) continue;
+      if(!corrTraceRef.current[key]) corrTraceRef.current[key]=[];
+      corrTraceRef.current[key].push(v);
+      if(corrTraceRef.current[key].length>24) corrTraceRef.current[key].shift();
+    }
   },[history]);
 
+  useEffect(()=>{
+    if(!corrAlertEnabled){ setCorrAlertHit(false); return; }
+    const series = corrTraceRef.current[corrAlertPair] || [];
+    const recent = series.slice(-6);
+    if(recent.length < 6) { setCorrAlertHit(false); return; }
+    const min = Math.min(...recent), max = Math.max(...recent);
+    const avgAbs = recent.reduce((s,v)=>s+Math.abs(v),0)/recent.length;
+    setCorrAlertHit(max - min <= 0.04 && avgAbs >= corrAlertThreshold);
+  },[corr, corrAlertEnabled, corrAlertPair, corrAlertThreshold]);
+
   const vis=filter==="all"?ASSETS:ASSETS.filter(a=>a.category===filter);
+  const corrAlertOptions = [];
+  for(let i=0;i<ASSETS.length;i++) for(let j=i+1;j<ASSETS.length;j++) {
+    corrAlertOptions.push({
+      key:`${ASSETS[i].symbol}-${ASSETS[j].symbol}`,
+      label:`${ASSETS[i].symbol} / ${ASSETS[j].symbol}`
+    });
+  }
 
   function topPairs(dir){
     const pairs=[];
@@ -1016,6 +1048,26 @@ export default function App(){
         )}
         {/* ══ TICKERS ════════════════════════════════════════════════════ */}
         <section className={`sec${mobileTab!=="tickers"?" mh":""}`} id="sec-tickers">
+          {false && <div className="card" style={{marginBottom:12,padding:"12px 14px",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
+            <div style={{display:"flex",flexDirection:"column",gap:3,minWidth:180}}>
+              <span style={{fontSize:9,color:"rgba(255,255,255,0.28)",letterSpacing:".1em",textTransform:"uppercase"}}>Correlation Stability Alert</span>
+              <span style={{fontSize:11,color:corrAlertHit?"#10b981":"rgba(255,255,255,0.42)"}}>
+                {corrAlertHit ? "stabilized now" : "waiting for stable correlation regime"}
+              </span>
+            </div>
+            <select value={corrAlertPair} onChange={e=>setCorrAlertPair(e.target.value)} style={{background:"#0b0917",border:"1px solid rgba(255,255,255,0.1)",borderRadius:6,color:"#fff",padding:"8px 10px",fontFamily:"inherit",fontSize:11}}>
+              {corrAlertOptions.map(opt=><option key={opt.key} value={opt.key}>{opt.label}</option>)}
+            </select>
+            <select value={corrAlertThreshold} onChange={e=>setCorrAlertThreshold(parseFloat(e.target.value))} style={{background:"#0b0917",border:"1px solid rgba(255,255,255,0.1)",borderRadius:6,color:"#fff",padding:"8px 10px",fontFamily:"inherit",fontSize:11}}>
+              {[0.6,0.7,0.8,0.9].map(v=><option key={v} value={v}>|r| ≥ {v.toFixed(1)}</option>)}
+            </select>
+            <button onClick={()=>setCorrAlertEnabled(v=>!v)} style={{background:corrAlertEnabled?"rgba(16,185,129,0.14)":"rgba(124,58,237,0.18)",border:`1px solid ${corrAlertEnabled?"rgba(16,185,129,0.35)":"rgba(124,58,237,0.35)"}`,borderRadius:6,color:corrAlertEnabled?"#34d399":"#c4b5fd",padding:"8px 12px",fontFamily:"inherit",fontSize:11,fontWeight:700,cursor:"pointer"}}>
+              {corrAlertEnabled ? "ALERT ON" : "ENABLE ALERT"}
+            </button>
+            <div style={{marginLeft:"auto",fontSize:10,color:corrAlertHit?"#10b981":"rgba(255,255,255,0.3)",letterSpacing:".06em"}}>
+              {corrAlertEnabled ? (corrAlertHit ? "STABLE CORRELATION DETECTED" : "MONITORING LIVE") : "ALERT DISABLED"}
+            </div>
+          </div>}
           <div className="tgrid">
             {status==="connecting"?(
               vis.map((_,i)=><TickerSkeleton key={i}/>)
@@ -1218,16 +1270,16 @@ export default function App(){
       </main>
 
       {activeTab==="charts"&&<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#070512",zIndex:200,display:"flex",flexDirection:"column",fontFamily:"'Space Mono',monospace"}}>
-        <ChartView assets={ASSETS} prices={prices} chartAsset={chartAsset} setChartAsset={setChartAsset} chartTf={chartTf} setChartTf={setChartTf} chartType={chartType} setChartType={setChartType} chartHist={chartHist} setChartHist={setChartHist} setActiveTab={setActiveTab} status={status}/>
+        <ChartView assets={ASSETS} prices={prices} chartAsset={chartAsset} setChartAsset={setChartAsset} chartTf={chartTf} setChartTf={setChartTf} chartType={chartType} setChartType={setChartType} chartHist={chartHist} setChartHist={setChartHist} setActiveTab={setActiveTab} status={status} histRef={histRef}/>
       </div>}
 
       {activeTab==="corr"&&<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#07050f",zIndex:200,display:"flex",flexDirection:"column"}}>
         <CorrView histRef={histRef} prices={prices} assets={ASSETS} setActiveTab={setActiveTab} status={status}/>
       </div>}
 
-      {activeTab==="entropy"&&<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#07050f",zIndex:200,display:"flex",flexDirection:"column"}}>
-        <EntropyView histRef={histRef} prices={prices} assets={ASSETS} setActiveTab={setActiveTab} status={status}/>
-      </div>}
+      <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#07050f",zIndex:200,display:activeTab==="entropy"?"flex":"none",flexDirection:"column"}}>
+        <EntropyView histRef={histRef} prices={prices} assets={ASSETS} setActiveTab={setActiveTab} status={status} liveRun={entropyLiveRun} setLiveRun={setEntropyLiveRun} corrAlertEnabled={corrAlertEnabled} setCorrAlertEnabled={setCorrAlertEnabled} corrAlertPair={corrAlertPair} setCorrAlertPair={setCorrAlertPair} corrAlertThreshold={corrAlertThreshold} setCorrAlertThreshold={setCorrAlertThreshold} corrAlertHit={corrAlertHit} corrAlertOptions={corrAlertOptions}/>
+      </div>
 
       {activeTab==="docs" && <div style={{position:"fixed",inset:0,zIndex:200,display:"flex",flexDirection:"column"}}>
         <DocsView setActiveTab={setActiveTab}/>
@@ -1407,11 +1459,11 @@ export default function App(){
         /* HEATMAP */
         .hmwrap { overflow-x: auto; padding: 10px; width: 100%; }
         .hm { border-collapse: separate; border-spacing: 2px; width: 100%; }
-        .hm-corner { width: 72px; vertical-align: bottom; padding-bottom: 4px; }
+        .hm-corner { width: 72px; vertical-align: middle; padding-bottom: 0; }
         .hm-corner-txt { font-size: 7px; color: var(--tm); display: block; text-align: right; }
-        .hm-cl { padding: 2px 1px; }
-        .hm-cl-inner { writing-mode: vertical-lr; transform: rotate(180deg); display: flex; flex-direction: column; align-items: center; height: 56px; justify-content: flex-end; }
-        .hm-cl-sym { font-size: 8px; font-weight: 700; letter-spacing: .03em; white-space: nowrap; }
+        .hm-cl { padding: 2px 3px 8px; min-width: 64px; vertical-align: bottom; }
+        .hm-cl-inner { display: flex; flex-direction: row; align-items: flex-end; justify-content: center; min-height: 22px; }
+        .hm-cl-sym { font-size: 8px; font-weight: 700; letter-spacing: .03em; white-space: nowrap; text-align: center; }
         .hm-rl { padding-right: 6px; white-space: nowrap; }
         .hm-rl-inner { display: flex; align-items: center; gap: 5px; }
         .hm-rl-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
@@ -1422,6 +1474,25 @@ export default function App(){
         .diag-sym { font-size: 8px; font-weight: 700; color: var(--td); }
         .xbtn { background: transparent; border: 1px solid var(--tm); color: var(--td); padding: 4px 10px; border-radius: 5px; cursor: pointer; font-size: 10px; font-family: var(--fm); transition: all .2s; white-space: nowrap; }
         .xbtn:hover { border-color: var(--pud); color: var(--pul); }
+        .chart-back-btn { position: relative; overflow: hidden; isolation: isolate; }
+        .chart-back-btn::before {
+          content: "";
+          position: absolute;
+          inset: -1px;
+          background: linear-gradient(115deg, transparent 0%, rgba(124,58,237,0.0) 18%, rgba(124,58,237,0.3) 38%, rgba(59,130,246,0.35) 50%, rgba(16,185,129,0.22) 62%, rgba(124,58,237,0.0) 82%, transparent 100%);
+          transform: translateX(-140%);
+          opacity: 0;
+          transition: opacity .18s ease;
+          z-index: -1;
+        }
+        .chart-back-btn:hover::before {
+          opacity: 1;
+          animation: chartBackWave 1.05s ease forwards;
+        }
+        @keyframes chartBackWave {
+          0% { transform: translateX(-140%); }
+          100% { transform: translateX(140%); }
+        }
 
         /* DETAIL PANEL */
         .detail-panel { animation: slideIn .28s ease both; }
@@ -1502,7 +1573,8 @@ export default function App(){
           .fbar { padding: 7px 12px; }
           .rgrid { grid-template-columns: 1fr; }
           .hm-cell { width: 34px; height: 34px; font-size: 7px; }
-          .hm-cl-inner { height: 44px; }
+          .hm-cl { min-width: 56px; }
+          .hm-cl-inner { min-height: 28px; }
           .dp-corr { font-size: 32px; }
           .dp-sym { font-size: 14px; }
         }
@@ -1566,7 +1638,14 @@ async function fetchPyth(symbol, tf = "1m", countback = 300) {
   }
 }
 
-function drawCandles(canvas, bars, chartType) {
+const CHART_VISIBLE_BARS = 180;
+const CHART_FETCH_BARS = 1000;
+const CHART_RIGHT_PAD_RATIO = 0;
+const CHART_MIN_VISIBLE_BARS = 30;
+const CHART_MAX_VISIBLE_BARS = 400;
+const CHART_OVERSCROLL_BARS = 80;
+
+function drawCandles(canvas, bars, chartType, view = {}) {
   if (!canvas) return;
   const par = canvas.parentElement;
   if (!par) return;
@@ -1589,16 +1668,25 @@ function drawCandles(canvas, bars, chartType) {
   const PH = (H - PAD.t - PAD.b) * 0.78;
   const VH = (H - PAD.t - PAD.b) * 0.14;
   const CW = W - PAD.l - PAD.r;
-  const vis = bars.slice(-200);
+  const visibleCount = Math.max(20, Math.min(view.visibleCount || CHART_VISIBLE_BARS, bars.length));
+  const maxOffset = Math.max(0, bars.length - visibleCount);
+  const overscrollBars = Math.max(0, view.overscrollBars ?? CHART_OVERSCROLL_BARS);
+  const panBars = Math.max(-overscrollBars, Math.min(view.offset || 0, maxOffset + overscrollBars));
+  const historyOffset = Math.max(0, Math.min(maxOffset, panBars));
+  const end = Math.max(visibleCount, bars.length - historyOffset);
+  const start = Math.max(0, end - visibleCount);
+  const vis = bars.slice(start, end);
   const N = vis.length;
-  const colW = CW / N;
+  const overscrollShiftBars = historyOffset - panBars;
+  const totalSlots = Math.max(visibleCount, 1);
+  const colW = CW / totalSlots;
 
   const lo = Math.min(...vis.map(b=>b.l));
   const hi = Math.max(...vis.map(b=>b.h));
   const rng = hi - lo || hi * 0.002 || 1;
   const yMin = lo - rng*0.03, yMax = hi + rng*0.06;
   const toY = v => PAD.t + PH * (1 - (v-yMin)/(yMax-yMin));
-  const toX = i => PAD.l + (i+0.5)*colW;
+  const toX = i => PAD.l + (i + 0.5 - overscrollShiftBars) * colW;
 
   // Grid lines + price labels
   const gridCount = 6;
@@ -1681,7 +1769,7 @@ function drawCandles(canvas, bars, chartType) {
   const last = vis[vis.length-1].c;
   const ly = toY(last);
   if (ly>=PAD.t && ly<=PAD.t+PH) {
-    const up = last >= vis[0].o;
+    const up = vis.length > 1 ? last >= vis[Math.max(0, vis.length - 2)].c : last >= vis[0].o;
     ctx.strokeStyle = up ? "rgba(16,185,129,0.4)" : "rgba(239,68,68,0.4)";
     ctx.lineWidth = 1; ctx.setLineDash([4,4]);
     ctx.beginPath(); ctx.moveTo(PAD.l, ly); ctx.lineTo(W-PAD.r, ly); ctx.stroke();
@@ -1692,6 +1780,18 @@ function drawCandles(canvas, bars, chartType) {
     ctx.fillStyle = "#fff"; ctx.font = "bold 9px 'Space Mono',monospace";
     ctx.textAlign = "left"; ctx.textBaseline = "middle";
     ctx.fillText(s, W-PAD.r+6, ly);
+  }
+
+  if (historyOffset > 0) {
+    ctx.fillStyle = "rgba(7,5,15,0.9)";
+    ctx.fillRect(PAD.l + 8, PAD.t + 8, 136, 22);
+    ctx.strokeStyle = "rgba(124,58,237,0.35)";
+    ctx.strokeRect(PAD.l + 8.5, PAD.t + 8.5, 135, 21);
+    ctx.fillStyle = "#c4b5fd";
+    ctx.font = "10px 'Space Mono',monospace";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(`${historyOffset} bars back`, PAD.l + 16, PAD.t + 19);
   }
 
   // ── Watermark: Pyth logo + PythNetwork text ─────────────────────────────
@@ -1734,20 +1834,47 @@ function drawCandles(canvas, bars, chartType) {
 }
 
 
-function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChartTf, chartType, setChartType, chartHist, setChartHist, setActiveTab, status}) {
+function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChartTf, chartType, setChartType, chartHist, setChartHist, setActiveTab, status, histRef}) {
   const canvasRef = useRef();
+  const corrCanvasRef = useRef();
   const barsRef   = useRef([]);
-  const [, redraw] = useState(0);
+  const dragRef   = useRef({ active:false, pointerId:null, startX:0, startOffset:0 });
+  const [viewOffset, setViewOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [zoomBars, setZoomBars] = useState(CHART_VISIBLE_BARS);
+  const [crosshairActive, setCrosshairActive] = useState(false);
+  const [crosshairX, setCrosshairX] = useState(null);
+  const [showCorrHelp, setShowCorrHelp] = useState(false);
+  const visibleBars = zoomBars;
+  const benchmarkSymbol = chartAsset === "BTC" ? "ETH" : "BTC";
+  const renderChart = useCallback(() => {
+    if (!canvasRef.current) return;
+    drawCandles(canvasRef.current, barsRef.current, chartType, { offset:viewOffset, visibleCount:visibleBars, overscrollBars:CHART_OVERSCROLL_BARS });
+  }, [chartType, viewOffset, visibleBars]);
+  const renderCorrChart = useCallback(() => {
+    if (!corrCanvasRef.current) return;
+    const benchmarkBars = (chartHist[benchmarkSymbol] || {})[chartTf] || [];
+    drawRollingCorrTimeline(corrCanvasRef.current, barsRef.current, benchmarkBars, { offset:viewOffset, visibleCount:visibleBars, overscrollBars:CHART_OVERSCROLL_BARS });
+  }, [benchmarkSymbol, chartHist, chartTf, viewOffset, visibleBars]);
 
   // Fetch history from Pyth Benchmarks (all assets: crypto + metals + forex + stocks)
   useEffect(()=>{
     let dead = false;
-    fetchPyth(chartAsset, chartTf, 300).then(candles => {
-      if (dead || !candles.length) return;
-      setChartHist(p=>({...p,[chartAsset]:{...(p[chartAsset]||{}),[chartTf]:candles}}));
+    setViewOffset(0);
+    setZoomBars(CHART_VISIBLE_BARS);
+    Promise.all([
+      fetchPyth(chartAsset, chartTf, CHART_FETCH_BARS),
+      fetchPyth(benchmarkSymbol, chartTf, CHART_FETCH_BARS),
+    ]).then(([mainCandles, benchmarkCandles]) => {
+      if (dead) return;
+      setChartHist(p=>({
+        ...p,
+        [chartAsset]: { ...(p[chartAsset]||{}), [chartTf]: mainCandles?.length ? mainCandles : ((p[chartAsset]||{})[chartTf] || []) },
+        [benchmarkSymbol]: { ...(p[benchmarkSymbol]||{}), [chartTf]: benchmarkCandles?.length ? benchmarkCandles : ((p[benchmarkSymbol]||{})[chartTf] || []) },
+      }));
     });
     return ()=>{dead=true;};
-  },[chartAsset, chartTf]);
+  },[chartAsset, chartTf, benchmarkSymbol]);
 
   // Merge live price into bars
   useEffect(()=>{
@@ -1767,24 +1894,101 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
       copy.push({t:barT,o,h:Math.max(o,price),l:Math.min(o,price),c:price,v:0,tfs:secs});
     }
     barsRef.current = copy;
-    if (canvasRef.current) drawCandles(canvasRef.current, copy, chartType);
-  },[chartHist, chartAsset, chartTf, prices, chartType]);
+    const maxOffset = Math.max(0, copy.length - visibleBars);
+    const minOffset = -CHART_OVERSCROLL_BARS;
+    const maxPanOffset = maxOffset + CHART_OVERSCROLL_BARS;
+    if (viewOffset < minOffset || viewOffset > maxPanOffset) {
+      setViewOffset(Math.max(minOffset, Math.min(viewOffset, maxPanOffset)));
+      return;
+    }
+    renderChart();
+    renderCorrChart();
+  },[chartHist, chartAsset, chartTf, prices, visibleBars, viewOffset, renderChart, renderCorrChart]);
 
   // 1s redraw
   useEffect(()=>{
     const iv = setInterval(()=>{
-      if (canvasRef.current) drawCandles(canvasRef.current, barsRef.current, chartType);
+      renderChart();
+      renderCorrChart();
     }, 1000);
     return ()=>clearInterval(iv);
-  },[chartType]);
+  },[renderChart, renderCorrChart]);
 
   // Resize
   useEffect(()=>{
     const c = canvasRef.current; if (!c) return;
-    const ro = new ResizeObserver(()=>drawCandles(c, barsRef.current, chartType));
+    const ro = new ResizeObserver(()=>{
+      renderChart();
+      renderCorrChart();
+    });
     if (c.parentElement) ro.observe(c.parentElement);
+    if (corrCanvasRef.current?.parentElement) ro.observe(corrCanvasRef.current.parentElement);
     return ()=>ro.disconnect();
-  },[chartType]);
+  },[renderChart, renderCorrChart]);
+
+  useEffect(()=>{
+    renderChart();
+    renderCorrChart();
+  },[renderChart, renderCorrChart]);
+
+  const stopDragging = useCallback((e) => {
+    if (dragRef.current.pointerId != null && e?.currentTarget?.hasPointerCapture?.(dragRef.current.pointerId)) {
+      e.currentTarget.releasePointerCapture(dragRef.current.pointerId);
+    }
+    dragRef.current = { active:false, pointerId:null, startX:0, startOffset:0 };
+    setIsDragging(false);
+  }, []);
+
+  const updateCrosshair = useCallback((e) => {
+    if (!crosshairActive) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    setCrosshairX(e.clientX - rect.left);
+  }, [crosshairActive]);
+
+  const clearCrosshair = useCallback(() => {
+    setCrosshairActive(false);
+    setCrosshairX(null);
+  }, []);
+
+  const onChartPointerDown = useCallback((e) => {
+    if ((e.pointerType === "mouse" && e.button !== 0) || barsRef.current.length <= visibleBars) return;
+    setCrosshairActive(true);
+    const rect = e.currentTarget.getBoundingClientRect();
+    setCrosshairX(e.clientX - rect.left);
+    dragRef.current = { active:true, pointerId:e.pointerId, startX:e.clientX, startOffset:viewOffset };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setIsDragging(true);
+  }, [viewOffset, visibleBars]);
+
+  const onChartPointerMove = useCallback((e) => {
+    if (!dragRef.current.active) return;
+    const bars = barsRef.current;
+    const maxOffset = Math.max(0, bars.length - visibleBars);
+    const minOffset = -CHART_OVERSCROLL_BARS;
+    const maxPanOffset = maxOffset + CHART_OVERSCROLL_BARS;
+    if (maxOffset <= 0 && minOffset === 0) return;
+    const plotWidth = Math.max(120, (canvasRef.current?.parentElement?.clientWidth || 0) - 88);
+    const pxPerBar = plotWidth / visibleBars;
+    const deltaBars = Math.round((e.clientX - dragRef.current.startX) / Math.max(pxPerBar, 1));
+    const nextOffset = Math.max(minOffset, Math.min(maxPanOffset, dragRef.current.startOffset + deltaBars));
+    setViewOffset(prev => prev === nextOffset ? prev : nextOffset);
+  }, [visibleBars]);
+
+  const onChartWheel = useCallback((e) => {
+    e.preventDefault();
+    const bars = barsRef.current;
+    if (!bars.length) return;
+    const direction = e.deltaY > 0 ? 1 : -1;
+    const step = Math.max(8, Math.round(visibleBars * 0.12));
+    const nextVisible = Math.max(
+      CHART_MIN_VISIBLE_BARS,
+      Math.min(CHART_MAX_VISIBLE_BARS, bars.length, visibleBars + direction * step)
+    );
+    if (nextVisible === visibleBars) return;
+    setZoomBars(nextVisible);
+    const nextMaxOffset = Math.max(0, bars.length - nextVisible);
+    setViewOffset(prev => Math.max(-CHART_OVERSCROLL_BARS, Math.min(prev, nextMaxOffset + CHART_OVERSCROLL_BARS)));
+  }, [visibleBars]);
 
   const cur = prices[chartAsset];
   const hist = (chartHist[chartAsset]||{})[chartTf]||[];
@@ -1792,6 +1996,10 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
   const fmtP = v => !v?"–":v>=10000?"$"+v.toLocaleString(undefined,{maximumFractionDigits:0}):v>=100?"$"+v.toFixed(2):v>=1?"$"+v.toFixed(4):"$"+v.toFixed(6);
   const asset= assets.find(a=>a.symbol===chartAsset)||assets[0];
   const bars = barsRef.current || [];
+  const benchmarkAsset = assets.find(a=>a.symbol===benchmarkSymbol) || assets[0];
+  const corrA = histRef?.current?.[chartAsset] || [];
+  const corrB = histRef?.current?.[benchmarkSymbol] || [];
+  const liveCorr = pearson(corrA.slice(-60), corrB.slice(-60));
 
   return (
     <div style={{display:"flex",flexDirection:"column",width:"100%",height:"100%",background:"#07050f",fontFamily:"'Space Mono',monospace"}}>
@@ -1815,9 +2023,9 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
             <span style={{width:5,height:5,borderRadius:"50%",background:status==="live"?"#10b981":"#ef4444",display:"inline-block"}}/>
             <span style={{fontSize:10,fontWeight:700,letterSpacing:".08em",color:status==="live"?"#10b981":"#ef4444"}}>{status==="live"?"LIVE":"DEMO"}</span>
           </div>
-          <button onClick={()=>setActiveTab("matrix")} style={{background:"transparent",border:"1px solid rgba(255,255,255,0.12)",borderRadius:3,padding:"4px 12px",color:"rgba(255,255,255,0.5)",cursor:"pointer",fontSize:10,fontFamily:"inherit",fontWeight:600,letterSpacing:".05em",transition:"all .15s"}}
-            onMouseEnter={e=>{e.target.style.borderColor="rgba(124,58,237,0.6)";e.target.style.color="#a78bfa";}}
-            onMouseLeave={e=>{e.target.style.borderColor="rgba(255,255,255,0.12)";e.target.style.color="rgba(255,255,255,0.5)";}}>
+          <button className="chart-back-btn" onClick={()=>setActiveTab("matrix")} style={{background:"transparent",border:"1px solid rgba(255,255,255,0.12)",borderRadius:4,padding:"6px 15px",color:"rgba(255,255,255,0.5)",cursor:"pointer",fontSize:11,fontFamily:"inherit",fontWeight:700,letterSpacing:".05em",transition:"all .15s"}}
+            onMouseEnter={e=>{e.currentTarget.style.borderColor="rgba(124,58,237,0.6)";e.currentTarget.style.color="#a78bfa";}}
+            onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(255,255,255,0.12)";e.currentTarget.style.color="rgba(255,255,255,0.5)";}}>
             ← MATRIX
           </button>
         </div>
@@ -1854,18 +2062,78 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
             {label}
           </button>
         ))}
+        {viewOffset > 0 && (
+          <button onClick={()=>setViewOffset(0)} style={{marginLeft:8,background:"rgba(16,185,129,0.12)",border:"1px solid rgba(16,185,129,0.25)",borderRadius:3,cursor:"pointer",color:"#10b981",fontSize:10,padding:"3px 10px",fontFamily:"inherit",fontWeight:700,letterSpacing:".04em"}}>
+            Latest
+          </button>
+        )}
+        <button onClick={()=>setZoomBars(CHART_VISIBLE_BARS)} style={{marginLeft:8,background:"transparent",border:"1px solid rgba(255,255,255,0.12)",borderRadius:3,cursor:"pointer",color:"rgba(255,255,255,0.5)",fontSize:10,padding:"3px 10px",fontFamily:"inherit",fontWeight:700,letterSpacing:".04em"}}>
+          Reset Zoom
+        </button>
         {/* Stats */}
         <div style={{marginLeft:"auto",display:"flex",gap:16,fontSize:9,letterSpacing:".04em"}}>
           {bars.length>0&&<span style={{color:"rgba(255,255,255,0.25)"}}>H: <span style={{color:"#10b981"}}>{fmtP(Math.max(...bars.map(b=>b.h)))}</span></span>}
           {bars.length>0&&<span style={{color:"rgba(255,255,255,0.25)"}}>L: <span style={{color:"#ef4444"}}>{fmtP(Math.min(...bars.map(b=>b.l)))}</span></span>}
-          <span style={{color:"rgba(255,255,255,0.2)"}}>{bars.length} bars · Binance + Pyth</span>
+          <span style={{color:"rgba(255,255,255,0.2)"}}>{visibleBars} visible · {bars.length} bars</span>
         </div>
       </div>
 
       {/* ── CHART AREA ──────────────────────────────────────────────────── */}
       <div style={{flex:1,position:"relative",minHeight:0}}>
-        <canvas ref={canvasRef} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>
+        <canvas
+          ref={canvasRef}
+          onPointerDown={onChartPointerDown}
+          onPointerMove={onChartPointerMove}
+          onPointerUp={stopDragging}
+          onPointerCancel={stopDragging}
+          onPointerLeave={(e)=>{ stopDragging(e); clearCrosshair(); }}
+          onPointerMoveCapture={updateCrosshair}
+          onWheel={onChartWheel}
+          style={{position:"absolute",inset:0,width:"100%",height:"100%",cursor:isDragging?"grabbing":"grab",touchAction:"none"}}
+        />
+        {crosshairActive && crosshairX != null && (
+          <div style={{position:"absolute",top:0,bottom:0,left:crosshairX,width:1,background:"rgba(196,181,253,0.45)",pointerEvents:"none",boxShadow:"0 0 0 1px rgba(124,58,237,0.08)"}}/>
+        )}
+        <div style={{position:"absolute",left:16,bottom:12,padding:"4px 8px",background:"rgba(7,5,15,0.72)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:4,color:"rgba(255,255,255,0.38)",fontSize:9,letterSpacing:".04em",pointerEvents:"none"}}>
+          Drag to pan · Wheel to zoom
+        </div>
 
+      </div>
+
+      <div style={{height:176,flexShrink:0,borderTop:"1px solid rgba(255,255,255,0.05)",background:"#080614",position:"relative",minHeight:0}}>
+        <div style={{position:"absolute",top:12,left:16,zIndex:2,padding:"10px 12px",background:"rgba(8,6,20,0.82)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:6,backdropFilter:"blur(8px)",display:"flex",flexDirection:"column",gap:6}}>
+          <div style={{display:"flex",alignItems:"center",gap:6}}>
+            <div style={{fontSize:10,color:"rgba(255,255,255,0.34)",letterSpacing:".12em",textTransform:"uppercase"}}>Correlation Timeline</div>
+            <div
+              onMouseEnter={()=>setShowCorrHelp(true)}
+              onMouseLeave={()=>setShowCorrHelp(false)}
+              style={{position:"relative",display:"inline-flex",alignItems:"center",justifyContent:"center",width:20,height:20,borderRadius:"50%",background:"linear-gradient(135deg, rgba(124,58,237,0.95), rgba(59,130,246,0.95))",border:"1px solid rgba(255,255,255,0.28)",color:"#fff",fontSize:11,fontWeight:800,cursor:"help",pointerEvents:"auto",boxShadow:"0 0 0 3px rgba(124,58,237,0.16), 0 6px 16px rgba(76,29,149,0.35)"}}
+            >
+              i
+              {showCorrHelp && (
+                <div style={{position:"absolute",top:20,left:-6,width:220,padding:"8px 10px",background:"#0b0917",border:"1px solid rgba(124,58,237,0.35)",borderRadius:6,color:"rgba(255,255,255,0.78)",fontSize:10,lineHeight:1.45,letterSpacing:"normal",textTransform:"none",boxShadow:"0 8px 24px rgba(0,0,0,0.35)"}}>
+                  Tracks how tightly {chartAsset} moves with {benchmarkSymbol}, so you can spot when the relationship strengthens, weakens, or flips.
+                </div>
+              )}
+            </div>
+          </div>
+          <div style={{fontSize:16,fontWeight:700,color:"#fff"}}>{chartAsset} vs {benchmarkSymbol}</div>
+          <div style={{fontSize:11,color:"rgba(255,255,255,0.42)",lineHeight:1.4}}>
+            Rolling 30-tick correlation chronology against {benchmarkAsset.symbol}.
+          </div>
+          <div style={{display:"flex",alignItems:"baseline",gap:8}}>
+            <span style={{fontSize:24,fontWeight:700,color:liveCorr == null ? "rgba(255,255,255,0.28)" : liveCorr >= 0 ? "#10b981" : "#ef4444"}}>
+              {liveCorr == null ? "..." : liveCorr.toFixed(3)}
+            </span>
+            <span style={{fontSize:10,color:"rgba(255,255,255,0.3)",letterSpacing:".08em"}}>LIVE CORR</span>
+          </div>
+        </div>
+        <div style={{position:"absolute",inset:0,minWidth:0}}>
+          <canvas ref={corrCanvasRef} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>
+          {crosshairActive && crosshairX != null && (
+            <div style={{position:"absolute",top:0,bottom:0,left:crosshairX,width:1,background:"rgba(196,181,253,0.45)",pointerEvents:"none",boxShadow:"0 0 0 1px rgba(124,58,237,0.08)"}}/>
+          )}
+        </div>
       </div>
 
     </div>
@@ -2057,6 +2325,132 @@ function drawRollingCorr(canvas, ha, hb, window=30) {
   ctx.fillStyle="#fff"; ctx.font="bold 9px 'Space Mono',monospace";
   ctx.textAlign="left"; ctx.textBaseline="middle";
   ctx.fillText(last.toFixed(3), W-PAD.r+5, ly);
+}
+
+function buildRollingCorrelationSeries(primaryBars, secondaryBars, window = 30) {
+  if (!primaryBars?.length || !secondaryBars?.length) return [];
+  const secondaryMap = new Map(secondaryBars.map(b => [b.t, b.c]));
+  const aligned = primaryBars
+    .filter(b => secondaryMap.has(b.t))
+    .map(b => ({ t: b.t, a: b.c, b: secondaryMap.get(b.t) }));
+  if (aligned.length < window + 2) return [];
+
+  const series = [];
+  for (let i = window - 1; i < aligned.length; i++) {
+    const slice = aligned.slice(i - window + 1, i + 1);
+    const value = pearson(slice.map(p => p.a), slice.map(p => p.b));
+    if (value !== null) series.push({ t: aligned[i].t, v: value });
+  }
+  return series;
+}
+
+function drawRollingCorrTimeline(canvas, primaryBars, secondaryBars, view = {}) {
+  if (!canvas) return;
+  const par = canvas.parentElement;
+  if (!par) return;
+  const W = par.clientWidth, H = par.clientHeight;
+  if (W < 10 || H < 10) return;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#07050f";
+  ctx.fillRect(0, 0, W, H);
+
+  if (!primaryBars?.length || !secondaryBars?.length) {
+    ctx.fillStyle = "rgba(124,58,237,0.3)";
+    ctx.font = "11px 'Space Mono',monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("Loading correlation history...", W / 2, H / 2);
+    return;
+  }
+
+  const PAD = { t: 14, r: 80, b: 28, l: 8 };
+  const CW = W - PAD.l - PAD.r;
+  const CH = H - PAD.t - PAD.b;
+  const visibleCount = Math.max(20, Math.min(view.visibleCount || CHART_VISIBLE_BARS, primaryBars.length));
+  const maxOffset = Math.max(0, primaryBars.length - visibleCount);
+  const overscrollBars = Math.max(0, view.overscrollBars ?? CHART_OVERSCROLL_BARS);
+  const panBars = Math.max(-overscrollBars, Math.min(view.offset || 0, maxOffset + overscrollBars));
+  const historyOffset = Math.max(0, Math.min(maxOffset, panBars));
+  const end = Math.max(visibleCount, primaryBars.length - historyOffset);
+  const start = Math.max(0, end - visibleCount);
+  const visibleBars = primaryBars.slice(start, end);
+  const overscrollShiftBars = historyOffset - panBars;
+  const totalSlots = Math.max(visibleCount, 1);
+
+  const series = buildRollingCorrelationSeries(primaryBars, secondaryBars, 30);
+  const valueByTime = new Map(series.map(p => [p.t, p.v]));
+  const points = visibleBars.map((b, i) => {
+    const v = valueByTime.get(b.t);
+    if (v == null) return null;
+    return {
+      i,
+      x: PAD.l + ((i + 0.5 - overscrollShiftBars) / totalSlots) * CW,
+      y: PAD.t + CH * (1 - (v + 1) / 2),
+      v,
+      t: b.t,
+    };
+  });
+  const drawn = points.filter(Boolean);
+
+  if (drawn.length < 2) {
+    ctx.fillStyle = "rgba(124,58,237,0.3)";
+    ctx.font = "11px 'Space Mono',monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("Need more aligned bars for correlation", W / 2, H / 2);
+    return;
+  }
+
+  [1, 0.5, 0, -0.5, -1].forEach(v => {
+    const y = PAD.t + CH * (1 - (v + 1) / 2);
+    ctx.strokeStyle = v === 0 ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.04)";
+    ctx.lineWidth = 1;
+    ctx.setLineDash(v === 0 ? [] : [3, 4]);
+    ctx.beginPath();
+    ctx.moveTo(PAD.l, y);
+    ctx.lineTo(PAD.l + CW, y);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = "rgba(255,255,255,0.18)";
+    ctx.font = "8px 'Space Mono',monospace";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(v.toFixed(1), PAD.l + 4, y);
+  });
+
+  const last = drawn[drawn.length - 1];
+  const grd = ctx.createLinearGradient(0, PAD.t, 0, PAD.t + CH);
+  grd.addColorStop(0, last.v >= 0 ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)");
+  grd.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.beginPath();
+  drawn.forEach((p, i) => { i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y); });
+  ctx.lineTo(drawn[drawn.length - 1].x, PAD.t + CH / 2);
+  ctx.lineTo(drawn[0].x, PAD.t + CH / 2);
+  ctx.closePath();
+  ctx.fillStyle = grd;
+  ctx.fill();
+
+  const lg = ctx.createLinearGradient(PAD.l, 0, PAD.l + CW, 0);
+  lg.addColorStop(0, "rgba(124,58,237,0.85)");
+  lg.addColorStop(1, last.v >= 0 ? "#10b981" : "#ef4444");
+  ctx.strokeStyle = lg;
+  ctx.lineWidth = 2;
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  drawn.forEach((p, i) => { i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y); });
+  ctx.stroke();
+
+  ctx.fillStyle = last.v >= 0 ? "#10b981" : "#ef4444";
+  ctx.beginPath();
+  ctx.arc(last.x, last.y, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillRect(W - PAD.r + 2, last.y - 8, PAD.r - 4, 16);
+  ctx.fillStyle = "#fff";
+  ctx.font = "bold 9px 'Space Mono',monospace";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText(last.v.toFixed(3), W - PAD.r + 6, last.y);
 }
 
 /* ─── CORRELATION VIEW ───────────────────────────────────────────────────── */
@@ -2325,9 +2719,9 @@ function CorrView({histRef, prices, assets, setActiveTab, status}) {
             <span style={{width:5,height:5,borderRadius:"50%",background:status==="live"?"#10b981":"#ef4444",display:"inline-block"}}/>
             <span style={{fontSize:10,fontWeight:700,letterSpacing:".08em",color:status==="live"?"#10b981":"#ef4444"}}>{status==="live"?"LIVE":"DEMO"}</span>
           </div>
-          <button onClick={()=>setActiveTab("matrix")} style={{background:"transparent",border:"1px solid rgba(255,255,255,0.12)",borderRadius:3,padding:"4px 12px",color:"rgba(255,255,255,0.5)",cursor:"pointer",fontSize:10,fontFamily:"inherit",fontWeight:600,letterSpacing:".05em"}}
-            onMouseEnter={e=>{e.target.style.borderColor="rgba(124,58,237,0.6)";e.target.style.color="#a78bfa";}}
-            onMouseLeave={e=>{e.target.style.borderColor="rgba(255,255,255,0.12)";e.target.style.color="rgba(255,255,255,0.5)";}}>
+          <button className="chart-back-btn" onClick={()=>setActiveTab("matrix")} style={{background:"transparent",border:"1px solid rgba(255,255,255,0.12)",borderRadius:4,padding:"6px 15px",color:"rgba(255,255,255,0.5)",cursor:"pointer",fontSize:11,fontFamily:"inherit",fontWeight:700,letterSpacing:".05em",transition:"all .15s"}}
+            onMouseEnter={e=>{e.currentTarget.style.borderColor="rgba(124,58,237,0.6)";e.currentTarget.style.color="#a78bfa";}}
+            onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(255,255,255,0.12)";e.currentTarget.style.color="rgba(255,255,255,0.5)";}}>
             ← MATRIX
           </button>
         </div>
@@ -2529,6 +2923,36 @@ function bootstrapEntropy(returns, seed, nIter = 60) {
   return out;
 }
 
+function interpolateValue(a, b, t) {
+  return a + (b - a) * t;
+}
+
+function interpolateMatrix(prev = [], next = [], t = 1) {
+  if (!next.length) return [];
+  return next.map((row, i) =>
+    row.map((val, j) => interpolateValue(prev[i]?.[j] ?? val, val, t))
+  );
+}
+
+function interpolateEntropyRanking(prev = [], next = [], t = 1) {
+  if (!next.length) return [];
+  const prevBySym = new Map(prev.map(item => [item.sym, item]));
+  return next.map(item => {
+    if (!item?.data) return item;
+    const prevItem = prevBySym.get(item.sym);
+    if (!prevItem?.data) return item;
+    return {
+      ...item,
+      data: {
+        mean: interpolateValue(prevItem.data.mean, item.data.mean, t),
+        std: interpolateValue(prevItem.data.std, item.data.std, t),
+        ci95lo: interpolateValue(prevItem.data.ci95lo, item.data.ci95lo, t),
+        ci95hi: interpolateValue(prevItem.data.ci95hi, item.data.ci95hi, t),
+      },
+    };
+  });
+}
+
 /* ── Canvas draws ─────────────────────────────────────────────────────────── */
 function drawEntropyBars(canvas, ranking, assets, minH, maxH) {
   if (minH === undefined) { minH = 0; }
@@ -2576,10 +3000,8 @@ function drawEntropyBars(canvas, ranking, assets, minH, maxH) {
 
     if (noData) {
       // No data — show placeholder
-      ctx.fillStyle = "rgba(255,255,255,0.07)";
-      ctx.font = `8px 'Space Mono',monospace`;
-      ctx.textAlign = "left"; ctx.textBaseline = "middle";
-      ctx.fillText("awaiting Pyth ticks…", PAD.l + 6, y);
+      ctx.fillStyle = "rgba(255,255,255,0.035)";
+      ctx.fillRect(PAD.l + 1, y - barH / 2 + 1, CW - 2, barH - 2);
       return;
     }
 
@@ -2623,7 +3045,7 @@ function drawEntropyBars(canvas, ranking, assets, minH, maxH) {
   }
   ctx.fillStyle = "rgba(255,255,255,0.1)"; ctx.font = "8px 'Space Mono',monospace";
   ctx.textAlign = "center"; ctx.textBaseline = "top";
-  ctx.fillText("H(X) = ½·ln(2πeσ²)  nats   ←  predictable · · · chaotic  →", PAD.l + CW / 2, H - PAD.b + 14);
+  ctx.fillText("predictable  ←  entropy of returns  →  chaotic", PAD.l + CW / 2, H - PAD.b + 14);
 }
 
 function drawNMIHeatmap(canvas, assets, nmiMatrix) {
@@ -2723,11 +3145,24 @@ function drawHiddenConnections(canvas, assets, nmiMatrix, pearsonMatrix) {
   hidden.sort((a, b) => (b.nmi - b.r) - (a.nmi - a.r));
 
   if (!hidden.length) {
-    ctx.fillStyle = "rgba(255,255,255,0.15)"; ctx.font = "11px 'Space Mono',monospace";
-    ctx.textAlign = "center"; ctx.textBaseline = "middle";
-    ctx.fillText("No hidden connections detected", W / 2, H / 2);
-    ctx.fillStyle = "rgba(255,255,255,0.08)"; ctx.font = "9px 'Space Mono',monospace";
-    ctx.fillText("(all high-NMI pairs also have high Pearson r)", W / 2, H / 2 + 20);
+    ctx.strokeStyle = "rgba(124,58,237,0.22)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(W / 2, H / 2 - 38, 14, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(W / 2 - 6, H / 2 - 38);
+    ctx.lineTo(W / 2 - 1, H / 2 - 33);
+    ctx.lineTo(W / 2 + 8, H / 2 - 44);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,0.16)";
+    ctx.font = "700 12px 'Space Mono',monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("No hidden connections right now", W / 2, H / 2 - 10);
+    ctx.fillStyle = "rgba(255,255,255,0.09)";
+    ctx.font = "9px 'Space Mono',monospace";
+    ctx.fillText("Current nonlinear links are already visible in Pearson correlation.", W / 2, H / 2 + 12);
     return;
   }
 
@@ -2786,10 +3221,11 @@ function drawHiddenConnections(canvas, assets, nmiMatrix, pearsonMatrix) {
 }
 
 /* ── EntropyView component ────────────────────────────────────────────────── */
-function EntropyView({ histRef, prices, assets, setActiveTab, status }) {
+function EntropyView({ histRef, prices, assets, setActiveTab, status, liveRun, setLiveRun, corrAlertEnabled, setCorrAlertEnabled, corrAlertPair, setCorrAlertPair, corrAlertThreshold, setCorrAlertThreshold, corrAlertHit, corrAlertOptions }) {
   const barRef     = useRef();
   const heatRef    = useRef();
   const hiddenRef  = useRef();
+  const animRef    = useRef({ raf: null, ranking: [], nmi: [], pearson: [] });
   const [entropyData, setEntropyData] = useState(null); // bootstrap results
   const [nmiMatrix,   setNmiMatrix]   = useState([]);
   const [pearsonMat,  setPearsonMat]  = useState([]);
@@ -2798,6 +3234,7 @@ function EntropyView({ histRef, prices, assets, setActiveTab, status }) {
   const [seedInfo,    setSeedInfo]    = useState(null);
   const [lastRun,     setLastRun]     = useState(null);
   const [autoRun,     setAutoRun]     = useState(true);
+  const [showAlertHelp, setShowAlertHelp] = useState(false);
   const [, tick]                      = useState(0);
 
   const BINS = 8, N_ITER = 40, SAMPLE = 120;
@@ -2862,6 +3299,16 @@ function EntropyView({ histRef, prices, assets, setActiveTab, status }) {
     setLastRun(new Date());
   };;
 
+  const drawEntropyScene = useCallback((ranking, nmi, pears) => {
+    if (!ranking?.length) return;
+    const allH = ranking.filter(d=>d.data).map(d=>d.data.mean);
+    const minH = allH.length ? Math.min(...allH) : -6;
+    const maxH = allH.length ? Math.max(...allH) + 0.5 : 4;
+    drawEntropyBars(barRef.current, ranking, assets, minH, maxH);
+    drawNMIHeatmap(heatRef.current, assets, nmi);
+    drawHiddenConnections(hiddenRef.current, assets, nmi, pears);
+  }, [assets]);
+
   // Auto-run when data loads, or after timeout fallback
   useEffect(() => {
     if (!loading && autoRun) {
@@ -2882,28 +3329,49 @@ function EntropyView({ histRef, prices, assets, setActiveTab, status }) {
     return () => clearTimeout(t);
   }, []);
 
-  // Redraw on data change
+  // Animated redraw on data change
   useEffect(() => {
     if (!entropyData) return;
-    // Gaussian entropy range: compute from actual data
-    const allH = entropyData.filter(d=>d.data).map(d=>d.data.mean);
-    const minH = allH.length ? Math.min(...allH) : -6;
-    const maxH = allH.length ? Math.max(...allH) + 0.5 : 4;
-    drawEntropyBars(barRef.current, entropyData, assets, minH, maxH);
-    drawNMIHeatmap(heatRef.current, assets, nmiMatrix);
-    drawHiddenConnections(hiddenRef.current, assets, nmiMatrix, pearsonMat);
-  }, [entropyData, nmiMatrix]);
+    const prevRanking = animRef.current.ranking?.length ? animRef.current.ranking : entropyData;
+    const prevNmi = animRef.current.nmi?.length ? animRef.current.nmi : nmiMatrix;
+    const prevPearson = animRef.current.pearson?.length ? animRef.current.pearson : pearsonMat;
+    if (animRef.current.raf) cancelAnimationFrame(animRef.current.raf);
+
+    const duration = liveRun ? 900 : 320;
+    const start = performance.now();
+
+    const frame = (now) => {
+      const t = Math.min(1, (now - start) / duration);
+      const ease = 1 - Math.pow(1 - t, 3);
+      const ranking = interpolateEntropyRanking(prevRanking, entropyData, ease);
+      const nmi = interpolateMatrix(prevNmi, nmiMatrix, ease);
+      const pears = interpolateMatrix(prevPearson, pearsonMat, ease);
+      animRef.current.ranking = ranking;
+      animRef.current.nmi = nmi;
+      animRef.current.pearson = pears;
+      drawEntropyScene(ranking, nmi, pears);
+      if (t < 1) {
+        animRef.current.raf = requestAnimationFrame(frame);
+      } else {
+        animRef.current.raf = null;
+      }
+    };
+
+    animRef.current.raf = requestAnimationFrame(frame);
+    return () => {
+      if (animRef.current.raf) cancelAnimationFrame(animRef.current.raf);
+    };
+  }, [entropyData, nmiMatrix, pearsonMat, liveRun, drawEntropyScene]);
 
   // Resize observers
   useEffect(() => {
     if (!entropyData) return;
-    const allH = entropyData.filter(d=>d.data).map(d=>d.data.mean);
-    const minH = allH.length ? Math.min(...allH) : -6;
-    const maxH = allH.length ? Math.max(...allH) + 0.5 : 4;
     const redraw = () => {
-      drawEntropyBars(barRef.current, entropyData, assets, minH, maxH);
-      drawNMIHeatmap(heatRef.current, assets, nmiMatrix);
-      drawHiddenConnections(hiddenRef.current, assets, nmiMatrix, pearsonMat);
+      drawEntropyScene(
+        animRef.current.ranking?.length ? animRef.current.ranking : entropyData,
+        animRef.current.nmi?.length ? animRef.current.nmi : nmiMatrix,
+        animRef.current.pearson?.length ? animRef.current.pearson : pearsonMat
+      );
     };
     const obs = [barRef, heatRef, hiddenRef].map(r => {
       const ro = new ResizeObserver(redraw);
@@ -2911,7 +3379,7 @@ function EntropyView({ histRef, prices, assets, setActiveTab, status }) {
       return ro;
     });
     return () => obs.forEach(ro => ro.disconnect());
-  }, [entropyData, nmiMatrix]);
+  }, [entropyData, nmiMatrix, pearsonMat, drawEntropyScene]);
 
   // Live tick
   useEffect(() => {
@@ -2919,8 +3387,28 @@ function EntropyView({ histRef, prices, assets, setActiveTab, status }) {
     return () => clearInterval(iv);
   }, []);
 
+  useEffect(() => {
+    if (!liveRun) return;
+    runAnalysis();
+    const iv = setInterval(() => {
+      runAnalysis();
+      tick(n => n + 1);
+    }, 2500);
+    return () => clearInterval(iv);
+  }, [liveRun, closes, prices]);
+
   const returns = getReturns();
   const nAssets = Object.keys(returns).length;
+  const mostPredictable = entropyData?.[0] || null;
+  const mostChaotic = entropyData?.[entropyData.length - 1] || null;
+  const hiddenPairsCount = pearsonMat.length
+    ? assets.reduce((count, _, i) => count + assets.slice(i + 1).reduce((rowCount, __, j2) => {
+        const j = i + 1 + j2;
+        const nmi = nmiMatrix[i]?.[j] ?? 0;
+        const r = Math.abs(pearsonMat[i]?.[j] ?? 0);
+        return rowCount + (nmi > 0.30 && r < 0.35 ? 1 : 0);
+      }, 0), 0)
+    : 0;
 
   return (
     <div style={{display:"flex",flexDirection:"column",width:"100%",height:"100%",background:"#07050f",fontFamily:"'Space Mono',monospace",overflow:"hidden"}}>
@@ -2940,19 +3428,20 @@ function EntropyView({ histRef, prices, assets, setActiveTab, status }) {
         )}
         <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>
           {loading && <span style={{fontSize:9,color:"rgba(124,58,237,0.6)",letterSpacing:".06em",animation:"pulse 1s infinite"}}>LOADING DATA…</span>}
+          {liveRun && <span style={{fontSize:9,color:"#10b981",letterSpacing:".08em",animation:"pulse 1s infinite"}}>LIVE MEASURING</span>}
           {lastRun && <span style={{fontSize:8,color:"rgba(255,255,255,0.2)"}}>ran {lastRun.toLocaleTimeString()}</span>}
           <div style={{display:"flex",alignItems:"center",gap:5,padding:"3px 8px",borderRadius:3,background:status==="live"?"rgba(16,185,129,0.1)":"rgba(239,68,68,0.1)",border:`1px solid ${status==="live"?"rgba(16,185,129,0.25)":"rgba(239,68,68,0.25)"}`}}>
             <span style={{width:5,height:5,borderRadius:"50%",background:status==="live"?"#10b981":"#ef4444",display:"inline-block"}}/>
             <span style={{fontSize:10,fontWeight:700,color:status==="live"?"#10b981":"#ef4444"}}>{status==="live"?"LIVE":"DEMO"}</span>
           </div>
-          <button onClick={runAnalysis} style={{background:"rgba(124,58,237,0.2)",border:"1px solid rgba(124,58,237,0.4)",borderRadius:3,padding:"4px 14px",color:"#c4b5fd",cursor:"pointer",fontSize:10,fontFamily:"inherit",fontWeight:700,letterSpacing:".06em"}}
-            onMouseEnter={e=>{e.target.style.background="rgba(124,58,237,0.35)";}}
-            onMouseLeave={e=>{e.target.style.background="rgba(124,58,237,0.2)";}}>
-            ▶ RUN
+          <button onClick={()=>setLiveRun(v=>!v)} style={{background:liveRun?"rgba(239,68,68,0.18)":"rgba(124,58,237,0.2)",border:`1px solid ${liveRun?"rgba(239,68,68,0.42)":"rgba(124,58,237,0.4)"}`,borderRadius:4,padding:"5px 14px",color:liveRun?"#fca5a5":"#c4b5fd",cursor:"pointer",fontSize:10,fontFamily:"inherit",fontWeight:700,letterSpacing:".08em",transition:"all .18s",boxShadow:liveRun?"0 0 18px rgba(239,68,68,0.18)":"none"}}
+            onMouseEnter={e=>{e.currentTarget.style.background=liveRun?"rgba(239,68,68,0.28)":"rgba(124,58,237,0.35)";}}
+            onMouseLeave={e=>{e.currentTarget.style.background=liveRun?"rgba(239,68,68,0.18)":"rgba(124,58,237,0.2)";}}>
+            {liveRun ? "■ STOP" : "▶ RUN"}
           </button>
-          <button onClick={()=>setActiveTab("matrix")} style={{background:"transparent",border:"1px solid rgba(255,255,255,0.12)",borderRadius:3,padding:"4px 12px",color:"rgba(255,255,255,0.5)",cursor:"pointer",fontSize:10,fontFamily:"inherit",fontWeight:600,letterSpacing:".05em"}}
-            onMouseEnter={e=>{e.target.style.borderColor="rgba(124,58,237,0.6)";e.target.style.color="#a78bfa";}}
-            onMouseLeave={e=>{e.target.style.borderColor="rgba(255,255,255,0.12)";e.target.style.color="rgba(255,255,255,0.5)";}}>
+          <button className="chart-back-btn" onClick={()=>setActiveTab("matrix")} style={{background:"transparent",border:"1px solid rgba(255,255,255,0.12)",borderRadius:4,padding:"6px 15px",color:"rgba(255,255,255,0.5)",cursor:"pointer",fontSize:11,fontFamily:"inherit",fontWeight:700,letterSpacing:".05em",transition:"all .15s"}}
+            onMouseEnter={e=>{e.currentTarget.style.borderColor="rgba(124,58,237,0.6)";e.currentTarget.style.color="#a78bfa";}}
+            onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(255,255,255,0.12)";e.currentTarget.style.color="rgba(255,255,255,0.5)";}}>
             ← MATRIX
           </button>
         </div>
@@ -2979,18 +3468,74 @@ function EntropyView({ histRef, prices, assets, setActiveTab, status }) {
           <span style={{fontSize:8,color:"rgba(255,255,255,0.2)",letterSpacing:".08em"}}>SEED SOURCE</span>
           <span style={{fontSize:10,fontWeight:700,color:"#a78bfa"}}>Pyth price ticks</span>
         </div>
-        <div style={{marginLeft:"auto",fontSize:8,color:"rgba(255,255,255,0.15)"}}>
-          MI(X,Y) = H(X)+H(Y)−H(X,Y) · NMI = MI/√(H(X)·H(Y))
+        <div style={{marginLeft:"auto",fontSize:8,color:"rgba(255,255,255,0.18)",letterSpacing:".08em"}}>
+          live uncertainty map
         </div>
       </div>
 
       {/* ── Main grid ───────────────────────────────────────────────── */}
+      <div style={{padding:"10px 16px",borderBottom:"1px solid rgba(255,255,255,0.04)",background:"#080614",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap",position:"relative"}}>
+        <div style={{display:"flex",alignItems:"center",gap:6,minWidth:220}}>
+          <span style={{fontSize:9,color:"rgba(255,255,255,0.28)",letterSpacing:".1em",textTransform:"uppercase"}}>Correlation Stability Alert</span>
+          <div
+            onMouseEnter={()=>setShowAlertHelp(true)}
+            onMouseLeave={()=>setShowAlertHelp(false)}
+            style={{position:"relative",display:"inline-flex",alignItems:"center",justifyContent:"center",width:18,height:18,borderRadius:"50%",background:"linear-gradient(135deg, rgba(124,58,237,0.95), rgba(59,130,246,0.95))",border:"1px solid rgba(255,255,255,0.24)",color:"#fff",fontSize:10,fontWeight:800,cursor:"help"}}
+          >
+            i
+            {showAlertHelp && (
+              <div style={{position:"absolute",top:22,left:-6,width:240,padding:"8px 10px",background:"#0b0917",border:"1px solid rgba(124,58,237,0.35)",borderRadius:6,color:"rgba(255,255,255,0.78)",fontSize:10,lineHeight:1.45,boxShadow:"0 8px 24px rgba(0,0,0,0.35)",zIndex:4}}>
+                Turn it on, choose a pair and a minimum |r| level. The alert triggers when recent correlation prints stay tight and strong, which usually means the pair has entered a stable regime.
+              </div>
+            )}
+          </div>
+        </div>
+        <span style={{fontSize:11,color:corrAlertHit?"#10b981":"rgba(255,255,255,0.42)"}}>
+          {corrAlertHit ? "stabilized now" : "waiting for stable correlation regime"}
+        </span>
+        <select value={corrAlertPair} onChange={e=>setCorrAlertPair(e.target.value)} style={{background:"#0b0917",border:"1px solid rgba(255,255,255,0.1)",borderRadius:6,color:"#fff",padding:"8px 10px",fontFamily:"inherit",fontSize:11}}>
+          {corrAlertOptions.map(opt=><option key={opt.key} value={opt.key}>{opt.label}</option>)}
+        </select>
+        <select value={corrAlertThreshold} onChange={e=>setCorrAlertThreshold(parseFloat(e.target.value))} style={{background:"#0b0917",border:"1px solid rgba(255,255,255,0.1)",borderRadius:6,color:"#fff",padding:"8px 10px",fontFamily:"inherit",fontSize:11}}>
+          {[0.6,0.7,0.8,0.9].map(v=><option key={v} value={v}>|r| ≥ {v.toFixed(1)}</option>)}
+        </select>
+        <button onClick={()=>setCorrAlertEnabled(v=>!v)} style={{background:corrAlertEnabled?"rgba(16,185,129,0.14)":"rgba(124,58,237,0.18)",border:`1px solid ${corrAlertEnabled?"rgba(16,185,129,0.35)":"rgba(124,58,237,0.35)"}`,borderRadius:6,color:corrAlertEnabled?"#34d399":"#c4b5fd",padding:"8px 12px",fontFamily:"inherit",fontSize:11,fontWeight:700,cursor:"pointer"}}>
+          {corrAlertEnabled ? "ALERT ON" : "ENABLE ALERT"}
+        </button>
+        <div style={{marginLeft:"auto",fontSize:10,color:corrAlertHit?"#10b981":"rgba(255,255,255,0.3)",letterSpacing:".06em"}}>
+          {corrAlertEnabled ? (corrAlertHit ? "STABLE CORRELATION DETECTED" : "MONITORING LIVE") : "ALERT DISABLED"}
+        </div>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4, minmax(0, 1fr))",gap:1,background:"rgba(255,255,255,0.04)",borderBottom:"1px solid rgba(255,255,255,0.04)",flexShrink:0}}>
+        <div style={{padding:"12px 16px",background:"#080614"}}>
+          <div style={{fontSize:9,color:"rgba(255,255,255,0.28)",letterSpacing:".1em",textTransform:"uppercase"}}>Most Predictable</div>
+          <div style={{marginTop:6,fontSize:18,fontWeight:800,color:mostPredictable ? (assets.find(a=>a.symbol===mostPredictable.sym)?.color || "#10b981") : "rgba(255,255,255,0.25)"}}>{mostPredictable?.sym || "—"}</div>
+          <div style={{marginTop:2,fontSize:10,color:"rgba(255,255,255,0.42)"}}>{mostPredictable?.data ? `${mostPredictable.data.mean.toFixed(2)} entropy` : "waiting for sample"}</div>
+        </div>
+        <div style={{padding:"12px 16px",background:"#080614"}}>
+          <div style={{fontSize:9,color:"rgba(255,255,255,0.28)",letterSpacing:".1em",textTransform:"uppercase"}}>Most Chaotic</div>
+          <div style={{marginTop:6,fontSize:18,fontWeight:800,color:mostChaotic ? (assets.find(a=>a.symbol===mostChaotic.sym)?.color || "#ef4444") : "rgba(255,255,255,0.25)"}}>{mostChaotic?.sym || "—"}</div>
+          <div style={{marginTop:2,fontSize:10,color:"rgba(255,255,255,0.42)"}}>{mostChaotic?.data ? `${mostChaotic.data.mean.toFixed(2)} entropy` : "waiting for sample"}</div>
+        </div>
+        <div style={{padding:"12px 16px",background:"#080614"}}>
+          <div style={{fontSize:9,color:"rgba(255,255,255,0.28)",letterSpacing:".1em",textTransform:"uppercase"}}>Hidden Links</div>
+          <div style={{marginTop:6,fontSize:18,fontWeight:800,color:hiddenPairsCount ? "#f59e0b" : "rgba(255,255,255,0.25)"}}>{hiddenPairsCount}</div>
+          <div style={{marginTop:2,fontSize:10,color:"rgba(255,255,255,0.42)"}}>nonlinear pairs correlation misses</div>
+        </div>
+        <div style={{padding:"12px 16px",background:"#080614"}}>
+          <div style={{fontSize:9,color:"rgba(255,255,255,0.28)",letterSpacing:".1em",textTransform:"uppercase"}}>Assets Ready</div>
+          <div style={{marginTop:6,fontSize:18,fontWeight:800,color:nAssets >= 2 ? "#c4b5fd" : "rgba(255,255,255,0.25)"}}>{nAssets}/{assets.length}</div>
+          <div style={{marginTop:2,fontSize:10,color:"rgba(255,255,255,0.42)"}}>enough history to rank entropy</div>
+        </div>
+      </div>
+
       <div style={{flex:1,display:"grid",gridTemplateColumns:"1fr 1fr",gridTemplateRows:"1fr 200px",gap:1,minHeight:0,background:"rgba(255,255,255,0.04)"}}>
 
         {/* Entropy Ranking bar chart */}
         <div style={{display:"flex",flexDirection:"column",background:"#07050f",minHeight:0}}>
           <div style={{padding:"8px 16px 4px",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <span style={{fontSize:9,color:"rgba(255,255,255,0.25)",letterSpacing:".08em"}}>ENTROPY RANKING — H(X) bits</span>
+            <span style={{fontSize:9,color:"rgba(255,255,255,0.25)",letterSpacing:".08em"}}>ENTROPY RANKING — predictability ladder</span>
             <div style={{display:"flex",gap:8,fontSize:8,color:"rgba(255,255,255,0.2)"}}>
               <span style={{color:"#10b981"}}>■ low = predictable</span>
               <span style={{color:"#ef4444"}}>■ high = chaotic</span>
@@ -3004,7 +3549,7 @@ function EntropyView({ histRef, prices, assets, setActiveTab, status }) {
         {/* NMI Heatmap */}
         <div style={{display:"flex",flexDirection:"column",background:"#07050f",minHeight:0}}>
           <div style={{padding:"8px 16px 4px",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <span style={{fontSize:9,color:"rgba(255,255,255,0.25)",letterSpacing:".08em"}}>NMI HEATMAP — normalized mutual information</span>
+            <span style={{fontSize:9,color:"rgba(255,255,255,0.25)",letterSpacing:".08em"}}>NMI HEATMAP — hidden structure map</span>
             <div style={{display:"flex",gap:8,fontSize:8,color:"rgba(255,255,255,0.2)"}}>
               <span style={{color:"rgba(100,80,180,0.8)"}}>■ 0.0</span>
               <span style={{color:"#a78bfa"}}>■ 0.5</span>
@@ -3013,6 +3558,21 @@ function EntropyView({ histRef, prices, assets, setActiveTab, status }) {
           </div>
           <div style={{flex:1,position:"relative",minHeight:0}}>
             <canvas ref={heatRef} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>
+            <div style={{display:"none",position:"absolute",top:0,left:0,right:0,height:34,background:"#07050f",pointerEvents:"none"}}/>
+            <div style={{display:"none",position:"absolute",top:8,left:16,right:16,alignItems:"center",justifyContent:"space-between",pointerEvents:"none"}}>
+              <div style={{display:"flex",flexDirection:"column",gap:3}}>
+                <span style={{fontSize:9,color:"rgba(255,255,255,0.25)",letterSpacing:".08em"}}>DEPENDENCY MAP</span>
+                <span style={{fontSize:8,color:"rgba(255,255,255,0.14)",letterSpacing:".04em"}}>who keeps moving together even when Pearson looks weak</span>
+              </div>
+              <div style={{display:"flex",gap:8,fontSize:8,color:"rgba(255,255,255,0.2)"}}>
+                <span style={{color:"rgba(100,80,180,0.8)"}}>weak</span>
+                <span style={{color:"#a78bfa"}}>medium</span>
+                <span style={{color:"#10b981"}}>strong</span>
+              </div>
+            </div>
+            <div style={{display:"none",position:"absolute",left:14,bottom:12,padding:"5px 8px",background:"rgba(8,6,20,0.78)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:6,color:"rgba(255,255,255,0.36)",fontSize:9,letterSpacing:".03em",pointerEvents:"none"}}>
+              Brighter cells = stronger shared behavior
+            </div>
           </div>
         </div>
 
@@ -3020,7 +3580,7 @@ function EntropyView({ histRef, prices, assets, setActiveTab, status }) {
         <div style={{display:"flex",flexDirection:"column",background:"#07050f",minHeight:0,gridColumn:"1 / -1"}}>
           <div style={{padding:"8px 16px 4px",flexShrink:0,display:"flex",alignItems:"center",gap:12}}>
             <span style={{fontSize:9,color:"rgba(255,255,255,0.25)",letterSpacing:".08em"}}>⚡ HIDDEN CONNECTIONS</span>
-            <span style={{fontSize:8,color:"rgba(255,255,255,0.15)"}}>pairs where |Pearson r| &lt; 0.35 but NMI &gt; 0.30 — non-linear dependency not captured by correlation</span>
+            <span style={{fontSize:8,color:"rgba(255,255,255,0.15)"}}>pairs that look weak on Pearson but still move with meaningful nonlinear dependence</span>
           </div>
           <div style={{flex:1,position:"relative",minHeight:0}}>
             <canvas ref={hiddenRef} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>
