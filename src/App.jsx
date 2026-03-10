@@ -2,16 +2,16 @@ import { useState, useEffect, useRef, useCallback } from "react";
 import SmokeBackground from "./SmokeBackground";
 
 const ASSETS = [
-  { id: "e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43", symbol: "BTC",     name: "Bitcoin",      category: "crypto",    color: "#F7931A", icon: "₿", logo: "https://assets.coingecko.com/coins/images/1/small/bitcoin.png" },
-  { id: "ff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace", symbol: "ETH",     name: "Ethereum",     category: "crypto",    color: "#8B9FFF", icon: "Ξ", logo: "https://assets.coingecko.com/coins/images/279/small/ethereum.png" },
-  { id: "ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d", symbol: "SOL",     name: "Solana",       category: "crypto",    color: "#14F195", icon: "◎", logo: "https://assets.coingecko.com/coins/images/4128/small/solana.png" },
-  { id: "dcef50dd0a4cd2dcc17e45df1676dcb336a11a61c69df7a0299b0150c672d25c", symbol: "DOGE",    name: "Dogecoin",     category: "crypto",    color: "#C8A84B", icon: "Ð", logo: "https://assets.coingecko.com/coins/images/5/small/dogecoin.png" },
-  { id: "eaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a", symbol: "USDC",    name: "USD Coin",     category: "crypto",    color: "#2775CA", icon: "$", logo: "https://assets.coingecko.com/coins/images/6319/small/usdc.png" },
-  { id: "a995d00bb36a63cef7fd2c287dc105fc8f3d93779f062f09551b0af3e81ec30b", symbol: "EUR/USD", name: "Euro",         category: "fx",        color: "#60A5FA", icon: "€", logo: null },
-  { id: "84c2dde9633d93d1bcad84e7dc41c9d56578b7ec52fabedc1f335d673df0a7c1", symbol: "GBP/USD", name: "Pound",        category: "fx",        color: "#34D399", icon: "£", logo: null },
-  { id: "765d2ba906dbc32ca17cc11f5310a89e9ee1f6420508c63861f2f8ba4ee34bb2", symbol: "XAU/USD", name: "Gold",         category: "commodity", color: "#FCD34D", icon: "Au", logo: null },
-  { id: "925ca92ff005ae943c158e3563f59698ce7e75c5a8c8dd43303a0a154887b3e6", symbol: "WTI",     name: "Oil (WTI)",    category: "commodity", color: "#FB923C", icon: "⛽", logo: null },
-  { id: "49f6b65cb1de6b10eaf75e7c03ca029c306d0357e91b5311b175084a5ad55688", symbol: "AAPL",   name: "Apple Inc",    category: "equity",    color: "#E2E8F0", icon: "", logo: null },
+  { id: "e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43", symbol: "BTC",     name: "Bitcoin",      category: "crypto",    color: "#F7931A", icon: "₿", logo: "https://assets.coingecko.com/coins/images/1/large/bitcoin.png" },
+  { id: "ff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace", symbol: "ETH",     name: "Ethereum",     category: "crypto",    color: "#8B9FFF", icon: "Ξ", logo: "https://assets.coingecko.com/coins/images/279/large/ethereum.png" },
+  { id: "ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d", symbol: "SOL",     name: "Solana",       category: "crypto",    color: "#14F195", icon: "◎", logo: "https://assets.coingecko.com/coins/images/4128/large/solana.png" },
+  { id: "dcef50dd0a4cd2dcc17e45df1676dcb336a11a61c69df7a0299b0150c672d25c", symbol: "DOGE",    name: "Dogecoin",     category: "crypto",    color: "#C8A84B", icon: "Ð", logo: "https://assets.coingecko.com/coins/images/5/large/dogecoin.png" },
+  { id: "eaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a", symbol: "USDC",    name: "USD Coin",     category: "crypto",    color: "#2775CA", icon: "$", logo: "https://assets.coingecko.com/coins/images/6319/large/usdc.png" },
+  { id: "a995d00bb36a63cef7fd2c287dc105fc8f3d93779f062f09551b0af3e81ec30b", symbol: "EUR/USD", name: "Euro",         category: "fx",        color: "#60A5FA", icon: "€", logo: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='32' fill='%23003399'/%3E%3Ccircle cx='32' cy='14' r='3' fill='%23FFCC00'/%3E%3Ccircle cx='41' cy='16.4' r='3' fill='%23FFCC00'/%3E%3Ccircle cx='47.6' cy='23' r='3' fill='%23FFCC00'/%3E%3Ccircle cx='50' cy='32' r='3' fill='%23FFCC00'/%3E%3Ccircle cx='47.6' cy='41' r='3' fill='%23FFCC00'/%3E%3Ccircle cx='41' cy='47.6' r='3' fill='%23FFCC00'/%3E%3Ccircle cx='32' cy='50' r='3' fill='%23FFCC00'/%3E%3Ccircle cx='23' cy='47.6' r='3' fill='%23FFCC00'/%3E%3Ccircle cx='16.4' cy='41' r='3' fill='%23FFCC00'/%3E%3Ccircle cx='14' cy='32' r='3' fill='%23FFCC00'/%3E%3Ccircle cx='16.4' cy='23' r='3' fill='%23FFCC00'/%3E%3Ccircle cx='23' cy='16.4' r='3' fill='%23FFCC00'/%3E%3C/svg%3E" },
+  { id: "84c2dde9633d93d1bcad84e7dc41c9d56578b7ec52fabedc1f335d673df0a7c1", symbol: "GBP/USD", name: "Pound",        category: "fx",        color: "#34D399", icon: "£", logo: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3CclipPath id='c'%3E%3Ccircle cx='32' cy='32' r='32'/%3E%3C/clipPath%3E%3C/defs%3E%3Ccircle cx='32' cy='32' r='32' fill='%23012169'/%3E%3Cg clip-path='url(%23c)'%3E%3Cpath d='M0 0 L64 64 M64 0 L0 64' stroke='white' stroke-width='13'/%3E%3Cpath d='M0 0 L64 64 M64 0 L0 64' stroke='%23C8102E' stroke-width='7'/%3E%3Cpath d='M32 0 L32 64 M0 32 L64 32' stroke='white' stroke-width='18'/%3E%3Cpath d='M32 0 L32 64 M0 32 L64 32' stroke='%23C8102E' stroke-width='11'/%3E%3C/g%3E%3C/svg%3E" },
+  { id: "765d2ba906dbc32ca17cc11f5310a89e9ee1f6420508c63861f2f8ba4ee34bb2", symbol: "XAU/USD", name: "Gold",         category: "commodity", color: "#FCD34D", icon: "Au", logo: "https://assets.coingecko.com/coins/images/10481/large/Tether_Gold.png" },
+  { id: "925ca92ff005ae943c158e3563f59698ce7e75c5a8c8dd43303a0a154887b3e6", symbol: "WTI",     name: "Oil (WTI)",    category: "commodity", color: "#FB923C", icon: "⛽", logo: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='32' fill='%23FB923C'/%3E%3Cpath d='M32 10C22 24 15 32 15 41C15 51.5 22.5 57 32 57C41.5 57 49 51.5 49 41C49 32 42 24 32 10Z' fill='white' fill-opacity='0.88'/%3E%3C/svg%3E" },
+  { id: "49f6b65cb1de6b10eaf75e7c03ca029c306d0357e91b5311b175084a5ad55688", symbol: "AAPL",   name: "Apple Inc",    category: "equity",    color: "#E2E8F0", icon: "", logo: "https://icons.duckduckgo.com/ip3/apple.com.ico" },
 ];
 
 const SEED = { BTC:65000,ETH:3200,SOL:140,DOGE:0.15,USDC:1,"EUR/USD":1.085,"GBP/USD":1.265,"XAU/USD":2320,WTI:78,AAPL:185 };
@@ -64,27 +64,54 @@ function strengthInfo(v){
 }
 
 /* ── SPARKLINE ──────────────────────────────────────────────────────────── */
-function Spark({data,color,h=28,w=72}){
-  if(!data||data.length<2)return<svg width={w} height={h}/>;
-  const pts=data.slice(-50),mn=Math.min(...pts),mx=Math.max(...pts),rng=mx-mn||1;
+function _drawSparkFrame(canvas,pts,h,w){
+  if(!canvas||!pts||pts.length<2)return;
+  canvas.width=w;canvas.height=h;
+  const ctx=canvas.getContext("2d");
+  ctx.clearRect(0,0,w,h);
+  const mn=Math.min(...pts),mx=Math.max(...pts),rng=mx-mn||1;
   const xs=pts.map((_,i)=>(i/(pts.length-1))*(w-2)+1);
   const ys=pts.map(v=>h-2-((v-mn)/rng)*(h-4));
-  const line=xs.map((x,i)=>`${i===0?"M":"L"}${x},${ys[i]}`).join(" ");
-  const area=`${line} L${xs[xs.length-1]},${h} L${xs[0]},${h} Z`;
   const up=pts[pts.length-1]>=pts[0];
   const sc=up?"#34d399":"#f87171";
-  return(
-    <svg width={w} height={h}>
-      <defs>
-        <linearGradient id={`sg${color.replace("#","")}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={sc} stopOpacity="0.3"/>
-          <stop offset="100%" stopColor={sc} stopOpacity="0"/>
-        </linearGradient>
-      </defs>
-      <path d={area} fill={`url(#sg${color.replace("#","")})`}/>
-      <path d={line} fill="none" stroke={sc} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
+  // gradient fill
+  const grad=ctx.createLinearGradient(0,0,0,h);
+  grad.addColorStop(0,up?"rgba(52,211,153,0.28)":"rgba(248,113,113,0.28)");
+  grad.addColorStop(1,"rgba(0,0,0,0)");
+  ctx.beginPath();
+  xs.forEach((x,i)=>i===0?ctx.moveTo(x,ys[i]):ctx.lineTo(x,ys[i]));
+  ctx.lineTo(xs[xs.length-1],h);ctx.lineTo(xs[0],h);ctx.closePath();
+  ctx.fillStyle=grad;ctx.fill();
+  // line
+  ctx.beginPath();
+  xs.forEach((x,i)=>i===0?ctx.moveTo(x,ys[i]):ctx.lineTo(x,ys[i]));
+  ctx.strokeStyle=sc;ctx.lineWidth=1.5;ctx.lineJoin="round";ctx.lineCap="round";ctx.stroke();
+}
+
+function Spark({data,color,h=28,w=72}){
+  const canvasRef=useRef();
+  const stRef=useRef({prev:null,raf:null});
+  useEffect(()=>{
+    if(!data||data.length<2)return;
+    const next=data.slice(-50);
+    const prev=stRef.current.prev||next;
+    if(stRef.current.raf)cancelAnimationFrame(stRef.current.raf);
+    const start=performance.now(),dur=500;
+    const len=Math.max(prev.length,next.length);
+    const pad=arr=>arr.length>=len?arr.slice(-len):[...Array(len-arr.length).fill(arr[0]),...arr];
+    const pA=pad(prev),pB=pad(next);
+    const frame=(now)=>{
+      const t=Math.min(1,(now-start)/dur);
+      const ease=1-Math.pow(1-t,3); // cubic ease-out
+      const interp=pA.map((v,i)=>v+(pB[i]-v)*ease);
+      _drawSparkFrame(canvasRef.current,interp,h,w);
+      if(t<1){stRef.current.raf=requestAnimationFrame(frame);}
+      else{stRef.current.prev=next;stRef.current.raf=null;}
+    };
+    stRef.current.raf=requestAnimationFrame(frame);
+    return()=>{if(stRef.current.raf)cancelAnimationFrame(stRef.current.raf);};
+  },[data,h,w]);
+  return<canvas ref={canvasRef} width={w} height={h} style={{display:"block"}}/>;
 }
 
 /* ── CORR CHART ─────────────────────────────────────────────────────────── */
@@ -1048,26 +1075,6 @@ export default function App(){
         )}
         {/* ══ TICKERS ════════════════════════════════════════════════════ */}
         <section className={`sec${mobileTab!=="tickers"?" mh":""}`} id="sec-tickers">
-          {false && <div className="card" style={{marginBottom:12,padding:"12px 14px",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap"}}>
-            <div style={{display:"flex",flexDirection:"column",gap:3,minWidth:180}}>
-              <span style={{fontSize:9,color:"rgba(255,255,255,0.28)",letterSpacing:".1em",textTransform:"uppercase"}}>Correlation Stability Alert</span>
-              <span style={{fontSize:11,color:corrAlertHit?"#10b981":"rgba(255,255,255,0.42)"}}>
-                {corrAlertHit ? "stabilized now" : "waiting for stable correlation regime"}
-              </span>
-            </div>
-            <select value={corrAlertPair} onChange={e=>setCorrAlertPair(e.target.value)} style={{background:"#0b0917",border:"1px solid rgba(255,255,255,0.1)",borderRadius:6,color:"#fff",padding:"8px 10px",fontFamily:"inherit",fontSize:11}}>
-              {corrAlertOptions.map(opt=><option key={opt.key} value={opt.key}>{opt.label}</option>)}
-            </select>
-            <select value={corrAlertThreshold} onChange={e=>setCorrAlertThreshold(parseFloat(e.target.value))} style={{background:"#0b0917",border:"1px solid rgba(255,255,255,0.1)",borderRadius:6,color:"#fff",padding:"8px 10px",fontFamily:"inherit",fontSize:11}}>
-              {[0.6,0.7,0.8,0.9].map(v=><option key={v} value={v}>|r| ≥ {v.toFixed(1)}</option>)}
-            </select>
-            <button onClick={()=>setCorrAlertEnabled(v=>!v)} style={{background:corrAlertEnabled?"rgba(16,185,129,0.14)":"rgba(124,58,237,0.18)",border:`1px solid ${corrAlertEnabled?"rgba(16,185,129,0.35)":"rgba(124,58,237,0.35)"}`,borderRadius:6,color:corrAlertEnabled?"#34d399":"#c4b5fd",padding:"8px 12px",fontFamily:"inherit",fontSize:11,fontWeight:700,cursor:"pointer"}}>
-              {corrAlertEnabled ? "ALERT ON" : "ENABLE ALERT"}
-            </button>
-            <div style={{marginLeft:"auto",fontSize:10,color:corrAlertHit?"#10b981":"rgba(255,255,255,0.3)",letterSpacing:".06em"}}>
-              {corrAlertEnabled ? (corrAlertHit ? "STABLE CORRELATION DETECTED" : "MONITORING LIVE") : "ALERT DISABLED"}
-            </div>
-          </div>}
           <div className="tgrid">
             {status==="connecting"?(
               vis.map((_,i)=><TickerSkeleton key={i}/>)
@@ -1269,19 +1276,19 @@ export default function App(){
 
       </main>
 
-      {activeTab==="charts"&&<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#070512",zIndex:200,display:"flex",flexDirection:"column",fontFamily:"'Space Mono',monospace"}}>
+      {activeTab==="charts"&&<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#070512",zIndex:200,display:"flex",flexDirection:"column",fontFamily:"'Space Mono',monospace",animation:"fadein .22s ease"}}>
         <ChartView assets={ASSETS} prices={prices} chartAsset={chartAsset} setChartAsset={setChartAsset} chartTf={chartTf} setChartTf={setChartTf} chartType={chartType} setChartType={setChartType} chartHist={chartHist} setChartHist={setChartHist} setActiveTab={setActiveTab} status={status} histRef={histRef}/>
       </div>}
 
-      {activeTab==="corr"&&<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#07050f",zIndex:200,display:"flex",flexDirection:"column"}}>
+      {activeTab==="corr"&&<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#07050f",zIndex:200,display:"flex",flexDirection:"column",animation:"fadein .22s ease"}}>
         <CorrView histRef={histRef} prices={prices} assets={ASSETS} setActiveTab={setActiveTab} status={status}/>
       </div>}
 
-      <div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#07050f",zIndex:200,display:activeTab==="entropy"?"flex":"none",flexDirection:"column"}}>
+      <div className={activeTab==="entropy"?"tab-overlay-enter":""} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#07050f",zIndex:200,display:activeTab==="entropy"?"flex":"none",flexDirection:"column"}}>
         <EntropyView histRef={histRef} prices={prices} assets={ASSETS} setActiveTab={setActiveTab} status={status} liveRun={entropyLiveRun} setLiveRun={setEntropyLiveRun} corrAlertEnabled={corrAlertEnabled} setCorrAlertEnabled={setCorrAlertEnabled} corrAlertPair={corrAlertPair} setCorrAlertPair={setCorrAlertPair} corrAlertThreshold={corrAlertThreshold} setCorrAlertThreshold={setCorrAlertThreshold} corrAlertHit={corrAlertHit} corrAlertOptions={corrAlertOptions}/>
       </div>
 
-      {activeTab==="docs" && <div style={{position:"fixed",inset:0,zIndex:200,display:"flex",flexDirection:"column"}}>
+      {activeTab==="docs" && <div style={{position:"fixed",inset:0,zIndex:200,display:"flex",flexDirection:"column",animation:"fadein .22s ease"}}>
         <DocsView setActiveTab={setActiveTab}/>
       </div>}
 
@@ -1424,12 +1431,12 @@ export default function App(){
         .tc-badge.commodity { background: rgba(252,211,77,.12); color: #fcd34d; }
         .tc-badge.equity { background: rgba(226,232,240,.1); color: #e2e8f0; }
         .tc-price-row { display: flex; align-items: baseline; justify-content: space-between; gap: 4px; }
-        .tc-price { font-family: var(--fd); font-size: 15px; font-weight: 700; color: var(--txx); font-variant-numeric: tabular-nums; }
-        .tc-pct { font-size: 10px; font-weight: 700; padding: 2px 5px; border-radius: 4px; }
+        .tc-price { font-family: var(--fd); font-size: 15px; font-weight: 700; color: var(--txx); font-variant-numeric: tabular-nums; transition: color 0.35s ease; }
+        .tc-pct { font-size: 10px; font-weight: 700; padding: 2px 5px; border-radius: 4px; transition: color 0.3s ease, background 0.3s ease; }
         .tc-pct.up { color: var(--gn); background: rgba(52,211,153,.1); }
         .tc-pct.dn { color: var(--rd); background: rgba(248,113,113,.1); }
         .tc-spark-row { display: flex; align-items: center; justify-content: space-between; }
-        .tc-pct24 { font-size: 8px; }
+        .tc-pct24 { font-size: 8px; transition: color 0.35s ease; }
         .tc-pct24.up { color: var(--gn); } .tc-pct24.dn { color: var(--rd); }
         .tc-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; border-top: 1px solid var(--cb2); padding-top: 6px; }
         .tc-stat { display: flex; gap: 4px; align-items: baseline; }
@@ -1467,7 +1474,7 @@ export default function App(){
         .hm-rl { padding-right: 6px; white-space: nowrap; }
         .hm-rl-inner { display: flex; align-items: center; gap: 5px; }
         .hm-rl-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
-        .hm-cell { min-width: 44px; height: 40px; text-align: center; vertical-align: middle; font-size: 8px; font-weight: 700; border-radius: 5px; cursor: pointer; transition: filter .18s, transform .18s; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+        .hm-cell { min-width: 44px; height: 40px; text-align: center; vertical-align: middle; font-size: 8px; font-weight: 700; border-radius: 5px; cursor: pointer; transition: filter .18s, transform .18s, background 0.55s ease, color 0.35s ease; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
         .hm-cell:hover { filter: brightness(1.4); transform: scale(1.08); z-index: 2; position: relative; }
         .hm-cell.diag { cursor: default; background: rgba(139,92,246,.04) !important; border: 1px solid rgba(139,92,246,.15); }
         .hm-cell.sel { outline: 2px solid rgba(255,255,255,.8); outline-offset: -1px; }
@@ -1547,6 +1554,8 @@ export default function App(){
         /* MODAL */
         .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 200; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px); animation: fadein .2s ease; }
         @keyframes fadein { from{opacity:0} to{opacity:1} }
+        @keyframes tabIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+        .tab-overlay-enter { animation: tabIn .22s ease both; }
         .modal { background: #0c0917; border: 1px solid var(--cb); border-radius: var(--r); width: min(500px, 94vw); overflow: hidden; animation: fup .22s ease; }
         .modal-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
         .fta { width: 100%; padding: 10px 12px; background: rgba(0,0,0,.4); border: 1px solid var(--cb); border-radius: var(--rs); color: var(--tx); font-family: var(--fm); font-size: 12px; resize: vertical; outline: none; transition: border-color .2s; }
@@ -1602,7 +1611,7 @@ const PYTH_SYM = {
   "XAU/USD": "Metal.XAU/USD",
   "EUR/USD": "FX.EUR/USD",
   "GBP/USD": "FX.GBP/USD",
-  "WTI/USD": "Energy.WTI/USD",
+  "WTI":     "Commodities.USOILSPOT",
   "AAPL":    "Equity.US.AAPL/USD",
   "BTI":     "Equity.US.BTI/USD",
 };
@@ -1616,11 +1625,13 @@ async function fetchPyth(symbol, tf = "1m", countback = 300) {
   const pythSym = PYTH_SYM[symbol];
   if (!pythSym) return [];
   const res  = PYTH_RES[tf] || "1";
+  // Pyth Benchmarks caps daily resolution at 365 bars
+  const cap  = res === "D" ? Math.min(countback, 365) : countback;
   const now  = Math.floor(Date.now() / 1000);
-  const from = now - TF_SECS[tf] * countback;
+  const from = now - TF_SECS[tf] * cap;
   const url  = `https://benchmarks.pyth.network/v1/shims/tradingview/history`
     + `?symbol=${encodeURIComponent(pythSym)}&resolution=${res}`
-    + `&from=${from}&to=${now}&countback=${countback}`;
+    + `&from=${from}&to=${now}&countback=${cap}`;
   try {
     const r = await fetch(url);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -1644,6 +1655,10 @@ const CHART_RIGHT_PAD_RATIO = 0;
 const CHART_MIN_VISIBLE_BARS = 30;
 const CHART_MAX_VISIBLE_BARS = 400;
 const CHART_OVERSCROLL_BARS = 80;
+
+// Preload Pyth logo for canvas watermark once at module level
+const _pythLogoImg = new Image();
+_pythLogoImg.src = "/pyth-logo.png";
 
 function drawCandles(canvas, bars, chartType, view = {}) {
   if (!canvas) return;
@@ -1794,41 +1809,30 @@ function drawCandles(canvas, bars, chartType, view = {}) {
     ctx.fillText(`${historyOffset} bars back`, PAD.l + 16, PAD.t + 19);
   }
 
-  // ── Watermark: Pyth logo + PythNetwork text ─────────────────────────────
+  // ── Watermark: Pyth logo + "PythNetwork" text ───────────────────────────
   {
     ctx.save();
+    const alpha = 0.06;
+    const logoSz = Math.min(CW * 0.07, 44);
+    const fontSize = Math.min(CW * 0.045, 32);
     const cx = PAD.l + CW * 0.5;
     const cy = PAD.t + PH * 0.5;
-    const alpha = 0.055;
-
-    // Draw "PythNetwork" text
-    ctx.globalAlpha = alpha;
-    ctx.fillStyle = "#ffffff";
-    const fontSize = Math.min(CW * 0.06, 42);
+    const totalW = logoSz + 8 + ctx.measureText("PythNetwork").width;
+    // measure first, then position
     ctx.font = `700 ${fontSize}px 'Outfit','Space Mono',sans-serif`;
-    ctx.textAlign = "center";
+    const textW = ctx.measureText("PythNetwork").width;
+    const blockW = logoSz + 10 + textW;
+    const startX = cx - blockW / 2;
+    // draw logo
+    ctx.globalAlpha = alpha;
+    if (_pythLogoImg.complete && _pythLogoImg.naturalWidth > 0) {
+      ctx.drawImage(_pythLogoImg, startX, cy - logoSz / 2, logoSz, logoSz);
+    }
+    // draw text
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "left";
     ctx.textBaseline = "middle";
-    ctx.fillText("PythNetwork", cx + fontSize * 1.4, cy);
-
-    // Draw Pyth "P" circle logo shape to the left of text
-    const r = fontSize * 0.9;
-    const lx = cx - ctx.measureText("PythNetwork").width * 0.5;
-    // Outer ring
-    ctx.strokeStyle = "#a78bfa";
-    ctx.lineWidth = r * 0.12;
-    ctx.beginPath();
-    ctx.arc(lx, cy, r, 0, Math.PI * 2);
-    ctx.stroke();
-    // Inner ring
-    ctx.lineWidth = r * 0.10;
-    ctx.beginPath();
-    ctx.arc(lx, cy, r * 0.55, 0, Math.PI * 2);
-    ctx.stroke();
-    // Gap cut (mimics Pyth P shape)
-    ctx.fillStyle = "#07050f";
-    ctx.globalAlpha = alpha * 1.2;
-    ctx.fillRect(lx - r*0.08, cy - r, r*0.16, r*0.7);
-
+    ctx.fillText("PythNetwork", startX + logoSz + 10, cy);
     ctx.restore();
   }
 }
@@ -1845,6 +1849,9 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
   const [crosshairActive, setCrosshairActive] = useState(false);
   const [crosshairX, setCrosshairX] = useState(null);
   const [showCorrHelp, setShowCorrHelp] = useState(false);
+  const [corrHeight, setCorrHeight] = useState(176);
+  const [corrInfoHovered, setCorrInfoHovered] = useState(false);
+  const corrResizeRef = useRef({ active:false, startY:0, startH:0 });
   const visibleBars = zoomBars;
   const benchmarkSymbol = chartAsset === "BTC" ? "ETH" : "BTC";
   const renderChart = useCallback(() => {
@@ -2100,40 +2107,83 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
 
       </div>
 
-      <div style={{height:176,flexShrink:0,borderTop:"1px solid rgba(255,255,255,0.05)",background:"#080614",position:"relative",minHeight:0}}>
-        <div style={{position:"absolute",top:12,left:16,zIndex:2,padding:"10px 12px",background:"rgba(8,6,20,0.82)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:6,backdropFilter:"blur(8px)",display:"flex",flexDirection:"column",gap:6}}>
-          <div style={{display:"flex",alignItems:"center",gap:6}}>
-            <div style={{fontSize:10,color:"rgba(255,255,255,0.34)",letterSpacing:".12em",textTransform:"uppercase"}}>Correlation Timeline</div>
-            <div
-              onMouseEnter={()=>setShowCorrHelp(true)}
-              onMouseLeave={()=>setShowCorrHelp(false)}
-              style={{position:"relative",display:"inline-flex",alignItems:"center",justifyContent:"center",width:20,height:20,borderRadius:"50%",background:"linear-gradient(135deg, rgba(124,58,237,0.95), rgba(59,130,246,0.95))",border:"1px solid rgba(255,255,255,0.28)",color:"#fff",fontSize:11,fontWeight:800,cursor:"help",pointerEvents:"auto",boxShadow:"0 0 0 3px rgba(124,58,237,0.16), 0 6px 16px rgba(76,29,149,0.35)"}}
-            >
-              i
-              {showCorrHelp && (
-                <div style={{position:"absolute",top:20,left:-6,width:220,padding:"8px 10px",background:"#0b0917",border:"1px solid rgba(124,58,237,0.35)",borderRadius:6,color:"rgba(255,255,255,0.78)",fontSize:10,lineHeight:1.45,letterSpacing:"normal",textTransform:"none",boxShadow:"0 8px 24px rgba(0,0,0,0.35)"}}>
-                  Tracks how tightly {chartAsset} moves with {benchmarkSymbol}, so you can spot when the relationship strengthens, weakens, or flips.
-                </div>
-              )}
+      {/* ── RESIZE HANDLE ────────────────────────────────────────────────── */}
+      <div
+        onPointerDown={(e) => {
+          corrResizeRef.current = { active:true, startY:e.clientY, startH:corrHeight };
+          e.currentTarget.setPointerCapture(e.pointerId);
+        }}
+        onPointerMove={(e) => {
+          if (!corrResizeRef.current.active) return;
+          const delta = corrResizeRef.current.startY - e.clientY;
+          setCorrHeight(Math.max(60, Math.min(520, corrResizeRef.current.startH + delta)));
+        }}
+        onPointerUp={(e) => {
+          corrResizeRef.current.active = false;
+          if (e.currentTarget.hasPointerCapture?.(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+        }}
+        style={{height:8,flexShrink:0,cursor:"row-resize",display:"flex",alignItems:"center",justifyContent:"center",
+          borderTop:"1px solid rgba(255,255,255,0.07)",borderBottom:"1px solid rgba(255,255,255,0.04)",
+          background:"rgba(255,255,255,0.02)",userSelect:"none",zIndex:5}}
+        onPointerEnter={(e)=>{ e.currentTarget.style.background="rgba(124,58,237,0.18)"; }}
+        onPointerLeave={(e)=>{ e.currentTarget.style.background="rgba(255,255,255,0.02)"; }}
+      >
+        <div style={{width:32,height:2,borderRadius:2,background:"rgba(255,255,255,0.15)"}}/>
+      </div>
+
+      {/* ── CORRELATION TIMELINE ─────────────────────────────────────────── */}
+      <div style={{height:corrHeight,flexShrink:0,background:"#080614",minHeight:0,position:"relative",overflow:"hidden"}}>
+        {/* Canvas — full width, same as main chart → crosshair aligns 1:1 */}
+        <canvas ref={corrCanvasRef} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>
+
+        {/* ── Info overlay: compact number by default, full panel on hover ── */}
+        <div
+          onMouseEnter={() => setCorrInfoHovered(true)}
+          onMouseLeave={() => setCorrInfoHovered(false)}
+          style={{position:"absolute",top:0,left:0,
+            background:"rgba(6,4,16,0.82)",
+            borderRight:"1px solid rgba(124,58,237,0.20)",
+            borderBottom:"1px solid rgba(124,58,237,0.20)",
+            borderRadius:"0 0 10px 0",
+            backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",
+            zIndex:2,cursor:"default",overflow:"hidden",
+            transition:"all .18s ease",
+          }}
+        >
+          {/* accent line */}
+          <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,${liveCorr==null?"rgba(196,181,253,0.5)":liveCorr>=0?"#10b981":"#ef4444"} 0%,transparent 100%)`}}/>
+          {corrInfoHovered ? (
+            /* ── expanded (hover) ── */
+            <div style={{padding:"9px 13px 10px"}}>
+              <div style={{fontSize:8,fontWeight:700,color:"rgba(196,181,253,0.50)",letterSpacing:".14em",textTransform:"uppercase",marginBottom:3}}>Corr Timeline</div>
+              <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.70)",letterSpacing:"-.01em",marginBottom:6}}>
+                {chartAsset} <span style={{color:"rgba(255,255,255,0.28)",fontWeight:400}}>vs</span> {benchmarkSymbol}
+              </div>
+              <div style={{display:"flex",alignItems:"baseline",gap:5}}>
+                <span style={{fontSize:26,fontWeight:800,fontVariantNumeric:"tabular-nums",letterSpacing:"-.02em",lineHeight:1,color:liveCorr==null?"rgba(255,255,255,0.20)":liveCorr>=0?"#34d399":"#f87171"}}>
+                  {liveCorr==null?"–":liveCorr.toFixed(3)}
+                </span>
+                {liveCorr!=null&&(
+                  <span style={{fontSize:8,fontWeight:700,letterSpacing:".06em",color:Math.abs(liveCorr)>=0.7?"#34d399":Math.abs(liveCorr)>=0.4?"#a78bfa":"rgba(255,255,255,0.30)"}}>
+                    {Math.abs(liveCorr)>=0.7?"STRONG":Math.abs(liveCorr)>=0.4?"MODERATE":"WEAK"}
+                  </span>
+                )}
+              </div>
             </div>
-          </div>
-          <div style={{fontSize:16,fontWeight:700,color:"#fff"}}>{chartAsset} vs {benchmarkSymbol}</div>
-          <div style={{fontSize:11,color:"rgba(255,255,255,0.42)",lineHeight:1.4}}>
-            Rolling 30-tick correlation chronology against {benchmarkAsset.symbol}.
-          </div>
-          <div style={{display:"flex",alignItems:"baseline",gap:8}}>
-            <span style={{fontSize:24,fontWeight:700,color:liveCorr == null ? "rgba(255,255,255,0.28)" : liveCorr >= 0 ? "#10b981" : "#ef4444"}}>
-              {liveCorr == null ? "..." : liveCorr.toFixed(3)}
-            </span>
-            <span style={{fontSize:10,color:"rgba(255,255,255,0.3)",letterSpacing:".08em"}}>LIVE CORR</span>
-          </div>
-        </div>
-        <div style={{position:"absolute",inset:0,minWidth:0}}>
-          <canvas ref={corrCanvasRef} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>
-          {crosshairActive && crosshairX != null && (
-            <div style={{position:"absolute",top:0,bottom:0,left:crosshairX,width:1,background:"rgba(196,181,253,0.45)",pointerEvents:"none",boxShadow:"0 0 0 1px rgba(124,58,237,0.08)"}}/>
+          ) : (
+            /* ── compact (default) — just the number ── */
+            <div style={{padding:"6px 10px 7px"}}>
+              <div style={{fontSize:13,fontWeight:800,fontVariantNumeric:"tabular-nums",letterSpacing:"-.01em",lineHeight:1,color:liveCorr==null?"rgba(255,255,255,0.20)":liveCorr>=0?"#34d399":"#f87171"}}>
+                {liveCorr==null?"–":liveCorr.toFixed(3)}
+              </div>
+            </div>
           )}
         </div>
+
+        {/* ── Crosshair — same x as main chart, zero remapping ── */}
+        {crosshairActive && crosshairX != null && (
+          <div style={{position:"absolute",top:0,bottom:0,left:crosshairX,width:1,background:"rgba(196,181,253,0.45)",pointerEvents:"none",zIndex:3}}/>
+        )}
       </div>
 
     </div>
@@ -2380,20 +2430,15 @@ function drawRollingCorrTimeline(canvas, primaryBars, secondaryBars, view = {}) 
 
   const series = buildRollingCorrelationSeries(primaryBars, secondaryBars, 30);
   const valueByTime = new Map(series.map(p => [p.t, p.v]));
-  const points = visibleBars.map((b, i) => {
+
+  // First pass — collect x/v without y so we can compute auto-range
+  const rawPts = visibleBars.map((b, i) => {
     const v = valueByTime.get(b.t);
     if (v == null) return null;
-    return {
-      i,
-      x: PAD.l + ((i + 0.5 - overscrollShiftBars) / totalSlots) * CW,
-      y: PAD.t + CH * (1 - (v + 1) / 2),
-      v,
-      t: b.t,
-    };
-  });
-  const drawn = points.filter(Boolean);
+    return { i, x: PAD.l + ((i + 0.5 - overscrollShiftBars) / totalSlots) * CW, v, t: b.t };
+  }).filter(Boolean);
 
-  if (drawn.length < 2) {
+  if (rawPts.length < 2) {
     ctx.fillStyle = "rgba(124,58,237,0.3)";
     ctx.font = "11px 'Space Mono',monospace";
     ctx.textAlign = "center";
@@ -2402,31 +2447,40 @@ function drawRollingCorrTimeline(canvas, primaryBars, secondaryBars, view = {}) 
     return;
   }
 
-  [1, 0.5, 0, -0.5, -1].forEach(v => {
-    const y = PAD.t + CH * (1 - (v + 1) / 2);
-    ctx.strokeStyle = v === 0 ? "rgba(255,255,255,0.12)" : "rgba(255,255,255,0.04)";
+  // Auto-scale: fit visible data with padding, clamped to [-1, 1]
+  const vals = rawPts.map(p => p.v);
+  const rawMin = Math.min(...vals), rawMax = Math.max(...vals);
+  const rangePad = Math.max(0.08, (rawMax - rawMin) * 0.25);
+  const rangeMin = Math.max(-1.0, rawMin - rangePad);
+  const rangeMax = Math.min( 1.0, rawMax + rangePad);
+  const toY = v => PAD.t + CH * (1 - (v - rangeMin) / (rangeMax - rangeMin));
+
+  // Second pass — add y
+  const drawn = rawPts.map(p => ({ ...p, y: toY(p.v) }));
+
+  // Grid lines at round values visible within the auto range; labels on RIGHT (PAD.r area)
+  [-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1].filter(v => v >= rangeMin - 0.02 && v <= rangeMax + 0.02).forEach(v => {
+    const y = toY(v);
+    ctx.strokeStyle = v === 0 ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.05)";
     ctx.lineWidth = 1;
     ctx.setLineDash(v === 0 ? [] : [3, 4]);
-    ctx.beginPath();
-    ctx.moveTo(PAD.l, y);
-    ctx.lineTo(PAD.l + CW, y);
-    ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(PAD.l + CW, y); ctx.stroke();
     ctx.setLineDash([]);
-    ctx.fillStyle = "rgba(255,255,255,0.18)";
+    ctx.fillStyle = v === 0 ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.20)";
     ctx.font = "8px 'Space Mono',monospace";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
-    ctx.fillText(v.toFixed(1), PAD.l + 4, y);
+    ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.fillText(v === 0 ? "0" : v.toFixed(2), W - PAD.r + 4, y);
   });
 
   const last = drawn[drawn.length - 1];
+  const zeroY = toY(Math.max(rangeMin, Math.min(rangeMax, 0)));
   const grd = ctx.createLinearGradient(0, PAD.t, 0, PAD.t + CH);
-  grd.addColorStop(0, last.v >= 0 ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)");
+  grd.addColorStop(0, last.v >= 0 ? "rgba(16,185,129,0.22)" : "rgba(239,68,68,0.22)");
   grd.addColorStop(1, "rgba(0,0,0,0)");
   ctx.beginPath();
   drawn.forEach((p, i) => { i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y); });
-  ctx.lineTo(drawn[drawn.length - 1].x, PAD.t + CH / 2);
-  ctx.lineTo(drawn[0].x, PAD.t + CH / 2);
+  ctx.lineTo(drawn[drawn.length - 1].x, zeroY);
+  ctx.lineTo(drawn[0].x, zeroY);
   ctx.closePath();
   ctx.fillStyle = grd;
   ctx.fill();
@@ -3297,7 +3351,7 @@ function EntropyView({ histRef, prices, assets, setActiveTab, status, liveRun, s
     setNmiMatrix(nmi);
     setPearsonMat(pears);
     setLastRun(new Date());
-  };;
+  };
 
   const drawEntropyScene = useCallback((ranking, nmi, pears) => {
     if (!ranking?.length) return;
@@ -3558,21 +3612,6 @@ function EntropyView({ histRef, prices, assets, setActiveTab, status, liveRun, s
           </div>
           <div style={{flex:1,position:"relative",minHeight:0}}>
             <canvas ref={heatRef} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>
-            <div style={{display:"none",position:"absolute",top:0,left:0,right:0,height:34,background:"#07050f",pointerEvents:"none"}}/>
-            <div style={{display:"none",position:"absolute",top:8,left:16,right:16,alignItems:"center",justifyContent:"space-between",pointerEvents:"none"}}>
-              <div style={{display:"flex",flexDirection:"column",gap:3}}>
-                <span style={{fontSize:9,color:"rgba(255,255,255,0.25)",letterSpacing:".08em"}}>DEPENDENCY MAP</span>
-                <span style={{fontSize:8,color:"rgba(255,255,255,0.14)",letterSpacing:".04em"}}>who keeps moving together even when Pearson looks weak</span>
-              </div>
-              <div style={{display:"flex",gap:8,fontSize:8,color:"rgba(255,255,255,0.2)"}}>
-                <span style={{color:"rgba(100,80,180,0.8)"}}>weak</span>
-                <span style={{color:"#a78bfa"}}>medium</span>
-                <span style={{color:"#10b981"}}>strong</span>
-              </div>
-            </div>
-            <div style={{display:"none",position:"absolute",left:14,bottom:12,padding:"5px 8px",background:"rgba(8,6,20,0.78)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:6,color:"rgba(255,255,255,0.36)",fontSize:9,letterSpacing:".03em",pointerEvents:"none"}}>
-              Brighter cells = stronger shared behavior
-            </div>
           </div>
         </div>
 
