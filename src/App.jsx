@@ -12,13 +12,10 @@ const ASSETS = [
   { id: "765d2ba906dbc32ca17cc11f5310a89e9ee1f6420508c63861f2f8ba4ee34bb2", symbol: "XAU/USD", name: "Gold",         category: "commodity", color: "#FCD34D", icon: "Au", logo: "https://assets.coingecko.com/coins/images/10481/large/Tether_Gold.png" },
   { id: "925ca92ff005ae943c158e3563f59698ce7e75c5a8c8dd43303a0a154887b3e6", symbol: "WTI",     name: "Oil (WTI)",    category: "commodity", color: "#FB923C", icon: "⛽", logo: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='32' fill='%23FB923C'/%3E%3Cpath d='M32 10C22 24 15 32 15 41C15 51.5 22.5 57 32 57C41.5 57 49 51.5 49 41C49 32 42 24 32 10Z' fill='white' fill-opacity='0.88'/%3E%3C/svg%3E" },
   { id: "49f6b65cb1de6b10eaf75e7c03ca029c306d0357e91b5311b175084a5ad55688", symbol: "AAPL",   name: "Apple Inc",    category: "equity",    color: "#E2E8F0", icon: "", logo: "https://icons.duckduckgo.com/ip3/apple.com.ico" },
-<<<<<<< HEAD
   { id: "19e09bb805456ada3979a7d1cbb4b6d63babc3a0f8e8a9509f68afa5c4c11cd5", symbol: "SPY",    name: "S&P 500 ETF",  category: "index",     color: "#38BDF8", icon: "S", logo: "https://icons.duckduckgo.com/ip3/www.ssga.com.ico" },
   { id: "9695e2b96ea7b3859da9ed25b7a46a920a776e2fdae19a7bcfdf2b219230452d", symbol: "QQQ",    name: "NASDAQ 100",   category: "index",     color: "#818CF8", icon: "Q", logo: "https://icons.duckduckgo.com/ip3/www.invesco.com.ico" },
   { id: "57cff3a9a4d4c87b595a2d1bd1bac0240400a84677366d632ab838bbbe56f763", symbol: "DIA",    name: "Dow Jones ETF",category: "index",     color: "#34D399", icon: "D", logo: "https://icons.duckduckgo.com/ip3/www.ssga.com.ico" },
   { id: "eff690a187797aa225723345d4612abec0bf0cec1ae62347c0e7b1905d730879", symbol: "IWM",    name: "Russell 2000", category: "index",     color: "#FB7185", icon: "R", logo: "https://icons.duckduckgo.com/ip3/www.ishares.com.ico" },
-=======
->>>>>>> 7e82ba3fe267bf1db16133eeb180533d06b0aa1c
 ];
 
 const SEED = { BTC:65000,ETH:3200,SOL:140,DOGE:0.15,USDC:1,"EUR/USD":1.085,"GBP/USD":1.265,"XAU/USD":2320,WTI:78,AAPL:185,SPY:560,QQQ:480,DIA:420,IWM:200 };
@@ -1019,7 +1016,6 @@ export default function App(){
   const [mounted,setMounted]=useState(false);
   const [mobileTab,setMobileTab]=useState("heatmap");
   const [activeTab,setActiveTab]=useState("matrix");
-<<<<<<< HEAD
   const [showLanding,setShowLanding]=useState(true);
   const [landingExiting,setLandingExiting]=useState(false);
   const goFromLanding=(tab="matrix")=>{
@@ -1050,8 +1046,6 @@ export default function App(){
     const txt=`${assetA.symbol}/${assetB.symbol} correlation: ${corrVal>=0?'+':''}${corrVal.toFixed(2)}\n\nPowered by @PythNetwork\npythcorrelation.com`;
     window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(txt)}`,'_blank');
   };
-=======
->>>>>>> 7e82ba3fe267bf1db16133eeb180533d06b0aa1c
   const [chartAsset,setChartAsset]=useState("BTC");
   const [chartTf,setChartTf]=useState("1m");
   const [chartType,setChartType]=useState("candle");
@@ -1264,11 +1258,7 @@ export default function App(){
 
       {/* ══ FILTER BAR ══════════════════════════════════════════════════ */}
       <div className="fbar" style={{display:activeTab==="charts"||activeTab==="corr"||activeTab==="entropy"||activeTab==="docs"?"none":"flex"}}>
-<<<<<<< HEAD
         {["all","crypto","fx","commodity","equity","index"].map(c=>(
-=======
-        {["all","crypto","fx","commodity","equity"].map(c=>(
->>>>>>> 7e82ba3fe267bf1db16133eeb180533d06b0aa1c
           <button key={c} className={`fbtn${filter===c?" a":""}`} onClick={()=>setFilter(c)}>
             {c==="all"?"All Assets":c==="fx"?"FX Pairs":c==="commodity"?"Commodities":c==="index"?"Indices":c.charAt(0).toUpperCase()+c.slice(1)}
             <span className="fbtn-count">{c==="all"?ASSETS.length:ASSETS.filter(a=>a.category===c).length}</span>
@@ -1286,10 +1276,7 @@ export default function App(){
             <span>{errorMsg}</span>
           </div>
         )}
-<<<<<<< HEAD
 
-=======
->>>>>>> 7e82ba3fe267bf1db16133eeb180533d06b0aa1c
         {/* ══ TICKERS ════════════════════════════════════════════════════ */}
         <section className={`sec${mobileTab!=="tickers"?" mh":""}`} id="sec-tickers">
           <div className="tgrid">
@@ -1589,7 +1576,6 @@ export default function App(){
         <DocsView setActiveTab={setActiveTab}/>
       </div>}
 
-<<<<<<< HEAD
       {/* ══ LANDING ═════════════════════════════════════════════════════ */}
       {showLanding&&(
         <div className={`landing-ov${landingExiting?" landing-ov-out":""}`}>
@@ -1613,8 +1599,6 @@ export default function App(){
         </div>
       )}
 
-=======
->>>>>>> 7e82ba3fe267bf1db16133eeb180533d06b0aa1c
       {/* ══ FOOTER ═════════════════════════════════════════════════════ */}
       <footer className="foot">
         <div className="foot-l">
@@ -1819,11 +1803,7 @@ export default function App(){
         .hm-rl-inner { display: flex; align-items: center; gap: 5px; }
         .hm-rl-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
         .hm-cell { min-width: 44px; height: 40px; text-align: center; vertical-align: middle; font-size: 8px; font-weight: 700; border-radius: 5px; cursor: pointer; transition: filter .18s, transform .18s, background 0.55s ease, color 0.35s ease; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
-<<<<<<< HEAD
         .hm-cell:not(.diag):hover { filter: brightness(1.35); transform: scale(1.10); z-index: 3; position: relative; box-shadow: 0 4px 16px rgba(0,0,0,0.5); }
-=======
-        .hm-cell:hover { filter: brightness(1.4); transform: scale(1.08); z-index: 2; position: relative; }
->>>>>>> 7e82ba3fe267bf1db16133eeb180533d06b0aa1c
         .hm-cell.diag { cursor: default; background: rgba(139,92,246,.04) !important; border: 1px solid rgba(139,92,246,.15); }
         .hm-cell.sel { outline: 2px solid rgba(255,255,255,.8); outline-offset: -1px; }
         /* HEATMAP SHARE BUTTON */
@@ -1978,14 +1958,10 @@ const PYTH_SYM = {
   "GBP/USD": "FX.GBP/USD",
   "WTI":     "Commodities.USOILSPOT",
   "AAPL":    "Equity.US.AAPL/USD",
-<<<<<<< HEAD
   "SPY":     "Equity.US.SPY/USD",
   "QQQ":     "Equity.US.QQQ/USD",
   "DIA":     "Equity.US.DIA/USD",
   "IWM":     "Equity.US.IWM/USD",
-=======
-  "BTI":     "Equity.US.BTI/USD",
->>>>>>> 7e82ba3fe267bf1db16133eeb180533d06b0aa1c
 };
 
 // Pyth Benchmarks resolution map (TradingView-compatible)
@@ -2001,7 +1977,6 @@ async function fetchPyth(symbol, tf = "1m", countback = 300) {
   const cap  = res === "D" ? Math.min(countback, 365) : countback;
   const now  = Math.floor(Date.now() / 1000);
   const from = now - TF_SECS[tf] * cap;
-<<<<<<< HEAD
   const qs = `?symbol=${encodeURIComponent(pythSym)}&resolution=${res}&from=${from}&to=${now}&countback=${cap}`;
   const tryFetch = async (url) => {
     const r = await fetch(url);
@@ -2015,15 +1990,6 @@ async function fetchPyth(symbol, tf = "1m", countback = 300) {
     } catch {
       d = await tryFetch(`https://benchmarks.pyth.network/v1/shims/tradingview/history${qs}`);
     }
-=======
-  const url  = `https://benchmarks.pyth.network/v1/shims/tradingview/history`
-    + `?symbol=${encodeURIComponent(pythSym)}&resolution=${res}`
-    + `&from=${from}&to=${now}&countback=${cap}`;
-  try {
-    const r = await fetch(url);
-    if (!r.ok) throw new Error(`HTTP ${r.status}`);
-    const d = await r.json();
->>>>>>> 7e82ba3fe267bf1db16133eeb180533d06b0aa1c
     if (d.s !== "ok" || !d.t?.length) return [];
     const tfs = TF_SECS[tf] || 60;
     return d.t.map((t, i) => ({
@@ -2241,7 +2207,6 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
   const [corrInfoHovered, setCorrInfoHovered] = useState(false);
   const corrResizeRef = useRef({ active:false, startY:0, startH:0 });
   const visibleBars = zoomBars;
-<<<<<<< HEAD
   const benchmarkSymbol = ({
     "BTC":"ETH","ETH":"BTC","SOL":"BTC","DOGE":"BTC","USDC":"BTC",
     "EUR/USD":"GBP/USD","GBP/USD":"EUR/USD",
@@ -2249,9 +2214,6 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
     "AAPL":"SPY",
     "SPY":"QQQ","QQQ":"SPY","DIA":"SPY","IWM":"SPY",
   })[chartAsset] ?? "BTC";
-=======
-  const benchmarkSymbol = chartAsset === "BTC" ? "ETH" : "BTC";
->>>>>>> 7e82ba3fe267bf1db16133eeb180533d06b0aa1c
   const renderChart = useCallback(() => {
     if (!canvasRef.current) return;
     drawCandles(canvasRef.current, barsRef.current, chartType, { offset:viewOffset, visibleCount:visibleBars, overscrollBars:CHART_OVERSCROLL_BARS });
@@ -2917,15 +2879,12 @@ const CORR_PAIRS = [
   ["XAU/USD","EUR/USD"],["XAU/USD","GBP/USD"],
   // Crypto vs Equity
   ["BTC","AAPL"],["ETH","AAPL"],
-<<<<<<< HEAD
   // Index pairs
   ["SPY","QQQ"],["SPY","DIA"],["SPY","IWM"],
   // Indices vs Crypto
   ["BTC","SPY"],["ETH","QQQ"],
   // Indices vs Equity
   ["SPY","AAPL"],["QQQ","AAPL"],
-=======
->>>>>>> 7e82ba3fe267bf1db16133eeb180533d06b0aa1c
 ];
 // fetchCloses: uses Pyth Benchmarks for ALL assets — no CORS, no Binance dependency
 // Returns array of close prices (same interface as before)
