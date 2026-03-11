@@ -16,20 +16,20 @@ const ASSETS = [
   { id: "9695e2b96ea7b3859da9ed25b7a46a920a776e2fdae19a7bcfdf2b219230452d", symbol: "QQQ",    name: "NASDAQ 100",   category: "index",     color: "#818CF8", icon: "Q", logo: "https://icons.duckduckgo.com/ip3/www.invesco.com.ico" },
   { id: "57cff3a9a4d4c87b595a2d1bd1bac0240400a84677366d632ab838bbbe56f763", symbol: "DIA",    name: "Dow Jones ETF",category: "index",     color: "#34D399", icon: "D", logo: "https://icons.duckduckgo.com/ip3/www.ssga.com.ico" },
   { id: "eff690a187797aa225723345d4612abec0bf0cec1ae62347c0e7b1905d730879", symbol: "IWM",    name: "Russell 2000", category: "index",     color: "#FB7185", icon: "R", logo: "https://icons.duckduckgo.com/ip3/www.ishares.com.ico" },
-  { id: "93da3352f9f1d105fdfe4971cfa80e9dd777bfc5d0f683ebb6e1294d45ef93b6", symbol: "AVAX",    name: "Avalanche",    category: "crypto",    color: "#E84142", icon: "A", logo: "https://assets.coingecko.com/coins/images/12559/large/Avalanche_Circle_RedWhite_Trans.png" },
+  { id: "93da3352f9f1d105fdfe4971cfa80e9dd777bfc5d0f683ebb6e1294b92137bb7", symbol: "AVAX",    name: "Avalanche",    category: "crypto",    color: "#E84142", icon: "A", logo: "https://assets.coingecko.com/coins/images/12559/large/Avalanche_Circle_RedWhite_Trans.png" },
   { id: "2a01deaec9e51a579277b34b122399984d0bbf57e2458a7e42fecd2829867a0d", symbol: "ADA",     name: "Cardano",      category: "crypto",    color: "#0033AD", icon: "₳", logo: "https://assets.coingecko.com/coins/images/975/large/cardano.png" },
   { id: "8ac0c70fff57e9aefdf5edf44b51d62c2d433653cbb2cf5cc06bb115af04d221", symbol: "LINK",    name: "Chainlink",    category: "crypto",    color: "#2A5ADA", icon: "⬡", logo: "https://assets.coingecko.com/coins/images/877/large/chainlink-new-logo.png" },
   { id: "78d185a741d07edb3412b09008b7c5cfb9bbbd7d568bf00ba737b456ba171501", symbol: "UNI",     name: "Uniswap",      category: "crypto",    color: "#FF007A", icon: "🦄", logo: "https://assets.coingecko.com/coins/images/12504/large/uniswap-uni.png" },
   { id: "6e3f3fa8253588df9326580180233eb791e03b443a3ba7a1d892e73874e19a54", symbol: "LTC",     name: "Litecoin",     category: "crypto",    color: "#BFBBBB", icon: "Ł", logo: "https://assets.coingecko.com/coins/images/2/large/litecoin.png" },
   { id: "ca3eed9b267293f6595901c734c7525ce8ef49adafe8284606ceb307afa2ca5b", symbol: "DOT",     name: "Polkadot",     category: "crypto",    color: "#E6007A", icon: "●", logo: "https://assets.coingecko.com/coins/images/12171/large/polkadot.png" },
-  { id: "67aed5a24fdad045475e7195084d2917b496079b3e0a39d4d7b466d21130f7f", symbol: "TRX",     name: "TRON",         category: "crypto",    color: "#EF0027", icon: "T", logo: "https://assets.coingecko.com/coins/images/1094/large/tron-logo.png" },
+  { id: "53f95ba4e23ed15ea56083e2ee9a5eec48055d6f59033d4bb95f1ca2a2349c28", symbol: "TRX",     name: "TRON",         category: "crypto",    color: "#EF0027", icon: "T", logo: "https://assets.coingecko.com/coins/images/1094/large/tron-logo.png" },
   { id: "03ae4db29ed4ae33d323568895aa00337e658e348b37509f5372ae51f0af00d5", symbol: "APT",     name: "Aptos",        category: "crypto",    color: "#2DD8A3", icon: "A", logo: "https://assets.coingecko.com/coins/images/26455/large/aptos_round.png" },
-  { id: "23d7315113f5b1d3ba7a83604c44b94d79f4fd69af77f804fc7f920a6dc65744", symbol: "SUI",     name: "Sui",          category: "crypto",    color: "#6FBCF0", icon: "S", logo: "https://assets.coingecko.com/coins/images/26375/large/sui_asset.jpeg" },
-  { id: "d69731a2e74ac1ce884fc3890f7ee324b6deb66147055249568869ed700882e4", symbol: "PEPE",    name: "Pepe",         category: "crypto",    color: "#00A83C", icon: "🐸", logo: "https://assets.coingecko.com/coins/images/29850/large/pepe-token.jpeg" },
-  { id: "c415de8d2eba7db216527dff4b60e8f3a5311c740daef6736c4471a2a4e7f3d7", symbol: "NEAR",    name: "NEAR Protocol", category: "crypto",   color: "#00C1DE", icon: "N", logo: "https://assets.coingecko.com/coins/images/10365/large/near.jpg" },
-  { id: "b00b60f88b03a6a625a8d1c048c3f66653edf217439983d037e7218b82515fce", symbol: "ATOM",    name: "Cosmos",       category: "crypto",    color: "#6F7390", icon: "⚛", logo: "https://assets.coingecko.com/coins/images/1481/large/cosmos_hub.png" },
+  { id: "8cead549d0e770dea8fdf5e018a85d59585265cf8bff16ba83962fc7996dbb7f", symbol: "SUI",     name: "Sui",          category: "crypto",    color: "#6FBCF0", icon: "S", logo: "https://assets.coingecko.com/coins/images/26375/large/sui_asset.jpeg" },
+  { id: "7f3febb69d47fd18c6e29697fc2c19ee70b9877111410238d8587f2cffacb232", symbol: "PEPE",    name: "Pepe",         category: "crypto",    color: "#00A83C", icon: "🐸", logo: "https://assets.coingecko.com/coins/images/29850/large/pepe-token.jpeg" },
+  { id: "c415de8d2eba7db216527dff4b60e8f3a5311c740dadb233e13e12547e226750", symbol: "NEAR",    name: "NEAR Protocol", category: "crypto",   color: "#00C1DE", icon: "N", logo: "https://assets.coingecko.com/coins/images/10365/large/near.jpg" },
+  { id: "b00b60f88b03a6a625a8d1c048c3f66653edf217439983d037e7222c4e612819", symbol: "ATOM",    name: "Cosmos",       category: "crypto",    color: "#6F7390", icon: "⚛", logo: "https://assets.coingecko.com/coins/images/1481/large/cosmos_hub.png" },
   { id: "ffd11c5a1cfd42f80afb2df4d9f264c15f956d68153335374ec10722edd70472", symbol: "POL",     name: "POL (MATIC)",  category: "crypto",    color: "#8247E5", icon: "P", logo: "https://assets.coingecko.com/coins/images/32440/large/polygon.png" },
-  { id: "fe650f0367d4a7ef9815a593ea15d36593f0643aaaf0149bb04be67ab851decd", symbol: "HYPE",    name: "Hyperliquid",  category: "crypto",    color: "#00FF95", icon: "H", logo: "https://assets.coingecko.com/coins/images/36822/large/HYPE.jpg" },
+  { id: "2837a61ae8165c018b0e406ac32b1527270e57b81f0069260afbef71b9cf8ffe", symbol: "HYPE",    name: "Hyperliquid",  category: "crypto",    color: "#00FF95", icon: "H", logo: "https://assets.coingecko.com/coins/images/36822/large/HYPE.jpg" },
 ];
 
 const SEED = { BTC:65000,ETH:3200,SOL:140,DOGE:0.15,USDC:1,"EUR/USD":1.085,"GBP/USD":1.265,"XAU/USD":2320,WTI:78,AAPL:185,SPY:560,QQQ:480,DIA:420,IWM:200,AVAX:20,ADA:0.63,LINK:13,UNI:6,LTC:80,DOT:4,TRX:0.24,APT:5,SUI:2.2,PEPE:0.000008,NEAR:2.5,ATOM:4.5,POL:0.22,HYPE:18 };
@@ -1146,12 +1146,20 @@ export default function App(){
     }catch(e){
       setErrorMsg(e?.message||"Network error");
       try{
-        const ids2=ASSETS.map(a=>`ids[]=${a.id}`).join("&");
-        const r2=await fetch(`https://hermes.pyth.network/v2/updates/price/latest?${ids2}&parsed=true&ignore_invalid_price_ids=true`);
-        if(!r2.ok)throw new Error();
-        const d2=await r2.json();
+        const BATCH=10;
+        const batches=[];
+        for(let i=0;i<ASSETS.length;i+=BATCH)batches.push(ASSETS.slice(i,i+BATCH));
+        const results=await Promise.all(batches.map(async batch=>{
+          const params=new URLSearchParams();
+          batch.forEach(a=>params.append("ids[]",a.id));
+          params.set("parsed","true");params.set("binary","false");params.set("ignore_invalid_price_ids","true");
+          const r=await fetch(`https://hermes.pyth.network/v2/updates/price/latest?${params}`);
+          if(!r.ok)return[];
+          const d=await r.json();
+          return d.parsed||[];
+        }));
         const np2={};
-        (d2.parsed||[]).forEach(item=>{
+        results.flat().forEach(item=>{
           const cleanId=item.id?.replace(/^0x/,"");
           const asset=ASSETS.find(a=>a.id.replace(/^0x/,"")===cleanId);
           if(!asset)return;
@@ -2073,6 +2081,17 @@ function drawCandles(canvas, bars, chartType, view = {}) {
 
   // Background
   ctx.fillStyle = "#07050f"; ctx.fillRect(0,0,W,H);
+
+  // PYTH watermark
+  if (_pythLogoImg.complete && _pythLogoImg.naturalWidth > 0) {
+    const wSize = Math.min(W * 0.28, 220);
+    const wx = (W - wSize) / 2;
+    const wy = (H - wSize) / 2;
+    ctx.save();
+    ctx.globalAlpha = 0.055;
+    ctx.drawImage(_pythLogoImg, wx, wy, wSize, wSize);
+    ctx.restore();
+  }
 
   if (!bars || bars.length < 2) {
     ctx.fillStyle = "rgba(124,58,237,0.3)"; ctx.font = "12px 'Space Mono',monospace";
