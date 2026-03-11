@@ -1120,7 +1120,7 @@ export default function App(){
     );
   }, []);
 
-  async function fetchPrices=useCallback(async()=>{
+  const fetchPrices=useCallback(async()=>{
     try{
       const params=new URLSearchParams();
       ASSETS.forEach(a=>params.append("ids",a.id));
