@@ -16,9 +16,23 @@ const ASSETS = [
   { id: "9695e2b96ea7b3859da9ed25b7a46a920a776e2fdae19a7bcfdf2b219230452d", symbol: "QQQ",    name: "NASDAQ 100",   category: "index",     color: "#818CF8", icon: "Q", logo: "https://icons.duckduckgo.com/ip3/www.invesco.com.ico" },
   { id: "57cff3a9a4d4c87b595a2d1bd1bac0240400a84677366d632ab838bbbe56f763", symbol: "DIA",    name: "Dow Jones ETF",category: "index",     color: "#34D399", icon: "D", logo: "https://icons.duckduckgo.com/ip3/www.ssga.com.ico" },
   { id: "eff690a187797aa225723345d4612abec0bf0cec1ae62347c0e7b1905d730879", symbol: "IWM",    name: "Russell 2000", category: "index",     color: "#FB7185", icon: "R", logo: "https://icons.duckduckgo.com/ip3/www.ishares.com.ico" },
+  { id: "93da3352f9f1d105fdfe4971cfa80e9dd777bfc5d0f683ebb6e1294d45ef93b6", symbol: "AVAX",    name: "Avalanche",    category: "crypto",    color: "#E84142", icon: "A", logo: "https://assets.coingecko.com/coins/images/12559/large/Avalanche_Circle_RedWhite_Trans.png" },
+  { id: "2a01deaec9e51a579277b34b122399984d0bbf57e2458a7e42fecd2829867a0d", symbol: "ADA",     name: "Cardano",      category: "crypto",    color: "#0033AD", icon: "₳", logo: "https://assets.coingecko.com/coins/images/975/large/cardano.png" },
+  { id: "8ac0c70fff57e9aefdf5edf44b51d62c2d433653cbb2cf5cc06bb115af04d221", symbol: "LINK",    name: "Chainlink",    category: "crypto",    color: "#2A5ADA", icon: "⬡", logo: "https://assets.coingecko.com/coins/images/877/large/chainlink-new-logo.png" },
+  { id: "78d185a741d07edb3412b09008b7c5cfb9bbbd7d568bf00ba737b456ba171501", symbol: "UNI",     name: "Uniswap",      category: "crypto",    color: "#FF007A", icon: "🦄", logo: "https://assets.coingecko.com/coins/images/12504/large/uniswap-uni.png" },
+  { id: "6e3f3fa8253588df9326580180233eb791e03b443a3ba7a1d892e73874e19a54", symbol: "LTC",     name: "Litecoin",     category: "crypto",    color: "#BFBBBB", icon: "Ł", logo: "https://assets.coingecko.com/coins/images/2/large/litecoin.png" },
+  { id: "ca3eed9b267293f6595901c734c7525ce8ef49adafe8284606ceb307afa2ca5b", symbol: "DOT",     name: "Polkadot",     category: "crypto",    color: "#E6007A", icon: "●", logo: "https://assets.coingecko.com/coins/images/12171/large/polkadot.png" },
+  { id: "67aed5a24fdad045475e7195084d2917b496079b3e0a39d4d7b466d21130f7f", symbol: "TRX",     name: "TRON",         category: "crypto",    color: "#EF0027", icon: "T", logo: "https://assets.coingecko.com/coins/images/1094/large/tron-logo.png" },
+  { id: "03ae4db29ed4ae33d323568895aa00337e658e348b37509f5372ae51f0af00d5", symbol: "APT",     name: "Aptos",        category: "crypto",    color: "#2DD8A3", icon: "A", logo: "https://assets.coingecko.com/coins/images/26455/large/aptos_round.png" },
+  { id: "23d7315113f5b1d3ba7a83604c44b94d79f4fd69af77f804fc7f920a6dc65744", symbol: "SUI",     name: "Sui",          category: "crypto",    color: "#6FBCF0", icon: "S", logo: "https://assets.coingecko.com/coins/images/26375/large/sui_asset.jpeg" },
+  { id: "d69731a2e74ac1ce884fc3890f7ee324b6deb66147055249568869ed700882e4", symbol: "PEPE",    name: "Pepe",         category: "crypto",    color: "#00A83C", icon: "🐸", logo: "https://assets.coingecko.com/coins/images/29850/large/pepe-token.jpeg" },
+  { id: "c415de8d2eba7db216527dff4b60e8f3a5311c740daef6736c4471a2a4e7f3d7", symbol: "NEAR",    name: "NEAR Protocol", category: "crypto",   color: "#00C1DE", icon: "N", logo: "https://assets.coingecko.com/coins/images/10365/large/near.jpg" },
+  { id: "b00b60f88b03a6a625a8d1c048c3f66653edf217439983d037e7218b82515fce", symbol: "ATOM",    name: "Cosmos",       category: "crypto",    color: "#6F7390", icon: "⚛", logo: "https://assets.coingecko.com/coins/images/1481/large/cosmos_hub.png" },
+  { id: "ffd11c5a1cfd42f80afb2df4d9f264c15f956d68153335374ec10722edd70472", symbol: "POL",     name: "POL (MATIC)",  category: "crypto",    color: "#8247E5", icon: "P", logo: "https://assets.coingecko.com/coins/images/32440/large/polygon.png" },
+  { id: "fe650f0367d4a7ef9815a593ea15d36593f0643aaaf0149bb04be67ab851decd", symbol: "HYPE",    name: "Hyperliquid",  category: "crypto",    color: "#00FF95", icon: "H", logo: "https://assets.coingecko.com/coins/images/36822/large/HYPE.jpg" },
 ];
 
-const SEED = { BTC:65000,ETH:3200,SOL:140,DOGE:0.15,USDC:1,"EUR/USD":1.085,"GBP/USD":1.265,"XAU/USD":2320,WTI:78,AAPL:185,SPY:560,QQQ:480,DIA:420,IWM:200 };
+const SEED = { BTC:65000,ETH:3200,SOL:140,DOGE:0.15,USDC:1,"EUR/USD":1.085,"GBP/USD":1.265,"XAU/USD":2320,WTI:78,AAPL:185,SPY:560,QQQ:480,DIA:420,IWM:200,AVAX:20,ADA:0.63,LINK:13,UNI:6,LTC:80,DOT:4,TRX:0.24,APT:5,SUI:2.2,PEPE:0.000008,NEAR:2.5,ATOM:4.5,POL:0.22,HYPE:18 };
 const CAT_COLORS = { crypto:"#9945FF", fx:"#60A5FA", commodity:"#FCD34D", equity:"#E2E8F0", index:"#38BDF8" };
 
 function pearson(a,b){
@@ -1072,7 +1086,41 @@ export default function App(){
     if(histRef.current[sym].length>200)histRef.current[sym].shift();
   }
 
-  const fetchPrices=useCallback(async()=>{
+  // Prefetch 60 historical closes so correlation matrix is ready on load
+  const prefetchHistory = useCallback(async () => {
+    const PYTH_SYM = {
+      "BTC":"Crypto.BTC/USD","ETH":"Crypto.ETH/USD","SOL":"Crypto.SOL/USD",
+      "DOGE":"Crypto.DOGE/USD","USDC":"Crypto.USDC/USD",
+      "EUR/USD":"FX.EUR/USD","GBP/USD":"FX.GBP/USD",
+      "XAU/USD":"Metal.XAU/USD","WTI":"Energy.WTI/USD",
+      "AAPL":"Equity.US.AAPL/USD",
+      "SPY":"Equity.US.SPY/USD","QQQ":"Equity.US.QQQ/USD",
+      "DIA":"Equity.US.DIA/USD","IWM":"Equity.US.IWM/USD",
+      "AVAX":"Crypto.AVAX/USD","ADA":"Crypto.ADA/USD","LINK":"Crypto.LINK/USD",
+      "UNI":"Crypto.UNI/USD","LTC":"Crypto.LTC/USD","DOT":"Crypto.DOT/USD",
+      "TRX":"Crypto.TRX/USD","APT":"Crypto.APT/USD","SUI":"Crypto.SUI/USD",
+      "PEPE":"Crypto.PEPE/USD","NEAR":"Crypto.NEAR/USD","ATOM":"Crypto.ATOM/USD",
+      "POL":"Crypto.POL/USD","HYPE":"Crypto.HYPE/USD",
+    };
+    const now = Math.floor(Date.now()/1000);
+    const from = now - 60*3600; // last 60 hours
+    await Promise.allSettled(
+      ASSETS.map(async a => {
+        const sym = PYTH_SYM[a.symbol];
+        if (!sym) return;
+        try {
+          const res = await fetch(`/api/benchmarks?symbol=${encodeURIComponent(sym)}&resolution=60&from=${from}&to=${now}&countback=60`);
+          if (!res.ok) return;
+          const d = await res.json();
+          if (d.s==="ok" && d.c?.length) {
+            histRef.current[a.symbol] = d.c.slice(-60);
+          }
+        } catch {}
+      })
+    );
+  }, []);
+
+  async function fetchPrices=useCallback(async()=>{
     try{
       const params=new URLSearchParams();
       ASSETS.forEach(a=>params.append("ids",a.id));
@@ -1128,55 +1176,7 @@ export default function App(){
     }
   },[]);  // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── PREFETCH: load historical prices from Benchmarks API on mount ──────────
-  // This pre-fills histRef with 60 data points so the correlation matrix
-  // is ready immediately instead of waiting 3 minutes for live ticks.
-  const prefetchHistory = useCallback(async () => {
-    const now = Math.floor(Date.now() / 1000);
-    const from = now - 60 * 60; // last 60 minutes
-    const PYTH_SYM = {
-      "BTC":"Crypto.BTC/USD","ETH":"Crypto.ETH/USD","SOL":"Crypto.SOL/USD",
-      "DOGE":"Crypto.DOGE/USD","USDC":"Crypto.USDC/USD",
-      "EUR/USD":"FX.EUR/USD","GBP/USD":"FX.GBP/USD",
-      "XAU/USD":"Metal.XAU/USD","WTI":"Energy.WTI/USD",
-      "AAPL":"Equity.US.AAPL/USD",
-      "SPY":"Equity.US.SPY/USD","QQQ":"Equity.US.QQQ/USD",
-      "DIA":"Equity.US.DIA/USD","IWM":"Equity.US.IWM/USD",
-    };
-    const loaded = {};
-    await Promise.allSettled(
-      ASSETS.map(async (asset) => {
-        const sym = PYTH_SYM[asset.symbol];
-        if (!sym) return;
-        try {
-          const qs = `/api/benchmarks?symbol=${encodeURIComponent(sym)}&resolution=1&from=${from}&to=${now}&countback=60`;
-          const r = await fetch(qs);
-          if (!r.ok) return;
-          const d = await r.json();
-          if (d.s !== "ok" || !d.c?.length) return;
-          // Use close prices as history seed
-          d.c.forEach(price => {
-            if (isFinite(price) && price > 0) push(asset.symbol, price);
-          });
-          loaded[asset.symbol] = d.c.length;
-        } catch {}
-      })
-    );
-    if (Object.keys(loaded).length > 0) {
-      setHistory({...histRef.current});
-      setStatus("live");
-    }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
-
-
-  // On mount: prefetch history first, then start live polling
-  useEffect(()=>{
-    prefetchHistory().finally(()=>{
-      fetchPrices();
-    });
-    const iv=setInterval(fetchPrices,3000);
-    return()=>clearInterval(iv);
-  },[fetchPrices,prefetchHistory]);
+  useEffect(()=>{prefetchHistory().finally(()=>{fetchPrices();const iv=setInterval(fetchPrices,3000);});},[prefetchHistory,fetchPrices]);
 
   useEffect(()=>{
     const nc={};
