@@ -17,8 +17,10 @@ export default async function handler(req, res) {
     params.set("ignore_invalid_price_ids", "true"); // skip 404 IDs gracefully
 
     const url = `https://hermes.pyth.network/v2/updates/price/latest?${params}`;
+    const headers = { "Accept": "application/json" };
+    if (process.env.PYTH_API_KEY) headers["Authorization"] = `Bearer ${process.env.PYTH_API_KEY}`;
     const response = await fetch(url, {
-      headers: { "Accept": "application/json" },
+      headers,
       signal: AbortSignal.timeout(10000),
     });
 

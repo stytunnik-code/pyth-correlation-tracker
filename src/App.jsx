@@ -1,22 +1,25 @@
-// build: 2026-03-05 17:15
 import { useState, useEffect, useRef, useCallback } from "react";
 import SmokeBackground from "./SmokeBackground";
 
 const ASSETS = [
-  { id: "e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43", symbol: "BTC",     name: "Bitcoin",      category: "crypto",    color: "#F7931A", icon: "₿", logo: "https://assets.coingecko.com/coins/images/1/small/bitcoin.png" },
-  { id: "ff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace", symbol: "ETH",     name: "Ethereum",     category: "crypto",    color: "#8B9FFF", icon: "Ξ", logo: "https://assets.coingecko.com/coins/images/279/small/ethereum.png" },
-  { id: "ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d", symbol: "SOL",     name: "Solana",       category: "crypto",    color: "#14F195", icon: "◎", logo: "https://assets.coingecko.com/coins/images/4128/small/solana.png" },
-  { id: "dcef50dd0a4cd2dcc17e45df1676dcb336a11a61c69df7a0299b0150c672d25c", symbol: "DOGE",    name: "Dogecoin",     category: "crypto",    color: "#C8A84B", icon: "Ð", logo: "https://assets.coingecko.com/coins/images/5/small/dogecoin.png" },
-  { id: "eaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a", symbol: "USDC",    name: "USD Coin",     category: "crypto",    color: "#2775CA", icon: "$", logo: "https://assets.coingecko.com/coins/images/6319/small/usdc.png" },
-  { id: "a995d00bb36a63cef7fd2c287dc105fc8f3d93779f062f09551b0af3e81ec30b", symbol: "EUR/USD", name: "Euro",         category: "fx",        color: "#60A5FA", icon: "€", logo: null },
-  { id: "84c2dde9633d93d1bcad84e7dc41c9d56578b7ec52fabedc1f335d673df0a7c1", symbol: "GBP/USD", name: "Pound",        category: "fx",        color: "#34D399", icon: "£", logo: null },
-  { id: "765d2ba906dbc32ca17cc11f5310a89e9ee1f6420508c63861f2f8ba4ee34bb2", symbol: "XAU/USD", name: "Gold",         category: "commodity", color: "#FCD34D", icon: "Au", logo: null },
-  { id: "925ca92ff005ae943c158e3563f59698ce7e75c5a8c8dd43303a0a154887b3e6", symbol: "WTI",     name: "Oil (WTI)",    category: "commodity", color: "#FB923C", icon: "⛽", logo: null },
-  { id: "49f6b65cb1de6b10eaf75e7c03ca029c306d0357e91b5311b175084a5ad55688", symbol: "AAPL",   name: "Apple Inc",    category: "equity",    color: "#E2E8F0", icon: "", logo: null },
+  { id: "e62df6c8b4a85fe1a67db44dc12de5db330f7ac66b72dc658afedf0f4a415b43", symbol: "BTC",     name: "Bitcoin",      category: "crypto",    color: "#F7931A", icon: "₿", logo: "https://assets.coingecko.com/coins/images/1/large/bitcoin.png" },
+  { id: "ff61491a931112ddf1bd8147cd1b641375f79f5825126d665480874634fd0ace", symbol: "ETH",     name: "Ethereum",     category: "crypto",    color: "#8B9FFF", icon: "Ξ", logo: "https://assets.coingecko.com/coins/images/279/large/ethereum.png" },
+  { id: "ef0d8b6fda2ceba41da15d4095d1da392a0d2f8ed0c6c7bc0f4cfac8c280b56d", symbol: "SOL",     name: "Solana",       category: "crypto",    color: "#14F195", icon: "◎", logo: "https://assets.coingecko.com/coins/images/4128/large/solana.png" },
+  { id: "dcef50dd0a4cd2dcc17e45df1676dcb336a11a61c69df7a0299b0150c672d25c", symbol: "DOGE",    name: "Dogecoin",     category: "crypto",    color: "#C8A84B", icon: "Ð", logo: "https://assets.coingecko.com/coins/images/5/large/dogecoin.png" },
+  { id: "eaa020c61cc479712813461ce153894a96a6c00b21ed0cfc2798d1f9a9e9c94a", symbol: "USDC",    name: "USD Coin",     category: "crypto",    color: "#2775CA", icon: "$", logo: "https://assets.coingecko.com/coins/images/6319/large/usdc.png" },
+  { id: "a995d00bb36a63cef7fd2c287dc105fc8f3d93779f062f09551b0af3e81ec30b", symbol: "EUR/USD", name: "Euro",         category: "fx",        color: "#60A5FA", icon: "€", logo: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='32' fill='%23003399'/%3E%3Ccircle cx='32' cy='14' r='3' fill='%23FFCC00'/%3E%3Ccircle cx='41' cy='16.4' r='3' fill='%23FFCC00'/%3E%3Ccircle cx='47.6' cy='23' r='3' fill='%23FFCC00'/%3E%3Ccircle cx='50' cy='32' r='3' fill='%23FFCC00'/%3E%3Ccircle cx='47.6' cy='41' r='3' fill='%23FFCC00'/%3E%3Ccircle cx='41' cy='47.6' r='3' fill='%23FFCC00'/%3E%3Ccircle cx='32' cy='50' r='3' fill='%23FFCC00'/%3E%3Ccircle cx='23' cy='47.6' r='3' fill='%23FFCC00'/%3E%3Ccircle cx='16.4' cy='41' r='3' fill='%23FFCC00'/%3E%3Ccircle cx='14' cy='32' r='3' fill='%23FFCC00'/%3E%3Ccircle cx='16.4' cy='23' r='3' fill='%23FFCC00'/%3E%3Ccircle cx='23' cy='16.4' r='3' fill='%23FFCC00'/%3E%3C/svg%3E" },
+  { id: "84c2dde9633d93d1bcad84e7dc41c9d56578b7ec52fabedc1f335d673df0a7c1", symbol: "GBP/USD", name: "Pound",        category: "fx",        color: "#34D399", icon: "£", logo: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3CclipPath id='c'%3E%3Ccircle cx='32' cy='32' r='32'/%3E%3C/clipPath%3E%3C/defs%3E%3Ccircle cx='32' cy='32' r='32' fill='%23012169'/%3E%3Cg clip-path='url(%23c)'%3E%3Cpath d='M0 0 L64 64 M64 0 L0 64' stroke='white' stroke-width='13'/%3E%3Cpath d='M0 0 L64 64 M64 0 L0 64' stroke='%23C8102E' stroke-width='7'/%3E%3Cpath d='M32 0 L32 64 M0 32 L64 32' stroke='white' stroke-width='18'/%3E%3Cpath d='M32 0 L32 64 M0 32 L64 32' stroke='%23C8102E' stroke-width='11'/%3E%3C/g%3E%3C/svg%3E" },
+  { id: "765d2ba906dbc32ca17cc11f5310a89e9ee1f6420508c63861f2f8ba4ee34bb2", symbol: "XAU/USD", name: "Gold",         category: "commodity", color: "#FCD34D", icon: "Au", logo: "https://assets.coingecko.com/coins/images/10481/large/Tether_Gold.png" },
+  { id: "925ca92ff005ae943c158e3563f59698ce7e75c5a8c8dd43303a0a154887b3e6", symbol: "WTI",     name: "Oil (WTI)",    category: "commodity", color: "#FB923C", icon: "⛽", logo: "data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Ccircle cx='32' cy='32' r='32' fill='%23FB923C'/%3E%3Cpath d='M32 10C22 24 15 32 15 41C15 51.5 22.5 57 32 57C41.5 57 49 51.5 49 41C49 32 42 24 32 10Z' fill='white' fill-opacity='0.88'/%3E%3C/svg%3E" },
+  { id: "49f6b65cb1de6b10eaf75e7c03ca029c306d0357e91b5311b175084a5ad55688", symbol: "AAPL",   name: "Apple Inc",    category: "equity",    color: "#E2E8F0", icon: "", logo: "https://icons.duckduckgo.com/ip3/apple.com.ico" },
+  { id: "19e09bb805456ada3979a7d1cbb4b6d63babc3a0f8e8a9509f68afa5c4c11cd5", symbol: "SPY",    name: "S&P 500 ETF",  category: "index",     color: "#38BDF8", icon: "S", logo: "https://icons.duckduckgo.com/ip3/www.ssga.com.ico" },
+  { id: "9695e2b96ea7b3859da9ed25b7a46a920a776e2fdae19a7bcfdf2b219230452d", symbol: "QQQ",    name: "NASDAQ 100",   category: "index",     color: "#818CF8", icon: "Q", logo: "https://icons.duckduckgo.com/ip3/www.invesco.com.ico" },
+  { id: "57cff3a9a4d4c87b595a2d1bd1bac0240400a84677366d632ab838bbbe56f763", symbol: "DIA",    name: "Dow Jones ETF",category: "index",     color: "#34D399", icon: "D", logo: "https://icons.duckduckgo.com/ip3/www.ssga.com.ico" },
+  { id: "eff690a187797aa225723345d4612abec0bf0cec1ae62347c0e7b1905d730879", symbol: "IWM",    name: "Russell 2000", category: "index",     color: "#FB7185", icon: "R", logo: "https://icons.duckduckgo.com/ip3/www.ishares.com.ico" },
 ];
 
-const SEED = { BTC:65000,ETH:3200,SOL:140,DOGE:0.15,USDC:1,"EUR/USD":1.085,"GBP/USD":1.265,"XAU/USD":2320,WTI:78,AAPL:185 };
-const CAT_COLORS = { crypto:"#9945FF", fx:"#60A5FA", commodity:"#FCD34D", equity:"#E2E8F0" };
+const SEED = { BTC:65000,ETH:3200,SOL:140,DOGE:0.15,USDC:1,"EUR/USD":1.085,"GBP/USD":1.265,"XAU/USD":2320,WTI:78,AAPL:185,SPY:560,QQQ:480,DIA:420,IWM:200 };
+const CAT_COLORS = { crypto:"#9945FF", fx:"#60A5FA", commodity:"#FCD34D", equity:"#E2E8F0", index:"#38BDF8" };
 
 function pearson(a,b){
   const n=Math.min(a.length,b.length);if(n<4)return null;
@@ -28,11 +31,179 @@ function pearson(a,b){
 }
 
 function corrBg(v){
-  if(v===null)return"rgba(255,255,255,0.02)";
-  if(v>=0){const t=v;return`rgba(${Math.round(t*20)},${Math.round(180+t*75)},${Math.round(100+t*80)},${0.1+t*0.72})`;}
-  const t=-v;return`rgba(${Math.round(210+t*45)},${Math.round(50-t*40)},${Math.round(70-t*50)},${0.1+t*0.72})`;
+  if(v===null) return "rgba(255,255,255,0.02)";
+  const a=Math.abs(v), op=(0.12+a*0.68).toFixed(2);
+  if(v>=0.65)  return `rgba(16,185,129,${op})`;          // strong positive → green
+  if(v>=0.30)  return `rgba(234,179,8,${op})`;            // medium positive → yellow
+  if(v>=0)     return `rgba(167,139,250,${(a*0.22).toFixed(2)})`; // weak positive → faint violet
+  if(v>=-0.30) return `rgba(251,146,60,${(a*0.25).toFixed(2)})`; // weak negative → faint orange
+  if(v>=-0.65) return `rgba(239,68,68,${op})`;            // medium negative → red
+  return        `rgba(220,38,38,${Math.min(+op+0.1,0.9).toFixed(2)})`; // strong negative → deep red
 }
-function corrFg(v){if(v===null)return"#2a1f40";return Math.abs(v)>0.4?"#fff":"#c4b5fd";}
+function corrFg(v){if(v===null)return"#2a1f40";return Math.abs(v)>0.28?"#fff":"#c4b5fd";}
+function corrTipLabel(v){
+  if(v===null) return "Computing…";
+  const a=Math.abs(v), d=v>=0?"positive":"negative";
+  if(a>=0.8) return `Very strong ${d} correlation`;
+  if(a>=0.6) return `Strong ${d} correlation`;
+  if(a>=0.3) return `Moderate ${d} correlation`;
+  if(a>=0.1) return `Weak ${d} correlation`;
+  return "No significant correlation";
+}
+
+/* ── SHARE IMAGE GENERATOR ──────────────────────────────────────────────── */
+function generateShareImage(symA, symB, corrVal, colorA, colorB) {
+  const S = 1200;
+  const cv = document.createElement('canvas');
+  cv.width = S; cv.height = S;
+  const ctx = cv.getContext('2d');
+
+  const corrColor = corrVal === null ? '#a78bfa'
+    : corrVal >= 0.65 ? '#10b981' : corrVal >= 0.30 ? '#eab308'
+    : corrVal >= 0    ? '#a78bfa' : corrVal >= -0.30 ? '#fb923c'
+    : corrVal >= -0.65? '#ef4444' : '#dc2626';
+
+  const h2r = (hex, a) => {
+    const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
+    return `rgba(${r},${g},${b},${a})`;
+  };
+
+  // BG
+  ctx.fillStyle = '#07050f';
+  ctx.fillRect(0, 0, S, S);
+
+  // Radial glow under number
+  const gl = ctx.createRadialGradient(S/2, 560, 0, S/2, 560, 600);
+  gl.addColorStop(0, h2r(corrColor, 0.18));
+  gl.addColorStop(1, 'rgba(0,0,0,0)');
+  ctx.fillStyle = gl;
+  ctx.fillRect(0, 0, S, S);
+
+  // Top border line
+  const tl = ctx.createLinearGradient(0, 0, S, 0);
+  tl.addColorStop(0,   'rgba(124,58,237,0)');
+  tl.addColorStop(0.3, '#7c3aed');
+  tl.addColorStop(0.7, '#67e8f9');
+  tl.addColorStop(1,   'rgba(103,232,249,0)');
+  ctx.fillStyle = tl;
+  ctx.fillRect(0, 0, S, 4);
+
+  // Badge
+  ctx.save();
+  ctx.font = '600 26px "Space Mono", monospace';
+  ctx.textAlign = 'center';
+  const bt = '● LIVE  ·  PYTH ORACLE';
+  const bw = ctx.measureText(bt).width + 56;
+  const bx = S/2 - bw/2;
+  ctx.beginPath(); ctx.roundRect(bx, 88, bw, 52, 26);
+  ctx.fillStyle = 'rgba(124,58,237,0.15)'; ctx.fill();
+  ctx.strokeStyle = 'rgba(124,58,237,0.42)'; ctx.lineWidth = 1.5; ctx.stroke();
+  ctx.fillStyle = 'rgba(196,181,253,0.9)';
+  ctx.fillText(bt, S/2, 124);
+  ctx.restore();
+
+  // Asset names — dynamic font size for long symbols
+  const maxLen = Math.max(symA.length, symB.length);
+  const nameFsz = maxLen <= 4 ? 130 : maxLen <= 6 ? 100 : 80;
+  const pairY = 390;
+
+  ctx.save();
+  ctx.font = `bold ${nameFsz}px "Outfit", sans-serif`;
+  ctx.textAlign = 'right';
+  ctx.fillStyle = colorA || '#a78bfa';
+  ctx.fillText(symA, S/2 - 28, pairY);
+  ctx.restore();
+
+  ctx.save();
+  ctx.font = `300 ${Math.round(nameFsz*0.8)}px "Outfit", sans-serif`;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(255,255,255,0.16)';
+  ctx.fillText('/', S/2, pairY);
+  ctx.restore();
+
+  ctx.save();
+  ctx.font = `bold ${nameFsz}px "Outfit", sans-serif`;
+  ctx.textAlign = 'left';
+  ctx.fillStyle = colorB || '#67e8f9';
+  ctx.fillText(symB, S/2 + 28, pairY);
+  ctx.restore();
+
+  // Big correlation number
+  const corrStr = corrVal === null ? '–' : (corrVal >= 0 ? '+' : '') + corrVal.toFixed(2);
+  ctx.save();
+  ctx.font = 'bold 260px "Space Mono", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = corrColor;
+  ctx.fillText(corrStr, S/2, 680);
+  ctx.restore();
+
+  // Strength label
+  ctx.save();
+  ctx.font = '700 28px "Space Mono", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = corrColor;
+  ctx.globalAlpha = 0.72;
+  ctx.fillText(corrTipLabel(corrVal).toUpperCase(), S/2, 730);
+  ctx.restore();
+
+  // Correlation bar
+  const bW = 640, bH = 14, bX = S/2 - bW/2, bY = 810;
+  const barG = ctx.createLinearGradient(bX, 0, bX + bW, 0);
+  barG.addColorStop(0,    '#dc2626');
+  barG.addColorStop(0.35, '#ef4444');
+  barG.addColorStop(0.5,  'rgba(139,92,246,0.55)');
+  barG.addColorStop(0.65, '#eab308');
+  barG.addColorStop(1,    '#10b981');
+  ctx.save();
+  ctx.beginPath(); ctx.roundRect(bX, bY, bW, bH, bH/2);
+  ctx.fillStyle = barG; ctx.fill();
+  ctx.restore();
+
+  // Marker
+  if (corrVal !== null) {
+    const mx = bX + bW * ((corrVal + 1) / 2);
+    ctx.save();
+    ctx.beginPath(); ctx.arc(mx, bY + bH/2, 15, 0, Math.PI*2);
+    ctx.fillStyle = corrColor; ctx.fill();
+    ctx.strokeStyle = '#fff'; ctx.lineWidth = 3; ctx.stroke();
+    ctx.restore();
+  }
+
+  // Bar axis labels
+  ctx.save();
+  ctx.font = '500 20px "Space Mono", monospace';
+  ctx.fillStyle = 'rgba(255,255,255,0.28)';
+  ctx.textAlign = 'left';  ctx.fillText('−1', bX, bY + bH + 32);
+  ctx.textAlign = 'center'; ctx.fillText('0', S/2, bY + bH + 32);
+  ctx.textAlign = 'right';  ctx.fillText('+1', bX + bW, bY + bH + 32);
+  ctx.restore();
+
+  // Footer note
+  ctx.save();
+  ctx.font = '400 20px "Space Mono", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(255,255,255,0.20)';
+  ctx.fillText('Pearson correlation  ·  rolling 200 ticks  ·  Pyth Oracle data', S/2, 960);
+  ctx.restore();
+
+  // Domain
+  ctx.save();
+  ctx.font = '700 30px "Space Mono", monospace';
+  ctx.textAlign = 'center';
+  ctx.fillStyle = 'rgba(167,139,250,0.62)';
+  ctx.fillText('pythcorrelation.com', S/2, 1090);
+  ctx.restore();
+
+  // Bottom border line
+  const bl = ctx.createLinearGradient(0, 0, S, 0);
+  bl.addColorStop(0, 'rgba(124,58,237,0)');
+  bl.addColorStop(0.5, 'rgba(124,58,237,0.5)');
+  bl.addColorStop(1, 'rgba(124,58,237,0)');
+  ctx.fillStyle = bl;
+  ctx.fillRect(0, S - 4, S, 4);
+
+  return cv;
+}
 
 function fmt(sym,val){
   if(!val)return"–";
@@ -65,27 +236,54 @@ function strengthInfo(v){
 }
 
 /* ── SPARKLINE ──────────────────────────────────────────────────────────── */
-function Spark({data,color,h=28,w=72}){
-  if(!data||data.length<2)return<svg width={w} height={h}/>;
-  const pts=data.slice(-50),mn=Math.min(...pts),mx=Math.max(...pts),rng=mx-mn||1;
+function _drawSparkFrame(canvas,pts,h,w){
+  if(!canvas||!pts||pts.length<2)return;
+  canvas.width=w;canvas.height=h;
+  const ctx=canvas.getContext("2d");
+  ctx.clearRect(0,0,w,h);
+  const mn=Math.min(...pts),mx=Math.max(...pts),rng=mx-mn||1;
   const xs=pts.map((_,i)=>(i/(pts.length-1))*(w-2)+1);
   const ys=pts.map(v=>h-2-((v-mn)/rng)*(h-4));
-  const line=xs.map((x,i)=>`${i===0?"M":"L"}${x},${ys[i]}`).join(" ");
-  const area=`${line} L${xs[xs.length-1]},${h} L${xs[0]},${h} Z`;
   const up=pts[pts.length-1]>=pts[0];
   const sc=up?"#34d399":"#f87171";
-  return(
-    <svg width={w} height={h}>
-      <defs>
-        <linearGradient id={`sg${color.replace("#","")}`} x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor={sc} stopOpacity="0.3"/>
-          <stop offset="100%" stopColor={sc} stopOpacity="0"/>
-        </linearGradient>
-      </defs>
-      <path d={area} fill={`url(#sg${color.replace("#","")})`}/>
-      <path d={line} fill="none" stroke={sc} strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
-    </svg>
-  );
+  // gradient fill
+  const grad=ctx.createLinearGradient(0,0,0,h);
+  grad.addColorStop(0,up?"rgba(52,211,153,0.28)":"rgba(248,113,113,0.28)");
+  grad.addColorStop(1,"rgba(0,0,0,0)");
+  ctx.beginPath();
+  xs.forEach((x,i)=>i===0?ctx.moveTo(x,ys[i]):ctx.lineTo(x,ys[i]));
+  ctx.lineTo(xs[xs.length-1],h);ctx.lineTo(xs[0],h);ctx.closePath();
+  ctx.fillStyle=grad;ctx.fill();
+  // line
+  ctx.beginPath();
+  xs.forEach((x,i)=>i===0?ctx.moveTo(x,ys[i]):ctx.lineTo(x,ys[i]));
+  ctx.strokeStyle=sc;ctx.lineWidth=1.5;ctx.lineJoin="round";ctx.lineCap="round";ctx.stroke();
+}
+
+function Spark({data,color,h=28,w=72}){
+  const canvasRef=useRef();
+  const stRef=useRef({prev:null,raf:null});
+  useEffect(()=>{
+    if(!data||data.length<2)return;
+    const next=data.slice(-50);
+    const prev=stRef.current.prev||next;
+    if(stRef.current.raf)cancelAnimationFrame(stRef.current.raf);
+    const start=performance.now(),dur=500;
+    const len=Math.max(prev.length,next.length);
+    const pad=arr=>arr.length>=len?arr.slice(-len):[...Array(len-arr.length).fill(arr[0]),...arr];
+    const pA=pad(prev),pB=pad(next);
+    const frame=(now)=>{
+      const t=Math.min(1,(now-start)/dur);
+      const ease=1-Math.pow(1-t,3); // cubic ease-out
+      const interp=pA.map((v,i)=>v+(pB[i]-v)*ease);
+      _drawSparkFrame(canvasRef.current,interp,h,w);
+      if(t<1){stRef.current.raf=requestAnimationFrame(frame);}
+      else{stRef.current.prev=next;stRef.current.raf=null;}
+    };
+    stRef.current.raf=requestAnimationFrame(frame);
+    return()=>{if(stRef.current.raf)cancelAnimationFrame(stRef.current.raf);};
+  },[data,h,w]);
+  return<canvas ref={canvasRef} width={w} height={h} style={{display:"block"}}/>;
 }
 
 /* ── CORR CHART ─────────────────────────────────────────────────────────── */
@@ -149,11 +347,663 @@ function AssetIcon({asset,size=36}){
       ):(
         <span className="asset-icon-sym">{sym}</span>
       )}
+    </div>
+  );
+}
+
+/* ── MAIN ───────────────────────────────────────────────────────────────── */
+
+
+
+
+
+/* ══════════════════════════════════════════════════════════════════════════
+   DOCS VIEW — Documentation, Legal & Attribution
+   © 2025 rustrell. All rights reserved.
+   ══════════════════════════════════════════════════════════════════════════ */
+function DocsView({ setActiveTab }) {
+  const [section, setSection] = useState("overview");
+
+  const NAV = [
+    { id: "overview",     label: "Overview" },
+    { id: "features",     label: "Features" },
+    { id: "methodology",  label: "Methodology" },
+    { id: "data",         label: "Data Sources" },
+    { id: "disclaimer",   label: "Disclaimer" },
+    { id: "legal",        label: "Legal & Rights" },
+    { id: "attribution",  label: "Attribution" },
+  ];
+
+  const S = {
+    page: {
+      display: "flex", flexDirection: "column", height: "100%",
+      background: "#06030f", fontFamily: "'Space Mono', monospace",
+      color: "rgba(255,255,255,0.82)", overflow: "hidden",
+    },
+    topbar: {
+      display: "flex", alignItems: "center", gap: 12,
+      padding: "8px 16px", borderBottom: "1px solid rgba(255,255,255,0.06)",
+      background: "#07040f", flexShrink: 0,
+    },
+    body: { display: "flex", flex: 1, overflow: "hidden" },
+    sidebar: {
+      width: 180, flexShrink: 0, borderRight: "1px solid rgba(255,255,255,0.05)",
+      padding: "20px 0", display: "flex", flexDirection: "column", gap: 2,
+      overflowY: "auto",
+    },
+    navItem: (active) => ({
+      padding: "8px 20px", fontSize: 11, letterSpacing: ".05em",
+      cursor: "pointer", background: active ? "rgba(167,139,250,0.08)" : "transparent",
+      borderLeft: active ? "2px solid #a78bfa" : "2px solid transparent",
+      color: active ? "#a78bfa" : "rgba(255,255,255,0.35)",
+      transition: "all .15s",
+    }),
+    content: {
+      flex: 1, overflowY: "auto", padding: "32px 48px", maxWidth: 860,
+    },
+    h1: {
+      fontSize: 22, fontWeight: 700, color: "#fff",
+      letterSpacing: ".04em", marginBottom: 8, lineHeight: 1.3,
+    },
+    h2: {
+      fontSize: 14, fontWeight: 700, color: "#a78bfa",
+      letterSpacing: ".06em", marginTop: 32, marginBottom: 12,
+      borderBottom: "1px solid rgba(167,139,250,0.15)", paddingBottom: 6,
+    },
+    h3: {
+      fontSize: 11, fontWeight: 700, color: "rgba(255,255,255,0.6)",
+      letterSpacing: ".08em", marginTop: 20, marginBottom: 6,
+    },
+    p: { fontSize: 12, lineHeight: 1.9, color: "rgba(255,255,255,0.5)", marginBottom: 12 },
+    tag: {
+      display: "inline-block", padding: "2px 8px", borderRadius: 3,
+      background: "rgba(167,139,250,0.1)", border: "1px solid rgba(167,139,250,0.2)",
+      color: "#c4b5fd", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", marginRight: 6,
+    },
+    tagGreen: {
+      display: "inline-block", padding: "2px 8px", borderRadius: 3,
+      background: "rgba(16,185,129,0.1)", border: "1px solid rgba(16,185,129,0.2)",
+      color: "#34d399", fontSize: 10, fontWeight: 700, letterSpacing: ".06em", marginRight: 6,
+    },
+    code: {
+      display: "block", background: "rgba(0,0,0,0.4)", border: "1px solid rgba(255,255,255,0.07)",
+      borderRadius: 4, padding: "12px 16px", fontSize: 11, color: "#22c55e",
+      lineHeight: 1.8, marginBottom: 16, overflowX: "auto",
+    },
+    inlineCode: {
+      background: "rgba(167,139,250,0.1)", borderRadius: 3, padding: "1px 5px",
+      color: "#c4b5fd", fontSize: 11,
+    },
+    warn: {
+      background: "rgba(251,146,60,0.07)", border: "1px solid rgba(251,146,60,0.2)",
+      borderRadius: 4, padding: "12px 16px", marginBottom: 16, fontSize: 11,
+      color: "rgba(251,146,60,0.85)", lineHeight: 1.8,
+    },
+    info: {
+      background: "rgba(167,139,250,0.05)", border: "1px solid rgba(167,139,250,0.15)",
+      borderRadius: 4, padding: "12px 16px", marginBottom: 16, fontSize: 11,
+      color: "rgba(167,139,250,0.75)", lineHeight: 1.8,
+    },
+    table: { width: "100%", borderCollapse: "collapse", marginBottom: 16, fontSize: 11 },
+    th: {
+      textAlign: "left", padding: "7px 12px", fontSize: 9, letterSpacing: ".08em",
+      color: "rgba(255,255,255,0.3)", borderBottom: "1px solid rgba(255,255,255,0.06)",
+    },
+    td: {
+      padding: "8px 12px", borderBottom: "1px solid rgba(255,255,255,0.04)",
+      color: "rgba(255,255,255,0.55)", verticalAlign: "top", lineHeight: 1.7,
+    },
+    divider: { height: 1, background: "rgba(255,255,255,0.05)", margin: "24px 0" },
+    copy: {
+      display: "flex", alignItems: "center", gap: 8, marginTop: 32,
+      padding: "14px 20px", background: "rgba(255,255,255,0.02)",
+      border: "1px solid rgba(255,255,255,0.06)", borderRadius: 4,
+    },
+  };
+
+  const sections = {
+
+    overview: (
+      <div>
+        <div style={S.h1}>Pyth Correlation Tracker</div>
+        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", marginBottom: 24, letterSpacing: ".04em" }}>
+          Real-time multi-asset analytics powered by Pyth Network oracles
+        </div>
+
+        <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginBottom: 24 }}>
+          {["Real-time", "10 Assets", "4 Modules", "Pyth Oracle", "Open Access"].map(t => (
+            <span key={t} style={S.tag}>{t}</span>
+          ))}
+        </div>
+
+        <div style={S.h2}>WHAT IS THIS</div>
+        <div style={S.p}>
+          Pyth Correlation Tracker is a real-time financial analytics dashboard that streams
+          live price data from the Pyth Network oracle and computes statistical relationships
+          between 10 major assets across crypto, forex, metals, and equities.
+        </div>
+        <div style={S.p}>
+          Unlike traditional charting tools that show prices in isolation, this platform
+          reveals hidden connections between markets — how BTC moves with gold, whether ETH
+          leads or lags SOL, and how macro assets like EUR/USD relate to crypto during
+          different market regimes.
+        </div>
+
+        <div style={S.h2}>ASSETS TRACKED</div>
+        <table style={S.table}>
+          <thead>
+            <tr>
+              <th style={S.th}>SYMBOL</th>
+              <th style={S.th}>NAME</th>
+              <th style={S.th}>CLASS</th>
+              <th style={S.th}>PYTH FEED</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              ["BTC", "Bitcoin",     "Crypto",  "Crypto.BTC/USD"],
+              ["ETH", "Ethereum",    "Crypto",  "Crypto.ETH/USD"],
+              ["SOL", "Solana",      "Crypto",  "Crypto.SOL/USD"],
+              ["DOGE","Dogecoin",    "Crypto",  "Crypto.DOGE/USD"],
+              ["USDC","USD Coin",    "Stablecoin","Crypto.USDC/USD"],
+              ["XAU/USD","Gold",     "Metal",   "Metal.XAU/USD"],
+              ["EUR/USD","Euro",     "Forex",   "FX.EUR/USD"],
+              ["GBP/USD","Pound",    "Forex",   "FX.GBP/USD"],
+              ["AAPL","Apple Inc.",  "Equity",  "Equity.US.AAPL/USD"],
+              ["WTI/USD","Crude Oil","Energy",  "Energy.WTI/USD"],
+            ].map(([sym, name, cls, feed]) => (
+              <tr key={sym}>
+                <td style={{...S.td, color:"#c4b5fd", fontWeight:700}}>{sym}</td>
+                <td style={S.td}>{name}</td>
+                <td style={S.td}>{cls}</td>
+                <td style={{...S.td, color:"rgba(34,197,94,0.7)", fontSize:10}}>{feed}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    ),
+
+    features: (
+      <div>
+        <div style={S.h1}>Features</div>
+        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", marginBottom: 24 }}>Four analytical modules</div>
+
+        {[
+          {
+            tab: "MATRIX",
+            color: "#a78bfa",
+            desc: "The main dashboard. Shows live Pyth prices for all 10 assets with 1-minute rolling Pearson correlation matrix. Color-coded heatmap reveals which assets move together in real time.",
+            features: [
+              "Live price ticks from Pyth oracle (~400ms latency)",
+              "Pearson correlation computed over last 200 ticks",
+              "Color-coded matrix: green = positive, red = negative",
+              "Sparklines showing recent price trajectory per asset",
+              "Filter by asset class: All / Crypto / Forex / Metals / Equity",
+            ],
+          },
+          {
+            tab: "CHARTS",
+            color: "#22c55e",
+            desc: "Full OHLCV candlestick charts for any asset. Data sourced from Pyth Benchmarks API — the same oracle data, historically reconstructed.",
+            features: [
+              "Candlestick, line, and bar chart modes",
+              "Timeframes: 1m · 5m · 15m · 1h · 4h · 1D",
+              "300 historical bars from Pyth Benchmarks",
+              "Live candle updates from Pyth ticks",
+              "All 10 assets including XAU, EUR, AAPL",
+            ],
+          },
+          {
+            tab: "CORRELATION",
+            color: "#f59e0b",
+            desc: "Deep-dive correlation analysis between asset pairs. Scatter plot of returns + rolling Pearson correlation over time.",
+            features: [
+              "13 cross-asset pairs (crypto + macro + equity)",
+              "Scatter plot with linear regression line",
+              "Rolling 20-period Pearson correlation",
+              "Time-colored dots (recent = brighter)",
+              "Pearson r coefficient with significance color",
+            ],
+          },
+          {
+            tab: "ENTROPY",
+            color: "#ef4444",
+            desc: "Information-theoretic analysis of asset return distributions. Measures market predictability using Gaussian differential entropy and mutual information.",
+            features: [
+              "Gaussian Differential Entropy H = ½·ln(2πeσ²)",
+              "Bootstrap confidence intervals (60 iterations)",
+              "Normalized Mutual Information (NMI) 10×10 heatmap",
+              "Hidden connections: low correlation but high NMI",
+              "Pyth live seed for PRNG bootstrap",
+            ],
+          },
+        ].map(({ tab, color, desc, features }) => (
+          <div key={tab} style={{ marginBottom: 28, padding: "16px 20px", background: "rgba(255,255,255,0.02)", border: `1px solid ${color}18`, borderRadius: 4 }}>
+            <div style={{ fontSize: 13, fontWeight: 700, color, letterSpacing: ".08em", marginBottom: 8 }}>{tab}</div>
+            <div style={S.p}>{desc}</div>
+            <ul style={{ margin: 0, paddingLeft: 20 }}>
+              {features.map(f => (
+                <li key={f} style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", lineHeight: 2 }}>{f}</li>
+              ))}
+            </ul>
+          </div>
+        ))}
+      </div>
+    ),
+
+    methodology: (
+      <div>
+        <div style={S.h1}>Methodology</div>
+        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", marginBottom: 24 }}>Mathematical foundations</div>
+
+        <div style={S.h2}>PEARSON CORRELATION</div>
+        <div style={S.p}>
+          The correlation matrix uses the Pearson product-moment coefficient computed over
+          rolling windows of live Pyth price ticks. For assets A and B with return series
+          r_A and r_B:
+        </div>
+        <div style={S.code}>{`r(A,B) = Σ[(rA - μA)(rB - μB)] / √[Σ(rA-μA)² · Σ(rB-μB)²]
+
+Range: -1.0 (perfect inverse) → 0 (no linear relation) → +1.0 (perfect positive)
+Window: last 200 price ticks (~3-4 minutes of live data)`}</div>
+
+        <div style={S.h2}>PERCENT RETURNS</div>
+        <div style={S.p}>
+          All correlation and entropy calculations use percent returns rather than raw prices,
+          to remove non-stationarity and make assets comparable across different price scales.
+        </div>
+        <div style={S.code}>{`r_t = (P_t - P_{t-1}) / P_{t-1} × 100
+
+Example: BTC $83,000 → $83,166 gives r_t = +0.2%`}</div>
+
+        <div style={S.h2}>GAUSSIAN DIFFERENTIAL ENTROPY</div>
+        <div style={S.p}>
+          The Entropy module measures the statistical complexity of each asset's return
+          distribution. Gaussian differential entropy is a continuous analog of Shannon
+          entropy that captures the spread/volatility of returns:
+        </div>
+        <div style={S.code}>{`H(X) = ½ · ln(2πe · σ²)   [nats]
+
+where σ² = variance of percent returns over 300 historical bars
+
+Interpretation:
+  USDC  → H ≈ -9 nats  (very predictable, near-zero variance)
+  EUR   → H ≈ -3 nats  (moderate)
+  BTC   → H ≈ -1 nats  (volatile, higher entropy)
+  DOGE  → H ≈  0 nats  (most chaotic, fat-tailed distribution)`}</div>
+
+        <div style={S.h2}>BOOTSTRAP CONFIDENCE INTERVALS</div>
+        <div style={S.p}>
+          To quantify uncertainty in the entropy estimate, we use bootstrap resampling.
+          60 iterations of with-replacement sampling (70% of data) produce a distribution
+          of H values, from which we extract 95% confidence intervals.
+        </div>
+        <div style={S.code}>{`For each bootstrap iteration i = 1..60:
+  - Draw resampleSize = min(150, n×0.7) indices with replacement
+  - Compute H_i = ½ · ln(2πe · σ²_i)
+  
+CI₉₅ = [percentile(H, 2.5%), percentile(H, 97.5%)]
+Seed: mulberry32 PRNG seeded from live Pyth prices XOR asset index`}</div>
+
+        <div style={S.h2}>NORMALIZED MUTUAL INFORMATION</div>
+        <div style={S.p}>
+          The NMI heatmap captures non-linear dependencies between assets that Pearson
+          correlation misses. MI is computed via quantile binning (8 bins) of return series.
+        </div>
+        <div style={S.code}>{`MI(X,Y) = H(X) + H(Y) - H(X,Y)
+NMI(X,Y) = MI(X,Y) / √[H(X) · H(Y)]   ∈ [0, 1]
+
+Hidden connections: pairs where |Pearson r| < 0.35 but NMI > 0.30
+indicate non-linear dependency not captured by linear correlation.`}</div>
+
+        <div style={S.h2}>ROLLING CORRELATION (CORRELATION TAB)</div>
+        <div style={S.code}>{`Window = 20 periods of 1-minute returns
+At each step t: r_t = Pearson(A_{t-20..t}, B_{t-20..t})
+Data: 300 bars from Pyth Benchmarks + live Pyth ticks merged`}</div>
+      </div>
+    ),
+
+    data: (
+      <div>
+        <div style={S.h1}>Data Sources</div>
+        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", marginBottom: 24 }}>100% Pyth Network</div>
+
+        <div style={S.info}>
+          As of the current version, all price data is sourced exclusively from Pyth Network.
+          No Binance, no third-party proxies. One oracle, all asset classes.
+        </div>
+
+        <div style={S.h2}>PYTH HERMES — LIVE PRICES</div>
+        <div style={S.p}>
+          Real-time price feeds are pulled from Pyth's Hermes aggregation service every ~3 seconds.
+          Hermes aggregates prices from multiple professional market makers and data providers,
+          delivering sub-second latency oracle prices on-chain and off-chain.
+        </div>
+        <div style={S.code}>{`Endpoint: https://hermes.pyth.network/v2/updates/price/latest
+Method:   GET ?ids[]=<feed_id>&parsed=true
+Latency:  ~400ms from oracle publish to dashboard update
+Update:   Every 3 seconds (setInterval)`}</div>
+
+        <div style={S.h2}>PYTH BENCHMARKS — HISTORICAL OHLCV</div>
+        <div style={S.p}>
+          Historical candlestick data comes from Pyth Benchmarks, a TradingView-compatible
+          REST API that serves OHLCV bars reconstructed from Pyth oracle price history.
+        </div>
+        <div style={S.code}>{`Endpoint: https://benchmarks.pyth.network/v1/shims/tradingview/history
+Params:   symbol, resolution, from, to, countback
+Response: { s, t[], o[], h[], l[], c[], v[] }
+
+Resolutions: 1 (1m), 5, 15, 60 (1h), 240 (4h), D (daily)
+Countback:   300 bars per request`}</div>
+
+        <div style={S.h2}>PYTH SYMBOL MAP</div>
+        <table style={S.table}>
+          <thead>
+            <tr>
+              <th style={S.th}>ASSET</th>
+              <th style={S.th}>BENCHMARKS SYMBOL</th>
+              <th style={S.th}>HERMES FEED ID (first 16 chars)</th>
+            </tr>
+          </thead>
+          <tbody>
+            {[
+              ["BTC",     "Crypto.BTC/USD",        "e62df6c8b4a85fe1"],
+              ["ETH",     "Crypto.ETH/USD",        "ff61491a93111..."],
+              ["SOL",     "Crypto.SOL/USD",        "ef0d8b6fda2ceb..."],
+              ["DOGE",    "Crypto.DOGE/USD",       "dcef50bb04848..."],
+              ["USDC",    "Crypto.USDC/USD",       "eaa020c61cc479..."],
+              ["XAU/USD", "Metal.XAU/USD",         "765d2ba906dbc3..."],
+              ["EUR/USD", "FX.EUR/USD",            "a995d00bb36a63..."],
+              ["GBP/USD", "FX.GBP/USD",            "84c2dde9633d3d..."],
+              ["AAPL",    "Equity.US.AAPL/USD",    "49f6b65cb7d95..."],
+              ["WTI/USD", "Energy.WTI/USD",        "6b1381ce7e5e..."],
+            ].map(([sym, bench, feed]) => (
+              <tr key={sym}>
+                <td style={{...S.td, color:"#c4b5fd", fontWeight:700}}>{sym}</td>
+                <td style={{...S.td, color:"rgba(34,197,94,0.7)", fontSize:10}}>{bench}</td>
+                <td style={{...S.td, fontSize:10, fontFamily:"monospace"}}>{feed}</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+
+        <div style={S.h2}>DATA FRESHNESS & LIMITATIONS</div>
+        <div style={S.p}>
+          Live prices update every 3 seconds. Historical bars are fetched once on tab/pair
+          load and cached in-session. Equity data (AAPL) may have limited availability
+          outside US market hours. Energy (WTI) and metals (XAU) trade nearly 24/5.
+        </div>
+      </div>
+    ),
+
+    disclaimer: (
+      <div>
+        <div style={S.h1}>Disclaimer</div>
+        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", marginBottom: 24 }}>Please read carefully</div>
+
+        <div style={S.warn}>
+          ⚠ This platform is for informational and educational purposes only.
+          Nothing on this site constitutes financial, investment, trading, or legal advice.
+        </div>
+
+        <div style={S.h2}>NOT FINANCIAL ADVICE</div>
+        <div style={S.p}>
+          All data, analytics, correlations, entropy metrics, and visualizations displayed
+          on Pyth Correlation Tracker are provided for informational purposes only. The
+          information does not constitute, and should not be construed as, financial advice,
+          investment recommendations, or solicitation to buy or sell any asset.
+        </div>
+        <div style={S.p}>
+          Past correlations do not predict future price movements. Statistical relationships
+          between assets can and do change rapidly, especially during market stress events,
+          black swans, or structural market shifts.
+        </div>
+
+        <div style={S.h2}>NO INVESTMENT RECOMMENDATIONS</div>
+        <div style={S.p}>
+          rustrell and the Pyth Correlation Tracker project do not recommend or endorse
+          any specific investment strategy, asset allocation, or trading decision based on
+          the metrics shown on this platform. Users are solely responsible for their own
+          investment and trading decisions.
+        </div>
+
+        <div style={S.h2}>DATA ACCURACY</div>
+        <div style={S.p}>
+          While price data is sourced from Pyth Network — a decentralized oracle aggregating
+          data from professional market makers — we make no representations or warranties
+          regarding the accuracy, completeness, timeliness, or reliability of any data
+          displayed. Oracle data may experience latency, gaps, or errors.
+        </div>
+
+        <div style={S.h2}>RISK WARNING</div>
+        <div style={S.p}>
+          Cryptocurrency, forex, commodity, and equity markets carry substantial risk of loss.
+          Prices can be highly volatile. You may lose some or all of your invested capital.
+          Never trade or invest more than you can afford to lose. Consult a licensed financial
+          advisor before making investment decisions.
+        </div>
+
+        <div style={S.h2}>JURISDICTION</div>
+        <div style={S.p}>
+          This platform is not directed at residents of jurisdictions where the display of
+          financial data or analytics tools is restricted or prohibited. It is the user's
+          responsibility to ensure compliance with applicable local laws and regulations.
+        </div>
+
+        <div style={S.divider}/>
+        <div style={{ fontSize: 10, color: "rgba(255,255,255,0.2)", lineHeight: 1.9 }}>
+          Last updated: March 2025. Subject to change without notice.
+          By using this platform you acknowledge that you have read,
+          understood, and agree to this disclaimer.
+        </div>
+      </div>
+    ),
+
+    legal: (
+      <div>
+        <div style={S.h1}>Legal & Rights</div>
+        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", marginBottom: 24 }}>Intellectual property and terms of use</div>
+
+        <div style={S.h2}>COPYRIGHT</div>
+        <div style={{ ...S.info, fontSize: 13, letterSpacing: ".02em" }}>
+          © 2025 rustrell. All rights reserved.
+        </div>
+        <div style={S.p}>
+          The design, source code, visual presentation, analytical methodology, user interface,
+          and all original content of Pyth Correlation Tracker are the exclusive intellectual
+          property of <strong style={{ color: "rgba(255,255,255,0.7)" }}>rustrell</strong>.
+        </div>
+        <div style={S.p}>
+          Unauthorized reproduction, distribution, modification, reverse engineering, or
+          commercial use of any part of this platform — including but not limited to its
+          code, design, algorithms, or visual assets — is strictly prohibited without
+          prior written consent from the author.
+        </div>
+
+        <div style={S.h2}>PERMITTED USE</div>
+        <div style={S.p}>
+          You are permitted to:
+        </div>
+        <ul style={{ margin: "0 0 16px 0", paddingLeft: 20 }}>
+          {[
+            "Access and use the platform for personal, non-commercial analysis",
+            "Share screenshots or links to the platform with attribution",
+            "Reference the methodology in academic or educational work with citation",
+          ].map(item => (
+            <li key={item} style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", lineHeight: 2 }}>{item}</li>
+          ))}
+        </ul>
+        <div style={S.p}>You are NOT permitted to:</div>
+        <ul style={{ margin: "0 0 16px 0", paddingLeft: 20 }}>
+          {[
+            "Copy, clone, or redistribute the source code for commercial purposes",
+            "Create derivative works without written permission",
+            "Scrape or systematically extract data from the platform",
+            "Remove or obscure copyright notices or attributions",
+            "Use the platform's name, branding, or identity without consent",
+          ].map(item => (
+            <li key={item} style={{ fontSize: 11, color: "rgba(255,255,255,0.45)", lineHeight: 2 }}>{item}</li>
+          ))}
+        </ul>
+
+        <div style={S.h2}>CONTACT FOR LICENSING</div>
+        <div style={S.p}>
+          For licensing inquiries, collaborations, or permissions beyond the scope above,
+          contact:
+        </div>
+        <div style={{ ...S.code, color: "#a78bfa" }}>
+          {`Email:   stytunnik@gmail.com
+Twitter: https://x.com/xzolmoney`}
+        </div>
+
+        <div style={S.h2}>GOVERNING LAW</div>
+        <div style={S.p}>
+          These terms are governed by applicable international intellectual property law.
+          Any disputes shall be resolved through good-faith negotiation between parties.
+        </div>
+
+        <div style={S.divider}/>
+        <div style={S.copy}>
+          <span style={{ fontSize: 18 }}>©</span>
+          <div>
+            <div style={{ fontSize: 13, color: "#fff", fontWeight: 700 }}>2025 rustrell</div>
+            <div style={{ fontSize: 10, color: "rgba(255,255,255,0.25)", marginTop: 2 }}>
+              Pyth Correlation Tracker · All rights reserved
+            </div>
+          </div>
+        </div>
+      </div>
+    ),
+
+    attribution: (
+      <div>
+        <div style={S.h1}>Attribution</div>
+        <div style={{ fontSize: 12, color: "rgba(255,255,255,0.3)", marginBottom: 24 }}>Third-party services and open-source credits</div>
+
+        <div style={S.h2}>PYTH NETWORK</div>
+        <div style={{ padding: "14px 18px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.07)", borderRadius: 4, marginBottom: 16 }}>
+          <div style={{ fontSize: 12, color: "#fff", fontWeight: 700, marginBottom: 6 }}>Pyth Network</div>
+          <div style={{ fontSize: 11, color: "rgba(255,255,255,0.4)", lineHeight: 1.8 }}>
+            Real-time and historical price data provided by Pyth Network oracle.<br/>
+            Pyth is a first-party financial oracle network publishing high-fidelity market data on-chain.<br/>
+            All price feeds used under Pyth Network's Terms of Service.
+          </div>
+          <div style={{ marginTop: 10, display: "flex", gap: 12 }}>
+            <a href="https://pyth.network" target="_blank" rel="noreferrer" style={{ fontSize: 10, color: "#a78bfa" }}>pyth.network</a>
+            <a href="https://pyth.network/terms-of-use" target="_blank" rel="noreferrer" style={{ fontSize: 10, color: "#a78bfa" }}>Terms of Use</a>
+            <a href="https://docs.pyth.network" target="_blank" rel="noreferrer" style={{ fontSize: 10, color: "#a78bfa" }}>Documentation</a>
+          </div>
+        </div>
+
+        {[
+          {
+            name: "React",
+            desc: "UI framework. Copyright © Meta Platforms, Inc. and affiliates.",
+            license: "MIT License",
+            url: "https://react.dev",
+          },
+          {
+            name: "Vite",
+            desc: "Build tooling and development server.",
+            license: "MIT License",
+            url: "https://vitejs.dev",
+          },
+          {
+            name: "Space Mono",
+            desc: "Monospace typeface by Colophon Foundry via Google Fonts.",
+            license: "SIL Open Font License 1.1",
+            url: "https://fonts.google.com/specimen/Space+Mono",
+          },
+          {
+            name: "Syne",
+            desc: "Display typeface by Bonjour Monde via Google Fonts.",
+            license: "SIL Open Font License 1.1",
+            url: "https://fonts.google.com/specimen/Syne",
+          },
+        ].map(({ name, desc, license, url }) => (
+          <div key={name} style={{ padding: "12px 18px", background: "rgba(255,255,255,0.02)", border: "1px solid rgba(255,255,255,0.05)", borderRadius: 4, marginBottom: 8, display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 16 }}>
+            <div>
+              <div style={{ fontSize: 11, color: "#fff", fontWeight: 700, marginBottom: 4 }}>{name}</div>
+              <div style={{ fontSize: 10, color: "rgba(255,255,255,0.35)", lineHeight: 1.7 }}>{desc}</div>
+            </div>
+            <div style={{ textAlign: "right", flexShrink: 0 }}>
+              <span style={S.tagGreen}>{license}</span>
+              <div style={{ marginTop: 6 }}>
+                <a href={url} target="_blank" rel="noreferrer" style={{ fontSize: 10, color: "rgba(167,139,250,0.6)" }}>{url.replace("https://","")}</a>
+              </div>
+            </div>
+          </div>
+        ))}
+
+        <div style={S.h2}>MATHEMATICAL REFERENCES</div>
+        <ul style={{ margin: 0, paddingLeft: 20 }}>
+          {[
+            "Shannon, C.E. (1948). A Mathematical Theory of Communication. Bell System Technical Journal.",
+            "Bandt, C. & Pompe, B. (2002). Permutation Entropy. Physical Review Letters.",
+            "Pearson, K. (1895). Notes on regression and inheritance. Proceedings of the Royal Society of London.",
+            "Mulberry32 PRNG by Tommy Ettinger — public domain fast hash-based PRNG.",
+          ].map(ref => (
+            <li key={ref} style={{ fontSize: 10, color: "rgba(255,255,255,0.3)", lineHeight: 2.2 }}>{ref}</li>
+          ))}
+        </ul>
+      </div>
+    ),
+
+  };
+
+  return (
+    <div style={S.page}>
+      {/* Top bar */}
+      <div style={S.topbar}>
+        <span style={{ fontSize: 13, fontWeight: 700, color: "#a78bfa", letterSpacing: ".06em" }}>DOCS</span>
+        <span style={{ fontSize: 13, fontWeight: 700, color: "rgba(255,255,255,0.2)" }}>& LEGAL</span>
+        <div style={{ width: 1, height: 16, background: "rgba(255,255,255,0.07)" }}/>
+        <span style={{ fontSize: 10, color: "rgba(255,255,255,0.2)" }}>Pyth Correlation Tracker · © 2025 rustrell</span>
+        <div style={{ marginLeft: "auto" }}>
+          <button
+            onClick={() => setActiveTab("matrix")}
+            style={{ padding: "4px 14px", borderRadius: 3, cursor: "pointer", fontSize: 10, fontFamily: "inherit", fontWeight: 700, letterSpacing: ".06em", background: "transparent", border: "1px solid rgba(255,255,255,0.1)", color: "rgba(255,255,255,0.4)" }}
+            onMouseEnter={e => { e.currentTarget.style.borderColor = "rgba(167,139,250,0.5)"; e.currentTarget.style.color = "#a78bfa"; }}
+            onMouseLeave={e => { e.currentTarget.style.borderColor = "rgba(255,255,255,0.1)"; e.currentTarget.style.color = "rgba(255,255,255,0.4)"; }}>
+            ← MATRIX
+          </button>
+        </div>
+      </div>
+
+      {/* Body */}
+      <div style={S.body}>
+        {/* Sidebar nav */}
+        <div style={S.sidebar}>
+          {NAV.map(({ id, label }) => (
+            <div
+              key={id}
+              style={S.navItem(section === id)}
+              onClick={() => setSection(id)}
+              onMouseEnter={e => { if (section !== id) { e.currentTarget.style.color = "rgba(167,139,250,0.6)"; e.currentTarget.style.background = "rgba(167,139,250,0.04)"; } }}
+              onMouseLeave={e => { if (section !== id) { e.currentTarget.style.color = "rgba(255,255,255,0.35)"; e.currentTarget.style.background = "transparent"; } }}>
+              {label}
+            </div>
+          ))}
+          <div style={{ margin: "auto 0 16px 0", padding: "0 20px" }}>
+            <div style={{ fontSize: 9, color: "rgba(255,255,255,0.15)", lineHeight: 1.9 }}>
+              © 2025 rustrell<br/>
+              All rights reserved
+            </div>
+          </div>
+        </div>
+
+        {/* Content */}
+        <div style={S.content}>
+          {sections[section]}
+        </div>
+      </div>
+    </div>
   );
 }
 
 
-/* ── MAIN ───────────────────────────────────────────────────────────────── */
+
 export default function App(){
   const [prices,setPrices]=useState({});
   const [history,setHistory]=useState({});
@@ -162,20 +1012,57 @@ export default function App(){
   const [status,setStatus]=useState("connecting");
   const [filter,setFilter]=useState("all");
   const [selected,setSelected]=useState(null);
+  const [hmTooltip,setHmTooltip]=useState(null); // {x,y,symA,symB,val}
   const [mounted,setMounted]=useState(false);
-  const [activeTab,setActiveTab]=useState("matrix");   // matrix | charts
   const [mobileTab,setMobileTab]=useState("heatmap");
+  const [activeTab,setActiveTab]=useState("matrix");
+  const [showLanding,setShowLanding]=useState(true);
+  const [landingExiting,setLandingExiting]=useState(false);
+  const goFromLanding=(tab="matrix")=>{
+    setLandingExiting(true);
+    setTimeout(()=>{ setShowLanding(false); if(tab!=="matrix") setActiveTab(tab); }, 420);
+  };
+  const handleShareApp=()=>{
+    const btc=ASSETS.find(a=>a.symbol==="BTC");
+    const eth=ASSETS.find(a=>a.symbol==="ETH");
+    const btcPrice=prices[btc?.id];
+    const ethPrice=prices[eth?.id];
+    let lines=["📊 Live Cross-Asset Correlation Matrix"];
+    if(btcPrice!=null) lines.push(`BTC $${Math.round(btcPrice).toLocaleString()}`);
+    if(ethPrice!=null) lines.push(`ETH $${Math.round(ethPrice).toLocaleString()}`);
+    // find top positive corr pair
+    let best=null, bestVal=-Infinity;
+    ASSETS.forEach((a,i)=>ASSETS.forEach((b,j)=>{
+      if(i>=j) return;
+      const v=corr[`${a.id}|${b.id}`]??corr[`${b.id}|${a.id}`];
+      if(v!=null&&v>bestVal){bestVal=v;best=[a.symbol,b.symbol,v];}
+    }));
+    if(best) lines.push(`Top pair: ${best[0]}/${best[1]} ${best[2]>=0?"+":""}${best[2].toFixed(2)}`);
+    lines.push("","Powered by @PythNetwork","pythcorrelation.com");
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(lines.join("\n"))}`,"_blank");
+  };
+  const handleShareCorr=(assetA, assetB, corrVal)=>{
+    if(corrVal===null) return;
+    const txt=`${assetA.symbol}/${assetB.symbol} correlation: ${corrVal>=0?'+':''}${corrVal.toFixed(2)}\n\nPowered by @PythNetwork\npythcorrelation.com`;
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(txt)}`,'_blank');
+  };
   const [chartAsset,setChartAsset]=useState("BTC");
   const [chartTf,setChartTf]=useState("1m");
-  const [chartType,setChartType]=useState("candle");   // candle | line
-  const ohlcvRef=useRef({});   // {symbol: {tf: [{t,o,h,l,c,v}]}}
+  const [chartType,setChartType]=useState("candle");
+  const [chartHist,setChartHist]=useState({});
   const [feedbackOpen,setFeedbackOpen]=useState(false);
   const [feedbackText,setFeedbackText]=useState("");
   const [feedbackSent,setFeedbackSent]=useState(false);
   const [tickCount,setTickCount]=useState(0);
   const [lastUpdate,setLastUpdate]=useState(null);
   const [errorMsg,setErrorMsg]=useState(null);
+  const [entropyLiveRun,setEntropyLiveRun]=useState(false);
+  const [corrAlertEnabled,setCorrAlertEnabled]=useState(false);
+  const [corrAlertPair,setCorrAlertPair]=useState("BTC-ETH");
+  const [corrAlertThreshold,setCorrAlertThreshold]=useState(0.8);
+  const [corrAlertHit,setCorrAlertHit]=useState(false);
   const histRef=useRef({});
+  const corrTraceRef=useRef({});
 
   useEffect(()=>{setTimeout(()=>setMounted(true),80);},[]);
 
@@ -183,22 +1070,6 @@ export default function App(){
     if(!histRef.current[sym])histRef.current[sym]=[];
     histRef.current[sym].push(price);
     if(histRef.current[sym].length>200)histRef.current[sym].shift();
-    // Build OHLCV candles for each timeframe
-    const TF_SECS={"1m":60,"5m":300,"15m":900,"1h":3600,"4h":14400,"1d":86400};
-    const now=Math.floor(Date.now()/1000);
-    Object.entries(TF_SECS).forEach(([tf,secs])=>{
-      if(!ohlcvRef.current[sym])ohlcvRef.current[sym]={};
-      if(!ohlcvRef.current[sym][tf])ohlcvRef.current[sym][tf]=[];
-      const bars=ohlcvRef.current[sym][tf];
-      const barT=Math.floor(now/secs)*secs;
-      if(!bars.length||bars[bars.length-1].t!==barT){
-        bars.push({t:barT,o:price,h:price,l:price,c:price,n:1});
-        if(bars.length>500)bars.shift();
-      } else {
-        const b=bars[bars.length-1];
-        b.h=Math.max(b.h,price);b.l=Math.min(b.l,price);b.c=price;b.n++;
-      }
-    });
   }
 
   const fetchPrices=useCallback(async()=>{
@@ -266,9 +1137,35 @@ export default function App(){
       nc[`${a.symbol}-${b.symbol}`]=pearson(histRef.current[a.symbol]||[],histRef.current[b.symbol]||[]);
     }));
     setCorr(nc);
+
+    for(let i=0;i<ASSETS.length;i++)for(let j=i+1;j<ASSETS.length;j++){
+      const key=`${ASSETS[i].symbol}-${ASSETS[j].symbol}`;
+      const v=nc[key];
+      if(v==null || !isFinite(v)) continue;
+      if(!corrTraceRef.current[key]) corrTraceRef.current[key]=[];
+      corrTraceRef.current[key].push(v);
+      if(corrTraceRef.current[key].length>24) corrTraceRef.current[key].shift();
+    }
   },[history]);
 
+  useEffect(()=>{
+    if(!corrAlertEnabled){ setCorrAlertHit(false); return; }
+    const series = corrTraceRef.current[corrAlertPair] || [];
+    const recent = series.slice(-6);
+    if(recent.length < 6) { setCorrAlertHit(false); return; }
+    const min = Math.min(...recent), max = Math.max(...recent);
+    const avgAbs = recent.reduce((s,v)=>s+Math.abs(v),0)/recent.length;
+    setCorrAlertHit(max - min <= 0.04 && avgAbs >= corrAlertThreshold);
+  },[corr, corrAlertEnabled, corrAlertPair, corrAlertThreshold]);
+
   const vis=filter==="all"?ASSETS:ASSETS.filter(a=>a.category===filter);
+  const corrAlertOptions = [];
+  for(let i=0;i<ASSETS.length;i++) for(let j=i+1;j<ASSETS.length;j++) {
+    corrAlertOptions.push({
+      key:`${ASSETS[i].symbol}-${ASSETS[j].symbol}`,
+      label:`${ASSETS[i].symbol} / ${ASSETS[j].symbol}`
+    });
+  }
 
   function topPairs(dir){
     const pairs=[];
@@ -349,9 +1246,9 @@ export default function App(){
         </div>
         <div className="hdr-r">
           <div className="hdr-upd">{lastUpdate?`UPD ${lastUpdate.toLocaleTimeString()}`:""}</div>
-          <div className="nav-tabs">
-            {[["matrix","Matrix"],["charts","Charts"]].map(([k,l])=>(
-              <button key={k} className={`nav-tab${activeTab===k?" a":""}`} onClick={()=>setActiveTab(k)}>{l}</button>
+          <div style={{display:"flex",gap:2,background:"rgba(0,0,0,0.4)",borderRadius:6,padding:3,marginRight:6}}>
+            {[["matrix","Matrix"],["charts","Charts"],["corr","Correlation"],["entropy","Entropy"],["docs","Docs"]].map(([k,l])=>(
+              <button key={k} onClick={()=>setActiveTab(k)} style={{background:activeTab===k?"rgba(139,92,246,0.35)":"transparent",border:"none",borderRadius:4,padding:"4px 12px",fontFamily:"inherit",fontSize:11,fontWeight:600,color:activeTab===k?"#e2d9f3":"rgba(139,92,246,0.5)",cursor:"pointer"}}>{l}</button>
             ))}
           </div>
           <div className={`pill ${status}`}><span className="dot"/>{status==="live"?"LIVE":"DEMO"}</div>
@@ -360,10 +1257,10 @@ export default function App(){
       </header>
 
       {/* ══ FILTER BAR ══════════════════════════════════════════════════ */}
-      <div className="fbar" style={{display:activeTab==="charts"?"none":"flex"}}>
-        {["all","crypto","fx","commodity","equity"].map(c=>(
+      <div className="fbar" style={{display:activeTab==="charts"||activeTab==="corr"||activeTab==="entropy"||activeTab==="docs"?"none":"flex"}}>
+        {["all","crypto","fx","commodity","equity","index"].map(c=>(
           <button key={c} className={`fbtn${filter===c?" a":""}`} onClick={()=>setFilter(c)}>
-            {c==="all"?"All Assets":c==="fx"?"FX Pairs":c==="commodity"?"Commodities":c.charAt(0).toUpperCase()+c.slice(1)}
+            {c==="all"?"All Assets":c==="fx"?"FX Pairs":c==="commodity"?"Commodities":c==="index"?"Indices":c.charAt(0).toUpperCase()+c.slice(1)}
             <span className="fbtn-count">{c==="all"?ASSETS.length:ASSETS.filter(a=>a.category===c).length}</span>
           </button>
         ))}
@@ -372,21 +1269,14 @@ export default function App(){
         </div>
       </div>
 
-      {/* ══ MOBILE TABS ════════════════════════════════════════════════ */}
-      <div className="mtabs" style={{display:activeTab==="charts"?"none":"flex"}}>
-        {(activeTab==="charts"?[["chart-main","Chart"],["chart-asset","Asset"]]:[ ["heatmap","Matrix"],["tickers","Prices"],["top","Rankings"]]).map(([k,l])=>(
-          <button key={k} className={`mt${mobileTab===k?" a":""}`} onClick={()=>setMobileTab(k)}>{l}</button>
-        ))}
-      </div>
-
-      <main className="main">
+      <main className="main" style={{display:activeTab==="charts"||activeTab==="corr"||activeTab==="entropy"||activeTab==="docs"?"none":"block"}}>
         {status==="demo"&&errorMsg&&(
           <div className="err-banner" role="alert">
             <span className="err-banner-icon">⚠</span>
             <span>{errorMsg}</span>
           </div>
         )}
-        {/* Charts portal below */}
+
         {/* ══ TICKERS ════════════════════════════════════════════════════ */}
         <section className={`sec${mobileTab!=="tickers"?" mh":""}`} id="sec-tickers">
           <div className="tgrid">
@@ -445,18 +1335,22 @@ export default function App(){
                 </div>
               </div>
             </div>
-            <div className="hmwrap">
+            <div className="hmwrap" onMouseLeave={()=>setHmTooltip(null)}>
               <table className="hm">
                 <thead>
                   <tr>
                     <th className="hm-corner"><span className="hm-corner-txt">↓ row vs col →</span></th>
-                    {vis.map(a=>(
-                      <th key={a.symbol} className="hm-cl">
-                        <div className="hm-cl-inner" style={{color:a.color}}>
-                          <div className="hm-cl-sym">{a.symbol}</div>
-                        </div>
-                      </th>
-                    ))}
+                    {vis.map(a=>{
+                      const base=a.symbol.split("/")[0];
+                      const quote=a.symbol.includes("/")?"/"+a.symbol.split("/")[1]:null;
+                      return(
+                        <th key={a.symbol} className="hm-cl">
+                          <div className="hm-cl-inner" style={{color:a.color}}>
+                            <div className="hm-cl-sym">{base}<span style={{opacity:.35,fontWeight:400}}>{quote}</span></div>
+                          </div>
+                        </th>
+                      );
+                    })}
                   </tr>
                 </thead>
                 <tbody>
@@ -465,7 +1359,8 @@ export default function App(){
                       <td className="hm-rl">
                         <div className="hm-rl-inner">
                           <span className="hm-rl-dot" style={{background:rA.color}}/>
-                          <span style={{color:rA.color}}>{rA.symbol}</span>
+                          <span style={{color:rA.color}}>{rA.symbol.split("/")[0]}</span>
+                          {rA.symbol.includes("/")&&<span style={{color:"rgba(255,255,255,0.22)",fontSize:7}}>/{rA.symbol.split("/")[1]}</span>}
                         </div>
                       </td>
                       {vis.map(cB=>{
@@ -475,10 +1370,22 @@ export default function App(){
                         return(
                           <td key={cB.symbol}
                             onClick={()=>!diag&&setSelected(sel?null:{a:rA.symbol,b:cB.symbol})}
+                            onMouseEnter={(e)=>{
+                              if(diag) return;
+                              const r=e.currentTarget.getBoundingClientRect();
+                              const flip=r.right+200>window.innerWidth;
+                              setHmTooltip({x:flip?r.left-208:r.right+8, y:r.top+r.height/2-52, symA:rA.symbol,symB:cB.symbol,val});
+                            }}
+                            onMouseLeave={()=>setHmTooltip(null)}
                             className={`hm-cell${diag?" diag":""}${sel?" sel":""}`}
-                            style={{background:diag?"transparent":corrBg(val),color:diag?"#2a1f40":corrFg(val)}}>
+                            style={{background:diag?"transparent":corrBg(val),color:diag?"#2a1f40":corrFg(val),position:"relative"}}>
                             {diag?<span className="diag-sym" style={{color:rA.color}}>{rA.symbol.split("/")[0]}</span>:
                              val!==null?val.toFixed(2):"…"}
+                            {!diag&&val!==null&&(
+                              <button className="hm-share-btn" title="Share on X" onClick={(e)=>{e.stopPropagation();handleShareCorr(rA,cB,val);}}>
+                                <svg width="8" height="8" viewBox="0 0 24 24" fill="currentColor"><path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-4.714-6.231-5.401 6.231H2.744l7.73-8.835L1.254 2.25H8.08l4.259 5.63 5.905-5.63zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>
+                              </button>
+                            )}
                           </td>
                         );
                       })}
@@ -487,6 +1394,21 @@ export default function App(){
                 </tbody>
               </table>
             </div>
+
+            {/* ── HEATMAP TOOLTIP ───────────────────────────────────── */}
+            {hmTooltip&&(()=>{
+              const si=strengthInfo(hmTooltip.val);
+              const lbl=corrTipLabel(hmTooltip.val);
+              return(
+                <div className="hm-tooltip" style={{left:hmTooltip.x,top:hmTooltip.y}}>
+                  <div className="hm-tt-pair">{hmTooltip.symA} <span style={{opacity:.4}}>/</span> {hmTooltip.symB}</div>
+                  <div className="hm-tt-val" style={{color:si.color}}>
+                    {hmTooltip.val!==null?hmTooltip.val.toFixed(3):"–"}
+                  </div>
+                  <div className="hm-tt-lbl" style={{color:si.color}}>{lbl}</div>
+                </div>
+              );
+            })()}
           </div>
 
           {/* ── DETAIL PANEL ─────────────────────────────────────────── */}
@@ -552,6 +1474,54 @@ export default function App(){
           )}
         </section>
 
+        {/* ══ CORRELATION EXPLANATION ════════════════════════════════════ */}
+        <section className="sec" id="sec-corr-explain">
+          <div className="ce-grid">
+            {[
+              {
+                val:"+1.0", color:"#10b981", bg:"rgba(16,185,129,0.07)", border:"rgba(16,185,129,0.22)",
+                title:"Move Together",
+                desc:"Both assets rise and fall in sync. A portfolio of two such assets offers no diversification benefit.",
+                lines:[
+                  {d:"M0,32 C12,26 24,16 36,10 S52,6 60,3", color:"#10b981", w:1.8, dash:""},
+                  {d:"M0,34 C12,28 24,18 36,12 S52,8 60,5", color:"rgba(255,255,255,0.35)", w:1.4, dash:"4 2"},
+                ],
+              },
+              {
+                val:"0.0", color:"#a78bfa", bg:"rgba(124,58,237,0.07)", border:"rgba(124,58,237,0.22)",
+                title:"No Relationship",
+                desc:"Assets move independently of each other. Combining uncorrelated assets reduces overall portfolio risk.",
+                lines:[
+                  {d:"M0,20 C10,8 20,30 30,18 S46,10 60,22",  color:"#a78bfa", w:1.8, dash:""},
+                  {d:"M0,18 C12,30 22,10 32,24 S48,28 60,14", color:"rgba(255,255,255,0.35)", w:1.4, dash:"4 2"},
+                ],
+              },
+              {
+                val:"−1.0", color:"#ef4444", bg:"rgba(239,68,68,0.07)", border:"rgba(239,68,68,0.22)",
+                title:"Move Opposite",
+                desc:"When one asset rises, the other falls. A perfect hedge — rare to find in real markets.",
+                lines:[
+                  {d:"M0,33 C15,26 30,18 45,10 L60,3",  color:"#ef4444", w:1.8, dash:""},
+                  {d:"M0,3  C15,10 30,18 45,26 L60,33", color:"rgba(255,255,255,0.35)", w:1.4, dash:"4 2"},
+                ],
+              },
+            ].map(({val,color,bg,border,title,desc,lines})=>(
+              <div key={val} className="ce-card" style={{"--cc":color,"--cbg":bg,"--cbr":border}}>
+                <div className="ce-top">
+                  <div className="ce-val">{val}</div>
+                  <svg className="ce-chart" viewBox="0 0 60 36" fill="none">
+                    {lines.map((l,i)=>(
+                      <path key={i} d={l.d} stroke={l.color} strokeWidth={l.w} strokeLinecap="round" strokeLinejoin="round" strokeDasharray={l.dash||undefined}/>
+                    ))}
+                  </svg>
+                </div>
+                <div className="ce-title">{title}</div>
+                <div className="ce-desc">{desc}</div>
+              </div>
+            ))}
+          </div>
+        </section>
+
         {/* ══ RANKINGS ════════════════════════════════════════════════════ */}
         <section className={`sec${mobileTab!=="top"?" mh":""}`} id="sec-rankings">
           <div className="rgrid">
@@ -590,15 +1560,58 @@ export default function App(){
 
       </main>
 
+      {activeTab==="charts"&&<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#070512",zIndex:200,display:"flex",flexDirection:"column",fontFamily:"'Space Mono',monospace",animation:"fadein .22s ease"}}>
+        <ChartView assets={ASSETS} prices={prices} chartAsset={chartAsset} setChartAsset={setChartAsset} chartTf={chartTf} setChartTf={setChartTf} chartType={chartType} setChartType={setChartType} chartHist={chartHist} setChartHist={setChartHist} setActiveTab={setActiveTab} status={status} histRef={histRef}/>
+      </div>}
+
+      {activeTab==="corr"&&<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#07050f",zIndex:200,display:"flex",flexDirection:"column",animation:"fadein .22s ease"}}>
+        <CorrView histRef={histRef} prices={prices} assets={ASSETS} setActiveTab={setActiveTab} status={status}/>
+      </div>}
+
+      <div className={activeTab==="entropy"?"tab-overlay-enter":""} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#07050f",zIndex:200,display:activeTab==="entropy"?"flex":"none",flexDirection:"column"}}>
+        <EntropyView histRef={histRef} prices={prices} assets={ASSETS} setActiveTab={setActiveTab} status={status} liveRun={entropyLiveRun} setLiveRun={setEntropyLiveRun} corrAlertEnabled={corrAlertEnabled} setCorrAlertEnabled={setCorrAlertEnabled} corrAlertPair={corrAlertPair} setCorrAlertPair={setCorrAlertPair} corrAlertThreshold={corrAlertThreshold} setCorrAlertThreshold={setCorrAlertThreshold} corrAlertHit={corrAlertHit} corrAlertOptions={corrAlertOptions}/>
+      </div>
+
+      {activeTab==="docs" && <div style={{position:"fixed",inset:0,zIndex:200,display:"flex",flexDirection:"column",animation:"fadein .22s ease"}}>
+        <DocsView setActiveTab={setActiveTab}/>
+      </div>}
+
+      {/* ══ LANDING ═════════════════════════════════════════════════════ */}
+      {showLanding&&(
+        <div className={`landing-ov${landingExiting?" landing-ov-out":""}`}>
+          <div className="landing-inner">
+            <div style={{display:"flex",justifyContent:"center",marginBottom:20}}>
+              <PythLogo size={64}/>
+            </div>
+            <div className="hero-badge">
+              <span className="dot" style={{color:"#a78bfa"}}/> Live · Pyth Oracle
+            </div>
+            <h1 className="hero-title">
+              Real-Time Crypto Correlation<br/>
+              <span className="hero-title-hi">Powered by Pyth Oracle Data</span>
+            </h1>
+            <p className="hero-sub">Explore how crypto assets move together using live market data.</p>
+            <div className="hero-btns">
+              <button className="hero-btn-p" onClick={()=>goFromLanding("matrix")}>Start analysis</button>
+              <button className="hero-btn-s" onClick={()=>goFromLanding("corr")}>View correlation heatmap</button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ══ FOOTER ═════════════════════════════════════════════════════ */}
       <footer className="foot">
         <div className="foot-l">
           <PythLogo size={18}/>
           <span>Powered by <a href="https://pyth.network" target="_blank" rel="noreferrer" className="fl">Pyth Network</a></span>
           <span className="foot-sep">·</span>
-          <span>Pyth Playground Hackathon 2025</span>
+          <span style={{color:"rgba(255,255,255,0.35)"}}>© 2025 rustrell. All rights reserved.</span>
           <span className="foot-sep">·</span>
-          <span>Built by <a href="https://x.com/xzolmoneythinks" target="_blank" rel="noreferrer" className="fl">@xzolmoneythinks</a></span>
+          <a href="mailto:stytunnik@gmail.com" style={{color:"rgba(255,255,255,0.3)",textDecoration:"none",fontSize:11}} onMouseEnter={e=>e.target.style.color="#a78bfa"} onMouseLeave={e=>e.target.style.color="rgba(255,255,255,0.3)"}>stytunnik@gmail.com</a>
+          <span className="foot-sep">·</span>
+          <a href="https://x.com/xzolmoney" target="_blank" rel="noreferrer" style={{color:"rgba(255,255,255,0.3)",textDecoration:"none",fontSize:11}} onMouseEnter={e=>e.target.style.color="#a78bfa"} onMouseLeave={e=>e.target.style.color="rgba(255,255,255,0.3)"}>𝕏 @xzolmoney</a>
+          <span className="foot-sep">·</span>
+          <button onClick={()=>setActiveTab("docs")} style={{background:"none",border:"none",color:"rgba(255,255,255,0.25)",cursor:"pointer",fontSize:11,fontFamily:"inherit",padding:0}} onMouseEnter={e=>e.target.style.color="#a78bfa"} onMouseLeave={e=>e.target.style.color="rgba(255,255,255,0.25)"}>Docs & Legal</button>
         </div>
         <div className="foot-r">
           <span className="foot-info">Data updates every 3s · 400ms Pyth oracle</span>
@@ -666,10 +1679,6 @@ export default function App(){
         .hstat-key { font-size: 8px; color: var(--td); letter-spacing: .1em; text-transform: uppercase; margin-top: 1px; }
         .hstat-sep { width: 1px; height: 32px; background: var(--cb); }
         .hdr-r { margin-left: auto; display: flex; align-items: center; gap: 8px; }
-        .nav-tabs { display: flex; gap: 2px; background: rgba(0,0,0,.3); border: 1px solid var(--cb); border-radius: 8px; padding: 3px; }
-        .nav-tab { background: transparent; border: none; color: var(--td); padding: 4px 14px; border-radius: 5px; font-size: 10px; font-family: var(--fm); cursor: pointer; transition: all .2s; letter-spacing: .06em; }
-        .nav-tab:hover { color: var(--pul); }
-        .nav-tab.a { background: var(--pud); color: #fff; }
         .hdr-upd { font-size: 9px; color: var(--td); letter-spacing: .08em; }
         .pill { display: flex; align-items: center; gap: 5px; padding: 4px 11px; border-radius: 20px; font-size: 9px; font-weight: 700; letter-spacing: .14em; border: 1px solid; }
         .pill.live { background: rgba(52,211,153,.08); border-color: rgba(52,211,153,.3); color: var(--gn); }
@@ -678,6 +1687,8 @@ export default function App(){
         .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; animation: pulse 2s infinite; }
         @keyframes pulse { 0%,100%{opacity:1}50%{opacity:.3} }
         .tick-badge { font-size: 9px; color: var(--tm); letter-spacing: .06em; }
+        .x-share-btn { display: flex; align-items: center; gap: 5px; padding: 5px 11px; background: rgba(0,0,0,0.45); border: 1px solid rgba(139,92,246,0.35); border-radius: 20px; color: rgba(200,190,230,0.8); font-size: 10px; font-weight: 600; font-family: inherit; letter-spacing: .06em; cursor: pointer; transition: background .15s, border-color .15s, color .15s; }
+        .x-share-btn:hover { background: rgba(139,92,246,0.2); border-color: rgba(139,92,246,0.7); color: #e2d9f3; }
 
         /* FILTER BAR */
         .fbar { display: flex; align-items: center; gap: 5px; padding: 8px 24px; border-bottom: 1px solid var(--cb2); background: rgba(6,4,16,.7); overflow-x: auto; scrollbar-width: none; position: relative; z-index: 1; }
@@ -690,10 +1701,9 @@ export default function App(){
         .window-badge { font-size: 9px; color: var(--tm); letter-spacing: .06em; white-space: nowrap; }
 
         /* MOBILE TABS */
-        .mtabs { display: none; gap: 0; border-bottom: 1px solid var(--cb2); background: var(--bg); position: sticky; top: 0; z-index: 10; }
+        .mtabs { display: none; }
         @media(max-width:768px){
-          .mtabs { display: flex; }
-          .mtabs { display: none; gap: 0; border-bottom: 1px solid var(--cb2); background: var(--bg); position: sticky; top: 0; z-index: 10; }
+          .mtabs { display: flex; background: rgba(6,4,16,.95); border-bottom: 1px solid var(--cb); position: relative; z-index: 1; }
           .mt { flex: 1; padding: 10px; border: none; background: transparent; color: var(--td); font-size: 11px; font-family: var(--fm); cursor: pointer; border-bottom: 2px solid transparent; transition: all .2s; }
           .mt.a { color: var(--pul); border-bottom-color: var(--pu); }
           .mh { display: none !important; }
@@ -701,6 +1711,24 @@ export default function App(){
 
         /* MAIN */
         .main { flex: 1; padding: 16px 24px; display: flex; flex-direction: column; gap: 12px; position: relative; z-index: 1; width: 100%; }
+
+        /* LANDING OVERLAY */
+        .landing-ov { position: fixed; inset: 0; z-index: 500; background: #070512; display: flex; align-items: center; justify-content: center; animation: fadein .5s ease; }
+        .landing-ov-out { animation: landing-out .42s ease forwards; }
+        .landing-inner { text-align: center; padding: 32px 24px; max-width: 600px; width: 100%; }
+        @keyframes landing-out { from{opacity:1;transform:translateY(0) scale(1)} to{opacity:0;transform:translateY(-28px) scale(0.97)} }
+
+        /* HERO */
+        .hero-section { padding: 36px 8px 28px; text-align: center; position: relative; animation: fup .55s ease both; }
+        .hero-badge { display: inline-flex; align-items: center; gap: 6px; padding: 4px 12px; border-radius: 20px; background: rgba(124,58,237,0.12); border: 1px solid rgba(124,58,237,0.28); color: rgba(196,181,253,0.85); font-size: 9px; font-weight: 700; letter-spacing: .12em; text-transform: uppercase; margin-bottom: 18px; }
+        .hero-title { font-family: var(--fd); font-size: clamp(20px, 2.6vw, 36px); font-weight: 800; color: #fff; line-height: 1.2; margin: 0 0 14px; letter-spacing: -.025em; }
+        .hero-title-hi { background: linear-gradient(125deg, #a78bfa 0%, #67e8f9 50%, #34d399 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .hero-sub { font-size: 13px; color: rgba(255,255,255,0.42); margin: 0 auto 26px; max-width: 420px; line-height: 1.6; font-family: var(--fm); }
+        .hero-btns { display: flex; align-items: center; justify-content: center; gap: 10px; flex-wrap: wrap; }
+        .hero-btn-p { padding: 11px 26px; border-radius: 8px; background: linear-gradient(135deg,#7c3aed 0%,#4f46e5 100%); border: 1px solid rgba(139,92,246,0.5); color: #fff; font-size: 12px; font-weight: 700; font-family: var(--fm); cursor: pointer; letter-spacing: .05em; transition: all .18s; box-shadow: 0 4px 18px rgba(124,58,237,0.35); }
+        .hero-btn-p:hover { transform: translateY(-2px); box-shadow: 0 8px 28px rgba(124,58,237,0.5); }
+        .hero-btn-s { padding: 11px 26px; border-radius: 8px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.14); color: rgba(255,255,255,0.6); font-size: 12px; font-weight: 600; font-family: var(--fm); cursor: pointer; letter-spacing: .04em; transition: all .18s; }
+        .hero-btn-s:hover { border-color: rgba(124,58,237,0.5); color: #c4b5fd; transform: translateY(-2px); background: rgba(124,58,237,0.08); }
 
         /* CARDS */
         .card { background: var(--card); border: 1px solid var(--cb); border-radius: var(--r); backdrop-filter: blur(16px); overflow: hidden; animation: fup .4s ease both; }
@@ -729,13 +1757,14 @@ export default function App(){
         .tc-badge.fx { background: rgba(96,165,250,.12); color: #60a5fa; }
         .tc-badge.commodity { background: rgba(252,211,77,.12); color: #fcd34d; }
         .tc-badge.equity { background: rgba(226,232,240,.1); color: #e2e8f0; }
+        .tc-badge.index { background: rgba(56,189,248,.12); color: #38bdf8; }
         .tc-price-row { display: flex; align-items: baseline; justify-content: space-between; gap: 4px; }
-        .tc-price { font-family: var(--fd); font-size: 15px; font-weight: 700; color: var(--txx); font-variant-numeric: tabular-nums; }
-        .tc-pct { font-size: 10px; font-weight: 700; padding: 2px 5px; border-radius: 4px; }
+        .tc-price { font-family: var(--fd); font-size: 15px; font-weight: 700; color: var(--txx); font-variant-numeric: tabular-nums; transition: color 0.35s ease; }
+        .tc-pct { font-size: 10px; font-weight: 700; padding: 2px 5px; border-radius: 4px; transition: color 0.3s ease, background 0.3s ease; }
         .tc-pct.up { color: var(--gn); background: rgba(52,211,153,.1); }
         .tc-pct.dn { color: var(--rd); background: rgba(248,113,113,.1); }
         .tc-spark-row { display: flex; align-items: center; justify-content: space-between; }
-        .tc-pct24 { font-size: 8px; }
+        .tc-pct24 { font-size: 8px; transition: color 0.35s ease; }
         .tc-pct24.up { color: var(--gn); } .tc-pct24.dn { color: var(--rd); }
         .tc-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 2px; border-top: 1px solid var(--cb2); padding-top: 6px; }
         .tc-stat { display: flex; gap: 4px; align-items: baseline; }
@@ -765,21 +1794,49 @@ export default function App(){
         /* HEATMAP */
         .hmwrap { overflow-x: auto; padding: 10px; width: 100%; }
         .hm { border-collapse: separate; border-spacing: 2px; width: 100%; }
-        .hm-corner { width: 72px; vertical-align: bottom; padding-bottom: 4px; }
+        .hm-corner { width: 72px; vertical-align: middle; padding-bottom: 0; }
         .hm-corner-txt { font-size: 7px; color: var(--tm); display: block; text-align: right; }
-        .hm-cl { padding: 2px 1px; }
-        .hm-cl-inner { writing-mode: vertical-lr; transform: rotate(180deg); display: flex; flex-direction: column; align-items: center; height: 56px; justify-content: flex-end; }
-        .hm-cl-sym { font-size: 8px; font-weight: 700; letter-spacing: .03em; white-space: nowrap; }
+        .hm-cl { padding: 2px 3px 8px; min-width: 64px; vertical-align: bottom; }
+        .hm-cl-inner { display: flex; flex-direction: row; align-items: flex-end; justify-content: center; min-height: 22px; }
+        .hm-cl-sym { font-size: 8px; font-weight: 700; letter-spacing: .03em; white-space: nowrap; text-align: center; }
         .hm-rl { padding-right: 6px; white-space: nowrap; }
         .hm-rl-inner { display: flex; align-items: center; gap: 5px; }
         .hm-rl-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
-        .hm-cell { min-width: 44px; height: 40px; text-align: center; vertical-align: middle; font-size: 8px; font-weight: 700; border-radius: 5px; cursor: pointer; transition: filter .18s, transform .18s; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
-        .hm-cell:hover { filter: brightness(1.4); transform: scale(1.08); z-index: 2; position: relative; }
+        .hm-cell { min-width: 44px; height: 40px; text-align: center; vertical-align: middle; font-size: 8px; font-weight: 700; border-radius: 5px; cursor: pointer; transition: filter .18s, transform .18s, background 0.55s ease, color 0.35s ease; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+        .hm-cell:not(.diag):hover { filter: brightness(1.35); transform: scale(1.10); z-index: 3; position: relative; box-shadow: 0 4px 16px rgba(0,0,0,0.5); }
         .hm-cell.diag { cursor: default; background: rgba(139,92,246,.04) !important; border: 1px solid rgba(139,92,246,.15); }
         .hm-cell.sel { outline: 2px solid rgba(255,255,255,.8); outline-offset: -1px; }
+        /* HEATMAP SHARE BUTTON */
+        .hm-share-btn { position: absolute; top: 3px; right: 3px; width: 16px; height: 16px; background: rgba(0,0,0,0.5); border: none; border-radius: 4px; color: rgba(255,255,255,0.9); font-size: 7px; cursor: pointer; opacity: 0; transition: opacity .15s, background .15s; display: flex; align-items: center; justify-content: center; padding: 0; line-height: 1; pointer-events: auto; }
+        .hm-cell:not(.diag):hover .hm-share-btn { opacity: 1; }
+        .hm-share-btn:hover { background: rgba(124,58,237,0.7) !important; opacity: 1 !important; }
+        /* HEATMAP TOOLTIP */
+        .hm-tooltip { position: fixed; pointer-events: none; z-index: 999; background: rgba(7,5,15,0.97); border: 1px solid rgba(124,58,237,0.35); border-radius: 10px; padding: 11px 14px; min-width: 170px; box-shadow: 0 8px 36px rgba(0,0,0,0.65); backdrop-filter: blur(16px); animation: fadein .1s ease; }
+        .hm-tt-pair { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.75); margin-bottom: 6px; letter-spacing: -.01em; }
+        .hm-tt-val { font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.03em; line-height: 1; margin-bottom: 5px; }
+        .hm-tt-lbl { font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
         .diag-sym { font-size: 8px; font-weight: 700; color: var(--td); }
         .xbtn { background: transparent; border: 1px solid var(--tm); color: var(--td); padding: 4px 10px; border-radius: 5px; cursor: pointer; font-size: 10px; font-family: var(--fm); transition: all .2s; white-space: nowrap; }
         .xbtn:hover { border-color: var(--pud); color: var(--pul); }
+        .chart-back-btn { position: relative; overflow: hidden; isolation: isolate; }
+        .chart-back-btn::before {
+          content: "";
+          position: absolute;
+          inset: -1px;
+          background: linear-gradient(115deg, transparent 0%, rgba(124,58,237,0.0) 18%, rgba(124,58,237,0.3) 38%, rgba(59,130,246,0.35) 50%, rgba(16,185,129,0.22) 62%, rgba(124,58,237,0.0) 82%, transparent 100%);
+          transform: translateX(-140%);
+          opacity: 0;
+          transition: opacity .18s ease;
+          z-index: -1;
+        }
+        .chart-back-btn:hover::before {
+          opacity: 1;
+          animation: chartBackWave 1.05s ease forwards;
+        }
+        @keyframes chartBackWave {
+          0% { transform: translateX(-140%); }
+          100% { transform: translateX(140%); }
+        }
 
         /* DETAIL PANEL */
         .detail-panel { animation: slideIn .28s ease both; }
@@ -807,6 +1864,14 @@ export default function App(){
         .dp-pval { font-variant-numeric: tabular-nums; color: var(--tx); flex: 1; }
 
         /* RANKINGS */
+        /* CORRELATION EXPLANATION */
+        .ce-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; }
+        .ce-card { background: var(--cbg,rgba(124,58,237,0.06)); border: 1px solid var(--cbr,rgba(124,58,237,0.18)); border-top: 2px solid var(--cc,#a78bfa); border-radius: var(--r); padding: 16px 18px; animation: fup .45s ease both; }
+        .ce-top { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 10px; gap: 8px; }
+        .ce-val { font-family: var(--fd); font-size: 30px; font-weight: 800; color: var(--cc); font-variant-numeric: tabular-nums; letter-spacing: -.03em; line-height: 1; flex-shrink: 0; }
+        .ce-chart { width: 80px; height: 44px; flex-shrink: 0; overflow: visible; }
+        .ce-title { font-size: 12px; font-weight: 700; color: rgba(255,255,255,0.88); margin-bottom: 5px; }
+        .ce-desc { font-size: 10px; color: rgba(255,255,255,0.38); line-height: 1.6; }
         .rgrid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
         .rr { display: flex; align-items: center; gap: 8px; padding: 9px 14px; border-bottom: 1px solid var(--cb2); cursor: pointer; transition: background .15s; position: relative; overflow: hidden; animation: fup .3s ease both; animation-delay: calc(var(--i)*50ms); }
         .rr-bar { position: absolute; left: 0; top: 0; height: 100%; transition: width .5s; pointer-events: none; }
@@ -834,6 +1899,8 @@ export default function App(){
         /* MODAL */
         .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 200; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px); animation: fadein .2s ease; }
         @keyframes fadein { from{opacity:0} to{opacity:1} }
+        @keyframes tabIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+        .tab-overlay-enter { animation: tabIn .22s ease both; }
         .modal { background: #0c0917; border: 1px solid var(--cb); border-radius: var(--r); width: min(500px, 94vw); overflow: hidden; animation: fup .22s ease; }
         .modal-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
         .fta { width: 100%; padding: 10px 12px; background: rgba(0,0,0,.4); border: 1px solid var(--cb); border-radius: var(--rs); color: var(--tx); font-family: var(--fm); font-size: 12px; resize: vertical; outline: none; transition: border-color .2s; }
@@ -860,407 +1927,2071 @@ export default function App(){
           .fbar { padding: 7px 12px; }
           .rgrid { grid-template-columns: 1fr; }
           .hm-cell { width: 34px; height: 34px; font-size: 7px; }
-          .hm-cl-inner { height: 44px; }
+          .hm-cl { min-width: 56px; }
+          .hm-cl-inner { min-height: 28px; }
           .dp-corr { font-size: 32px; }
           .dp-sym { font-size: 14px; }
-        }
-        /* Charts overlay */
-        .charts-overlay {
-          position: fixed;
-          top: 62px; left: 0; right: 0; bottom: 0;
-          z-index: 500;
-          background: #070512;
-          transform: translateX(100%);
-          transition: transform 0.35s cubic-bezier(0.4,0,0.2,1);
-          pointer-events: none;
-          display: flex;
-          flex-direction: column;
-        }
-        .charts-overlay--open {
-          transform: translateX(0);
-          pointer-events: all;
         }
         @media(max-width:480px) {
           .hdr-sub { display: none; }
           .tgrid { grid-template-columns: 1fr 1fr; }
           .hdr-upd { display: none; }
         }
-
-
       `}</style>
-
-    {/* Charts overlay */}
-    <div className={`charts-overlay${activeTab==="charts"?" charts-overlay--open":""}`}>
-      <ChartsTab assets={ASSETS} ohlcvRef={ohlcvRef} histRef={histRef} prices={prices} chartAsset={chartAsset} setChartAsset={setChartAsset} chartTf={chartTf} setChartTf={setChartTf} chartType={chartType} setChartType={setChartType} setActiveTab={setActiveTab}/>
     </div>
-  </div>
   );
 }
 
-/* ── CHARTS TAB ─────────────────────────────────────────────────────────── */
-const TF_LIST    = ["1m","5m","15m","1h","4h","1d"];
-const TF_SECS_C  = {"1m":60,"5m":300,"15m":900,"1h":3600,"4h":14400,"1d":86400};
+/* ─── CHART VIEW ─────────────────────────────────────────────────────────── */
+const TF_LIST = ["1m","5m","15m","1h","4h","1d"];
+const TF_SECS = {"1m":60,"5m":300,"15m":900,"1h":3600,"4h":14400,"1d":86400};
 
-// Merge live Pyth ticks into Binance candles
-function mergeLive(base, liveMap, symbol, tf) {
-  if (!base || !base.length) return base || [];
-  const secs  = TF_SECS_C[tf] || 60;
-  const now   = Math.floor(Date.now() / 1000);
-  const barT  = Math.floor(now / secs) * secs;
-  const price = liveMap[symbol];
-  if (!price) return base;
+// Pyth Benchmarks symbol map — covers ALL assets (crypto + forex + metals + stocks)
+const PYTH_SYM = {
+  "BTC":     "Crypto.BTC/USD",
+  "ETH":     "Crypto.ETH/USD",
+  "SOL":     "Crypto.SOL/USD",
+  "DOGE":    "Crypto.DOGE/USD",
+  "USDC":    "Crypto.USDC/USD",
+  "XAU/USD": "Metal.XAU/USD",
+  "EUR/USD": "FX.EUR/USD",
+  "GBP/USD": "FX.GBP/USD",
+  "WTI":     "Commodities.USOILSPOT",
+  "AAPL":    "Equity.US.AAPL/USD",
+  "SPY":     "Equity.US.SPY/USD",
+  "QQQ":     "Equity.US.QQQ/USD",
+  "DIA":     "Equity.US.DIA/USD",
+  "IWM":     "Equity.US.IWM/USD",
+};
 
-  const copy = base.map(b => ({...b}));
-  const last = copy[copy.length - 1];
+// Pyth Benchmarks resolution map (TradingView-compatible)
+const PYTH_RES = {"1m":"1","5m":"5","15m":"15","1h":"60","4h":"240","1d":"D"};
 
-  if (last && last.t === barT) {
-    last.h = Math.max(last.h, price);
-    last.l = Math.min(last.l, price);
-    last.c = price;
-    last.n = (last.n||1) + 1;
-  } else if (!last || barT > last.t) {
-    // New candle — open = previous close
-    const prevClose = last ? last.c : price;
-    copy.push({ t: barT, o: prevClose, h: Math.max(prevClose,price), l: Math.min(prevClose,price), c: price, v: 0, n: 1 });
-    // Keep max 500 candles
-    if (copy.length > 500) copy.shift();
+// Fetch OHLCV from Pyth Benchmarks API
+// Returns [{t,o,h,l,c,v,tfs}] same shape as Binance klines
+async function fetchPyth(symbol, tf = "1m", countback = 300) {
+  const pythSym = PYTH_SYM[symbol];
+  if (!pythSym) return [];
+  const res  = PYTH_RES[tf] || "1";
+  // Pyth Benchmarks caps daily resolution at 365 bars
+  const cap  = res === "D" ? Math.min(countback, 365) : countback;
+  const now  = Math.floor(Date.now() / 1000);
+  const from = now - TF_SECS[tf] * cap;
+  const qs = `?symbol=${encodeURIComponent(pythSym)}&resolution=${res}&from=${from}&to=${now}&countback=${cap}`;
+  const tryFetch = async (url) => {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error(`HTTP ${r.status}`);
+    return r.json();
+  };
+  try {
+    let d;
+    try {
+      d = await tryFetch(`/api/benchmarks${qs}`);
+    } catch {
+      d = await tryFetch(`https://benchmarks.pyth.network/v1/shims/tradingview/history${qs}`);
+    }
+    if (d.s !== "ok" || !d.t?.length) return [];
+    const tfs = TF_SECS[tf] || 60;
+    return d.t.map((t, i) => ({
+      t, tfs,
+      o: d.o[i], h: d.h[i], l: d.l[i], c: d.c[i],
+      v: d.v?.[i] ?? 0,
+    }));
+  } catch(e) {
+    console.warn("fetchPyth error:", symbol, e.message);
+    return [];
   }
-  return copy;
 }
 
-function drawChart(canvas, bars, chartType) {
-  if (!canvas) return;
-  const parent = canvas.parentElement;
-  if (!parent) return;
-  const W = parent.clientWidth;
-  const H = parent.clientHeight;
-  if (W < 20 || H < 20) return;
-  canvas.width  = W;
-  canvas.height = H;
+const CHART_VISIBLE_BARS = 180;
+const CHART_FETCH_BARS = 1000;
+const CHART_RIGHT_PAD_RATIO = 0;
+const CHART_MIN_VISIBLE_BARS = 30;
+const CHART_MAX_VISIBLE_BARS = 400;
+const CHART_OVERSCROLL_BARS = 80;
 
+// Preload Pyth logo for canvas watermark once at module level
+const _pythLogoImg = new Image();
+_pythLogoImg.src = "/pyth-logo.png";
+
+function drawCandles(canvas, bars, chartType, view = {}) {
+  if (!canvas) return;
+  const par = canvas.parentElement;
+  if (!par) return;
+  const W = par.clientWidth, H = par.clientHeight;
+  if (W < 10 || H < 10) return;
+  canvas.width = W; canvas.height = H;
   const ctx = canvas.getContext("2d");
-  ctx.clearRect(0, 0, W, H);
-  ctx.fillStyle = "#070512";
-  ctx.fillRect(0, 0, W, H);
+
+  // Background
+  ctx.fillStyle = "#07050f"; ctx.fillRect(0,0,W,H);
 
   if (!bars || bars.length < 2) {
-    ctx.fillStyle = "rgba(139,92,246,0.4)";
-    ctx.font = "13px monospace";
-    ctx.textAlign = "center";
-    ctx.textBaseline = "middle";
-    ctx.fillText("Loading chart data…", W / 2, H / 2);
+    ctx.fillStyle = "rgba(124,58,237,0.3)"; ctx.font = "12px 'Space Mono',monospace";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("Loading data…", W/2, H/2);
     return;
   }
 
-  // Layout
-  const PAD = { t: 16, r: 72, b: 28, l: 4 };
+  const PAD = {t:12, r:80, b:32, l:8};
+  const PH = (H - PAD.t - PAD.b) * 0.78;
+  const VH = (H - PAD.t - PAD.b) * 0.14;
   const CW = W - PAD.l - PAD.r;
-  const CH = H - PAD.t - PAD.b;
+  const visibleCount = Math.max(20, Math.min(view.visibleCount || CHART_VISIBLE_BARS, bars.length));
+  const maxOffset = Math.max(0, bars.length - visibleCount);
+  const overscrollBars = Math.max(0, view.overscrollBars ?? CHART_OVERSCROLL_BARS);
+  const panBars = Math.max(-overscrollBars, Math.min(view.offset || 0, maxOffset + overscrollBars));
+  const historyOffset = Math.max(0, Math.min(maxOffset, panBars));
+  const end = Math.max(visibleCount, bars.length - historyOffset);
+  const start = Math.max(0, end - visibleCount);
+  const vis = bars.slice(start, end);
+  const N = vis.length;
+  const overscrollShiftBars = historyOffset - panBars;
+  const totalSlots = Math.max(visibleCount, 1);
+  const colW = CW / totalSlots;
 
-  const vis = bars.slice(-200);
-  const n   = vis.length;
+  const lo = Math.min(...vis.map(b=>b.l));
+  const hi = Math.max(...vis.map(b=>b.h));
+  const rng = hi - lo || hi * 0.002 || 1;
+  const yMin = lo - rng*0.03, yMax = hi + rng*0.06;
+  const toY = v => PAD.t + PH * (1 - (v-yMin)/(yMax-yMin));
+  const toX = i => PAD.l + (i + 0.5 - overscrollShiftBars) * colW;
 
-  // Price range from OHLC only
-  const dMin = Math.min(...vis.map(b => b.l));
-  const dMax = Math.max(...vis.map(b => b.h));
-  const dR   = dMax - dMin || dMax * 0.002 || 1;
-  const yMin = dMin - dR * 0.04;
-  const yMax = dMax + dR * 0.08; // extra top padding
-  const yR   = yMax - yMin;
-
-  // Chart area = top 80% of CH, volume = bottom 18%
-  const PRICE_H = CH * 0.80;
-  const VOL_H   = CH * 0.16;
-  const GAP     = CH * 0.04;
-
-  const toY = v => PAD.t + PRICE_H * (1 - (v - yMin) / yR);
-  const colW = CW / n;
-  const toX  = i => PAD.l + (i + 0.5) * colW;
-
-  // Grid lines in price area
-  ctx.setLineDash([2, 4]);
-  ctx.lineWidth = 1;
-  for (let i = 0; i <= 5; i++) {
-    const v = yMin + (yR / 5) * i;
+  // Grid lines + price labels
+  const gridCount = 6;
+  for (let i=0;i<=gridCount;i++) {
+    const v = yMin + (yMax-yMin)/gridCount*i;
     const y = toY(v);
-    if (y < PAD.t || y > PAD.t + PRICE_H) continue;
-    ctx.strokeStyle = "rgba(139,92,246,0.09)";
-    ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(W - PAD.r, y); ctx.stroke();
-    const lbl = v >= 10000 ? v.toFixed(0) : v >= 100 ? v.toFixed(1) : v >= 1 ? v.toFixed(4) : v.toFixed(6);
-    ctx.fillStyle = "rgba(110,90,170,0.55)";
-    ctx.font = "9px monospace";
+    if (y < PAD.t || y > PAD.t+PH) continue;
+    // Grid line
+    ctx.strokeStyle = "rgba(255,255,255,0.04)";
+    ctx.lineWidth = 1; ctx.setLineDash([]);
+    ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(W-PAD.r, y); ctx.stroke();
+    // Price label
+    const s = v>=100000?v.toFixed(0):v>=10000?v.toFixed(0):v>=100?v.toFixed(2):v>=1?v.toFixed(4):v.toFixed(6);
+    ctx.fillStyle = "rgba(255,255,255,0.2)"; ctx.font = "9px 'Space Mono',monospace";
     ctx.textAlign = "left"; ctx.textBaseline = "middle";
-    ctx.fillText(lbl, W - PAD.r + 4, y);
+    ctx.fillText(s, W-PAD.r+8, y);
   }
-  ctx.setLineDash([]);
 
-  // Volume bars — in the bottom VOL_H strip
-  const volTop = PAD.t + PRICE_H + GAP;
-  const volBase = volTop + VOL_H;
-  const vols = vis.map(b => b.v || 0);
-  const maxV = Math.max(...vols, 1); // never 0
-  vis.forEach((b, i) => {
-    const x   = toX(i);
-    const bw  = Math.max(1, colW * 0.7);
-    const pct = (b.v || 0) / maxV;
-    const vh  = pct * VOL_H;
+  // Volume bars
+  const volTop = PAD.t + PH + (H-PAD.t-PAD.b)*0.05;
+  const volBase = volTop + VH;
+  const maxV = Math.max(...vis.map(b=>b.v||0), 1);
+  vis.forEach((b,i)=>{
+    const vh = ((b.v||0)/maxV) * VH;
     if (vh < 0.5) return;
-    ctx.fillStyle = b.c >= b.o ? "rgba(52,211,153,0.2)" : "rgba(248,113,113,0.2)";
-    ctx.fillRect(x - bw / 2, volBase - vh, bw, vh);
+    ctx.fillStyle = b.c>=b.o ? "rgba(16,185,129,0.25)" : "rgba(239,68,68,0.2)";
+    ctx.fillRect(toX(i)-colW*0.38, volBase-vh, colW*0.76, vh);
   });
 
-  // Candles / Line in price area
+  // Candles or Line
   if (chartType === "line") {
-    const up  = vis[vis.length - 1].c >= vis[0].o;
-    const col = up ? "#34d399" : "#f87171";
-    const grad = ctx.createLinearGradient(0, PAD.t, 0, PAD.t + PRICE_H);
-    grad.addColorStop(0, up ? "rgba(52,211,153,0.18)" : "rgba(248,113,113,0.18)");
-    grad.addColorStop(1, "rgba(0,0,0,0)");
+    const up = vis[vis.length-1].c >= vis[0].o;
+    const col = up ? "#10b981" : "#ef4444";
+    const grd = ctx.createLinearGradient(0,PAD.t,0,PAD.t+PH);
+    grd.addColorStop(0, up?"rgba(16,185,129,0.12)":"rgba(239,68,68,0.12)");
+    grd.addColorStop(1,"rgba(0,0,0,0)");
     ctx.beginPath();
-    vis.forEach((b, i) => { const x=toX(i), y=toY(b.c); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
-    ctx.lineTo(toX(n-1), PAD.t+PRICE_H); ctx.lineTo(toX(0), PAD.t+PRICE_H);
-    ctx.closePath(); ctx.fillStyle = grad; ctx.fill();
-    ctx.strokeStyle = col; ctx.lineWidth = 1.5; ctx.lineJoin = "round";
+    vis.forEach((b,i)=>{ const x=toX(i),y=toY(b.c); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
+    ctx.lineTo(toX(N-1),PAD.t+PH); ctx.lineTo(toX(0),PAD.t+PH);
+    ctx.closePath(); ctx.fillStyle=grd; ctx.fill();
+    ctx.strokeStyle=col; ctx.lineWidth=1.5; ctx.lineJoin="round";
     ctx.beginPath();
-    vis.forEach((b, i) => { const x=toX(i), y=toY(b.c); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
+    vis.forEach((b,i)=>{ const x=toX(i),y=toY(b.c); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
     ctx.stroke();
   } else {
-    const bw = Math.max(1, colW * 0.65);
-    vis.forEach((b, i) => {
-      const x   = toX(i);
-      const up  = b.c >= b.o;
-      const col = up ? "rgba(52,211,153,0.9)" : "rgba(248,113,113,0.9)";
-      // Wick — clipped to price area
-      const wickTop = Math.max(PAD.t, toY(b.h));
-      const wickBot = Math.min(PAD.t + PRICE_H, toY(b.l));
+    const bw = Math.max(1, colW * 0.6);
+    vis.forEach((b,i)=>{
+      const x=toX(i), up=b.c>=b.o;
+      const upCol = "#10b981", dnCol = "#ef4444";
+      const col = up ? upCol : dnCol;
+      // Wick
       ctx.strokeStyle = col; ctx.lineWidth = 1;
-      ctx.beginPath(); ctx.moveTo(x, wickTop); ctx.lineTo(x, wickBot); ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(x, Math.max(PAD.t, toY(b.h)));
+      ctx.lineTo(x, Math.min(PAD.t+PH, toY(b.l)));
+      ctx.stroke();
       // Body
-      const rawTop = Math.min(toY(b.o), toY(b.c));
-      const rawBot = Math.max(toY(b.o), toY(b.c));
-      const bodyTop = Math.max(PAD.t, rawTop);
-      const bodyBot = Math.min(PAD.t + PRICE_H, rawBot);
-      const bodyH   = Math.max(1, bodyBot - bodyTop);
-      ctx.fillStyle = col;
-      ctx.fillRect(x - bw/2, bodyTop, bw, bodyH);
-      if (bw > 3) { ctx.strokeStyle = col; ctx.lineWidth = 0.5; ctx.strokeRect(x - bw/2, bodyTop, bw, bodyH); }
+      const by = Math.max(PAD.t, Math.min(toY(b.o), toY(b.c)));
+      const bh = Math.max(1, Math.min(Math.abs(toY(b.o)-toY(b.c)), PAD.t+PH-by));
+      ctx.fillStyle = up ? "rgba(16,185,129,0.85)" : "rgba(239,68,68,0.85)";
+      ctx.fillRect(x-bw/2, by, bw, bh);
     });
   }
 
   // Time axis
-  const step = Math.max(1, Math.floor(n / 8));
-  ctx.fillStyle = "rgba(100,80,160,0.5)";
-  ctx.font = "8px monospace";
+  const step = Math.max(1, Math.floor(N/8));
+  ctx.fillStyle = "rgba(255,255,255,0.2)"; ctx.font = "8px 'Space Mono',monospace";
   ctx.textAlign = "center"; ctx.textBaseline = "top";
-  vis.forEach((b, i) => {
-    if (i % step === 0) {
-      const d = new Date(b.t * 1000);
-      const tfS = b.tfSecs || 60;
-      const lbl = tfS >= 86400
-        ? d.toLocaleDateString("en",{month:"short",day:"numeric"})
-        : d.toLocaleTimeString("en",{hour:"2-digit",minute:"2-digit",hour12:false});
-      ctx.fillText(lbl, toX(i), volBase + 3);
-    }
+  vis.forEach((b,i)=>{
+    if (i%step!==0) return;
+    const d = new Date(b.t*1000);
+    const tfs = b.tfs||60;
+    const s = tfs>=86400
+      ? d.toLocaleDateString("en",{month:"short",day:"numeric"})
+      : d.toLocaleTimeString("en",{hour:"2-digit",minute:"2-digit",hour12:false});
+    ctx.fillText(s, toX(i), volBase+4);
   });
 
   // Current price line
-  if (vis.length) {
-    const last = vis[vis.length-1].c;
-    const y    = toY(last);
-    if (y >= PAD.t && y <= PAD.t + PRICE_H) {
-      const up = last >= vis[0].o;
-      ctx.strokeStyle = up ? "rgba(52,211,153,0.5)" : "rgba(248,113,113,0.5)";
-      ctx.lineWidth = 1; ctx.setLineDash([3,3]);
-      ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(W-PAD.r, y); ctx.stroke();
-      ctx.setLineDash([]);
-      const lbl = last>=10000?last.toFixed(0):last>=100?last.toFixed(1):last>=1?last.toFixed(4):last.toFixed(6);
-      ctx.fillStyle = up ? "#34d399" : "#f87171";
-      ctx.fillRect(W-PAD.r+2, y-7, PAD.r-4, 14);
-      ctx.fillStyle = "#000"; ctx.font = "bold 8px monospace";
-      ctx.textAlign = "left"; ctx.textBaseline = "middle";
-      ctx.fillText(lbl, W-PAD.r+5, y);
+  const last = vis[vis.length-1].c;
+  const ly = toY(last);
+  if (ly>=PAD.t && ly<=PAD.t+PH) {
+    const up = vis.length > 1 ? last >= vis[Math.max(0, vis.length - 2)].c : last >= vis[0].o;
+    ctx.strokeStyle = up ? "rgba(16,185,129,0.4)" : "rgba(239,68,68,0.4)";
+    ctx.lineWidth = 1; ctx.setLineDash([4,4]);
+    ctx.beginPath(); ctx.moveTo(PAD.l, ly); ctx.lineTo(W-PAD.r, ly); ctx.stroke();
+    ctx.setLineDash([]);
+    const s = last>=100000?last.toFixed(0):last>=10000?last.toFixed(0):last>=100?last.toFixed(2):last>=1?last.toFixed(4):last.toFixed(6);
+    ctx.fillStyle = up ? "#10b981" : "#ef4444";
+    ctx.fillRect(W-PAD.r+1, ly-8, PAD.r-3, 16);
+    ctx.fillStyle = "#fff"; ctx.font = "bold 9px 'Space Mono',monospace";
+    ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.fillText(s, W-PAD.r+6, ly);
+  }
+
+  if (historyOffset > 0) {
+    ctx.fillStyle = "rgba(7,5,15,0.9)";
+    ctx.fillRect(PAD.l + 8, PAD.t + 8, 136, 22);
+    ctx.strokeStyle = "rgba(124,58,237,0.35)";
+    ctx.strokeRect(PAD.l + 8.5, PAD.t + 8.5, 135, 21);
+    ctx.fillStyle = "#c4b5fd";
+    ctx.font = "10px 'Space Mono',monospace";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText(`${historyOffset} bars back`, PAD.l + 16, PAD.t + 19);
+  }
+
+  // ── Watermark: Pyth logo + "PythNetwork" text ───────────────────────────
+  {
+    ctx.save();
+    const alpha = 0.06;
+    const logoSz = Math.min(CW * 0.07, 44);
+    const fontSize = Math.min(CW * 0.045, 32);
+    const cx = PAD.l + CW * 0.5;
+    const cy = PAD.t + PH * 0.5;
+    const totalW = logoSz + 8 + ctx.measureText("PythNetwork").width;
+    // measure first, then position
+    ctx.font = `700 ${fontSize}px 'Outfit','Space Mono',sans-serif`;
+    const textW = ctx.measureText("PythNetwork").width;
+    const blockW = logoSz + 10 + textW;
+    const startX = cx - blockW / 2;
+    // draw logo
+    ctx.globalAlpha = alpha;
+    if (_pythLogoImg.complete && _pythLogoImg.naturalWidth > 0) {
+      ctx.drawImage(_pythLogoImg, startX, cy - logoSz / 2, logoSz, logoSz);
     }
+    // draw text
+    ctx.fillStyle = "#ffffff";
+    ctx.textAlign = "left";
+    ctx.textBaseline = "middle";
+    ctx.fillText("PythNetwork", startX + logoSz + 10, cy);
+    ctx.restore();
   }
 }
 
 
-function CandleChart({ bars, chartType }) {
-  const ref    = useRef();
-  const latest = useRef({ bars, chartType });
-  latest.current = { bars, chartType };
+function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChartTf, chartType, setChartType, chartHist, setChartHist, setActiveTab, status, histRef}) {
+  const canvasRef = useRef();
+  const corrCanvasRef = useRef();
+  const barsRef   = useRef([]);
+  const dragRef   = useRef({ active:false, pointerId:null, startX:0, startOffset:0 });
+  const [viewOffset, setViewOffset] = useState(0);
+  const [isDragging, setIsDragging] = useState(false);
+  const [zoomBars, setZoomBars] = useState(CHART_VISIBLE_BARS);
+  const [crosshairActive, setCrosshairActive] = useState(false);
+  const [crosshairX, setCrosshairX] = useState(null);
+  const [showCorrHelp, setShowCorrHelp] = useState(false);
+  const [corrHeight, setCorrHeight] = useState(176);
+  const [corrInfoHovered, setCorrInfoHovered] = useState(false);
+  const corrResizeRef = useRef({ active:false, startY:0, startH:0 });
+  const visibleBars = zoomBars;
+  const benchmarkSymbol = ({
+    "BTC":"ETH","ETH":"BTC","SOL":"BTC","DOGE":"BTC","USDC":"BTC",
+    "EUR/USD":"GBP/USD","GBP/USD":"EUR/USD",
+    "XAU/USD":"WTI","WTI":"XAU/USD",
+    "AAPL":"SPY",
+    "SPY":"QQQ","QQQ":"SPY","DIA":"SPY","IWM":"SPY",
+  })[chartAsset] ?? "BTC";
+  const renderChart = useCallback(() => {
+    if (!canvasRef.current) return;
+    drawCandles(canvasRef.current, barsRef.current, chartType, { offset:viewOffset, visibleCount:visibleBars, overscrollBars:CHART_OVERSCROLL_BARS });
+  }, [chartType, viewOffset, visibleBars]);
+  const renderCorrChart = useCallback(() => {
+    if (!corrCanvasRef.current) return;
+    const benchmarkBars = (chartHist[benchmarkSymbol] || {})[chartTf] || [];
+    drawRollingCorrTimeline(corrCanvasRef.current, barsRef.current, benchmarkBars, { offset:viewOffset, visibleCount:visibleBars, overscrollBars:CHART_OVERSCROLL_BARS });
+  }, [benchmarkSymbol, chartHist, chartTf, viewOffset, visibleBars]);
 
-  useEffect(() => {
-    const c = ref.current; if (!c) return;
-    const redraw = () => drawChart(c, latest.current.bars, latest.current.chartType);
-    redraw();
-    const ro = new ResizeObserver(redraw);
+  // Fetch history from Pyth Benchmarks (all assets: crypto + metals + forex + stocks)
+  useEffect(()=>{
+    let dead = false;
+    setViewOffset(0);
+    setZoomBars(CHART_VISIBLE_BARS);
+    Promise.all([
+      fetchPyth(chartAsset, chartTf, CHART_FETCH_BARS),
+      fetchPyth(benchmarkSymbol, chartTf, CHART_FETCH_BARS),
+    ]).then(([mainCandles, benchmarkCandles]) => {
+      if (dead) return;
+      setChartHist(p=>({
+        ...p,
+        [chartAsset]: { ...(p[chartAsset]||{}), [chartTf]: mainCandles?.length ? mainCandles : ((p[chartAsset]||{})[chartTf] || []) },
+        [benchmarkSymbol]: { ...(p[benchmarkSymbol]||{}), [chartTf]: benchmarkCandles?.length ? benchmarkCandles : ((p[benchmarkSymbol]||{})[chartTf] || []) },
+      }));
+    });
+    return ()=>{dead=true;};
+  },[chartAsset, chartTf, benchmarkSymbol]);
+
+  // Merge live price into bars
+  useEffect(()=>{
+    const base = (chartHist[chartAsset]||{})[chartTf] || [];
+    const price = prices[chartAsset];
+    if (!base.length) { barsRef.current = []; return; }
+    const secs = TF_SECS[chartTf]||60;
+    const barT = Math.floor(Date.now()/1000/secs)*secs;
+    const copy = base.map(b=>({...b}));
+    const last = copy[copy.length-1];
+    if (last && last.t===barT) {
+      last.h=Math.max(last.h,price||last.h);
+      last.l=Math.min(last.l,price||last.l);
+      last.c=price||last.c;
+    } else if (price && (!last||barT>last.t)) {
+      const o=last?last.c:price;
+      copy.push({t:barT,o,h:Math.max(o,price),l:Math.min(o,price),c:price,v:0,tfs:secs});
+    }
+    barsRef.current = copy;
+    const maxOffset = Math.max(0, copy.length - visibleBars);
+    const minOffset = -CHART_OVERSCROLL_BARS;
+    const maxPanOffset = maxOffset + CHART_OVERSCROLL_BARS;
+    if (viewOffset < minOffset || viewOffset > maxPanOffset) {
+      setViewOffset(Math.max(minOffset, Math.min(viewOffset, maxPanOffset)));
+      return;
+    }
+    renderChart();
+    renderCorrChart();
+  },[chartHist, chartAsset, chartTf, prices, visibleBars, viewOffset, renderChart, renderCorrChart]);
+
+  // 1s redraw
+  useEffect(()=>{
+    const iv = setInterval(()=>{
+      renderChart();
+      renderCorrChart();
+    }, 1000);
+    return ()=>clearInterval(iv);
+  },[renderChart, renderCorrChart]);
+
+  // Resize
+  useEffect(()=>{
+    const c = canvasRef.current; if (!c) return;
+    const ro = new ResizeObserver(()=>{
+      renderChart();
+      renderCorrChart();
+    });
     if (c.parentElement) ro.observe(c.parentElement);
-    return () => ro.disconnect();
-  // eslint-disable-next-line
-  }, []);
+    if (corrCanvasRef.current?.parentElement) ro.observe(corrCanvasRef.current.parentElement);
+    return ()=>ro.disconnect();
+  },[renderChart, renderCorrChart]);
 
-  useEffect(() => {
-    if (ref.current) drawChart(ref.current, bars, chartType);
-  }, [bars, chartType]);
+  useEffect(()=>{
+    renderChart();
+    renderCorrChart();
+  },[renderChart, renderCorrChart]);
 
-  return <canvas ref={ref} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>;
-}
-
-function ChartsTab({ assets, ohlcvRef, histRef, prices, chartAsset, setChartAsset, chartTf, setChartTf, chartType, setChartType, setActiveTab }) {
-  // histCandles: { [symbol]: { [tf]: Bar[] } } — from Binance
-  const [histCandles, setHistCandles] = useState({});
-  const [loadingAsset, setLoadingAsset] = useState(null);
-  const [, redraw] = useState(0);
-
-  // Fetch Binance history whenever asset or TF changes
-  useEffect(() => {
-    let cancelled = false;
-    const BINANCE_MAP = {
-      "BTC":"BTCUSDT","ETH":"ETHUSDT","SOL":"SOLUSDT","DOGE":"DOGEUSDT",
-      "USDC":"USDCUSDT","XAU/USD":"XAUUSDT","EUR/USD":"EURUSDT","GBP/USD":"GBPUSDT"
-    };
-    async function load() {
-      setLoadingAsset(chartAsset);
-      const sym = BINANCE_MAP[chartAsset];
-      if (!sym) { if (!cancelled) setLoadingAsset(null); return; }
-      try {
-        const url = `https://api.binance.com/api/v3/klines?symbol=${sym}&interval=${chartTf}&limit=300`;
-        const res = await fetch(url);
-        if (!res.ok) throw new Error(`Binance ${res.status}`);
-        const raw = await res.json();
-        const candles = raw.map(k => ({
-          t: Math.floor(k[0]/1000), o: parseFloat(k[1]),
-          h: parseFloat(k[2]), l: parseFloat(k[3]),
-          c: parseFloat(k[4]), v: parseFloat(k[5]), n: parseInt(k[8])||1
-        }));
-        if (!cancelled && candles.length) {
-          setHistCandles(prev => ({
-            ...prev,
-            [chartAsset]: { ...(prev[chartAsset]||{}), [chartTf]: candles }
-          }));
-        }
-      } catch (e) {
-        console.warn("Binance fetch failed:", e.message);
-      } finally {
-        if (!cancelled) setLoadingAsset(null);
-      }
+  const stopDragging = useCallback((e) => {
+    if (dragRef.current.pointerId != null && e?.currentTarget?.hasPointerCapture?.(dragRef.current.pointerId)) {
+      e.currentTarget.releasePointerCapture(dragRef.current.pointerId);
     }
-    load();
-    return () => { cancelled = true; };
-  }, [chartAsset, chartTf]);
-
-  // Live redraw every 1s for smooth price updates
-  useEffect(() => {
-    const iv = setInterval(() => redraw(n => n + 1), 1000);
-    return () => clearInterval(iv);
+    dragRef.current = { active:false, pointerId:null, startX:0, startOffset:0 };
+    setIsDragging(false);
   }, []);
 
-  const asset  = assets.find(a => a.symbol === chartAsset) || assets[0];
-  // Merge: Binance history base + live Pyth price on top
-  const base   = (histCandles[chartAsset] || {})[chartTf] || [];
-  const liveCandles = (ohlcvRef.current[chartAsset] || {})[chartTf] || [];
+  const updateCrosshair = useCallback((e) => {
+    if (!crosshairActive) return;
+    const rect = e.currentTarget.getBoundingClientRect();
+    setCrosshairX(e.clientX - rect.left);
+  }, [crosshairActive]);
 
-  // Use Binance if available, else fall back to Pyth-accumulated
-  const rawBars = base.length ? mergeLive(base, prices, chartAsset, chartTf) : liveCandles;
-  // Tag with tfSecs for time axis
-  const bars = rawBars.map(b => ({ ...b, tfSecs: TF_SECS_C[chartTf] || 60 }));
+  const clearCrosshair = useCallback(() => {
+    setCrosshairActive(false);
+    setCrosshairX(null);
+  }, []);
 
-  const h     = histRef.current[chartAsset] || [];
-  const cur   = prices[chartAsset];
-  const prev  = h.length > 1 ? h[0] : (base.length ? base[0].o : null);
-  const pct   = prev && cur ? (cur - prev) / prev * 100 : null;
-  const hiBar = bars.length ? Math.max(...bars.map(b => b.h)) : null;
-  const loBar = bars.length ? Math.min(...bars.map(b => b.l)) : null;
+  const onChartPointerDown = useCallback((e) => {
+    if ((e.pointerType === "mouse" && e.button !== 0) || barsRef.current.length <= visibleBars) return;
+    setCrosshairActive(true);
+    const rect = e.currentTarget.getBoundingClientRect();
+    setCrosshairX(e.clientX - rect.left);
+    dragRef.current = { active:true, pointerId:e.pointerId, startX:e.clientX, startOffset:viewOffset };
+    e.currentTarget.setPointerCapture(e.pointerId);
+    setIsDragging(true);
+  }, [viewOffset, visibleBars]);
 
-  function fmt(sym, v) {
-    if (!v) return "–";
-    if (v >= 10000) return "$" + v.toLocaleString(undefined, {maximumFractionDigits:0});
-    if (v >= 100)   return "$" + v.toFixed(2);
-    if (v >= 1)     return "$" + v.toFixed(4);
-    return "$" + v.toFixed(6);
-  }
+  const onChartPointerMove = useCallback((e) => {
+    if (!dragRef.current.active) return;
+    const bars = barsRef.current;
+    const maxOffset = Math.max(0, bars.length - visibleBars);
+    const minOffset = -CHART_OVERSCROLL_BARS;
+    const maxPanOffset = maxOffset + CHART_OVERSCROLL_BARS;
+    if (maxOffset <= 0 && minOffset === 0) return;
+    const plotWidth = Math.max(120, (canvasRef.current?.parentElement?.clientWidth || 0) - 88);
+    const pxPerBar = plotWidth / visibleBars;
+    const deltaBars = Math.round((e.clientX - dragRef.current.startX) / Math.max(pxPerBar, 1));
+    const nextOffset = Math.max(minOffset, Math.min(maxPanOffset, dragRef.current.startOffset + deltaBars));
+    setViewOffset(prev => prev === nextOffset ? prev : nextOffset);
+  }, [visibleBars]);
+
+  const onChartWheel = useCallback((e) => {
+    e.preventDefault();
+    const bars = barsRef.current;
+    if (!bars.length) return;
+    const direction = e.deltaY > 0 ? 1 : -1;
+    const step = Math.max(8, Math.round(visibleBars * 0.12));
+    const nextVisible = Math.max(
+      CHART_MIN_VISIBLE_BARS,
+      Math.min(CHART_MAX_VISIBLE_BARS, bars.length, visibleBars + direction * step)
+    );
+    if (nextVisible === visibleBars) return;
+    setZoomBars(nextVisible);
+    const nextMaxOffset = Math.max(0, bars.length - nextVisible);
+    setViewOffset(prev => Math.max(-CHART_OVERSCROLL_BARS, Math.min(prev, nextMaxOffset + CHART_OVERSCROLL_BARS)));
+  }, [visibleBars]);
+
+  const cur = prices[chartAsset];
+  const hist = (chartHist[chartAsset]||{})[chartTf]||[];
+  const pct  = hist.length && cur ? (cur-hist[0].o)/hist[0].o*100 : null;
+  const fmtP = v => !v?"–":v>=10000?"$"+v.toLocaleString(undefined,{maximumFractionDigits:0}):v>=100?"$"+v.toFixed(2):v>=1?"$"+v.toFixed(4):"$"+v.toFixed(6);
+  const asset= assets.find(a=>a.symbol===chartAsset)||assets[0];
+  const bars = barsRef.current || [];
+  const benchmarkAsset = assets.find(a=>a.symbol===benchmarkSymbol) || assets[0];
+  const corrA = histRef?.current?.[chartAsset] || [];
+  const corrB = histRef?.current?.[benchmarkSymbol] || [];
+  const liveCorr = pearson(corrA.slice(-60), corrB.slice(-60));
 
   return (
-    <div style={{display:"flex",flexDirection:"column",width:"100%",height:"100%",background:"#070512",fontFamily:"'Space Mono',monospace"}}>
+    <div style={{display:"flex",flexDirection:"column",width:"100%",height:"100%",background:"#07050f",fontFamily:"'Space Mono',monospace"}}>
 
-      {/* Top nav row */}
-      <div style={{display:"flex",alignItems:"center",gap:0,flexShrink:0,borderBottom:"1px solid rgba(139,92,246,0.25)",background:"rgba(7,5,18,1)",minHeight:48}}>
-        <div style={{display:"flex",alignItems:"center",gap:8,padding:"0 14px",borderRight:"1px solid rgba(139,92,246,0.15)",flexShrink:0}}>
-          <span style={{fontSize:16,fontFamily:"'Outfit',sans-serif",fontWeight:800,color:"#8b5cf6"}}>PYTH</span>
-          <span style={{fontSize:9,color:"rgba(139,92,246,0.4)",letterSpacing:".1em"}}>CHARTS</span>
+      {/* ── TOP BAR ─────────────────────────────────────────────────────── */}
+      <div style={{display:"flex",alignItems:"center",height:48,padding:"0 16px",borderBottom:"1px solid rgba(255,255,255,0.06)",background:"#0b0917",flexShrink:0,gap:16}}>
+        <div style={{display:"flex",alignItems:"center",gap:8}}>
+          <PythLogo size={22}/>
+          <span style={{fontSize:13,fontWeight:700,color:"#7c3aed",letterSpacing:".06em"}}>PYTH</span>
+          <span style={{fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.25)"}}>CHARTS</span>
         </div>
-        <div style={{display:"flex",overflowX:"auto",flex:1,scrollbarWidth:"none"}}>
-        {assets.map(a => {
-          const p  = prices[a.symbol];
-          const hh = histRef.current[a.symbol] || [];
-          const hb = (histCandles[a.symbol] || {})[chartTf] || [];
-          const p0 = hh.length > 1 ? hh[0] : (hb.length ? hb[0].o : null);
-          const pc = p0 && p ? (p - p0) / p0 * 100 : null;
-          const sel = chartAsset === a.symbol;
+        <div style={{width:1,height:20,background:"rgba(255,255,255,0.08)"}}/>
+        {/* Asset symbol + price + pct */}
+        <div style={{display:"flex",alignItems:"baseline",gap:8}}>
+          <span style={{fontSize:13,fontWeight:700,color:"#fff",letterSpacing:".04em"}}>{asset.symbol}</span>
+          <span style={{fontSize:20,fontWeight:700,color:"#fff",letterSpacing:"-.01em"}}>{fmtP(cur)}</span>
+          {pct!=null&&<span style={{fontSize:12,fontWeight:600,color:pct>=0?"#10b981":"#ef4444"}}>{pct>=0?"+":""}{pct.toFixed(2)}%</span>}
+        </div>
+        <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>
+          <div style={{display:"flex",alignItems:"center",gap:5,padding:"3px 8px",borderRadius:3,background:status==="live"?"rgba(16,185,129,0.1)":"rgba(239,68,68,0.1)",border:`1px solid ${status==="live"?"rgba(16,185,129,0.25)":"rgba(239,68,68,0.25)"}`}}>
+            <span style={{width:5,height:5,borderRadius:"50%",background:status==="live"?"#10b981":"#ef4444",display:"inline-block"}}/>
+            <span style={{fontSize:10,fontWeight:700,letterSpacing:".08em",color:status==="live"?"#10b981":"#ef4444"}}>{status==="live"?"LIVE":"DEMO"}</span>
+          </div>
+          <button className="chart-back-btn" onClick={()=>setActiveTab("matrix")} style={{background:"transparent",border:"1px solid rgba(255,255,255,0.12)",borderRadius:4,padding:"6px 15px",color:"rgba(255,255,255,0.5)",cursor:"pointer",fontSize:11,fontFamily:"inherit",fontWeight:700,letterSpacing:".05em",transition:"all .15s"}}
+            onMouseEnter={e=>{e.currentTarget.style.borderColor="rgba(124,58,237,0.6)";e.currentTarget.style.color="#a78bfa";}}
+            onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(255,255,255,0.12)";e.currentTarget.style.color="rgba(255,255,255,0.5)";}}>
+            ← MATRIX
+          </button>
+        </div>
+      </div>
+
+      {/* ── SYMBOL STRIP ────────────────────────────────────────────────── */}
+      <div style={{display:"flex",alignItems:"center",height:36,padding:"0 0",borderBottom:"1px solid rgba(255,255,255,0.05)",background:"#080614",flexShrink:0,overflowX:"auto",scrollbarWidth:"none"}}>
+        {assets.map(a=>{
+          const p=prices[a.symbol];
+          const h=(chartHist[a.symbol]||{})[chartTf]||[];
+          const pc=h.length&&p?(p-h[0].o)/h[0].o*100:null;
+          const sel=chartAsset===a.symbol;
           return (
-            <button key={a.symbol} onClick={() => setChartAsset(a.symbol)}
-              style={{flexShrink:0,padding:"8px 14px",background:"transparent",border:"none",
-                borderBottom: sel ? `2px solid ${a.color}` : "2px solid transparent",
-                cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"flex-start",gap:2,transition:"background .15s"}}>
-              <span style={{fontSize:11,fontWeight:700,color:sel?a.color:"rgba(180,160,220,0.55)",letterSpacing:".04em"}}>{a.symbol}</span>
-              <span style={{fontSize:10,color:sel?"#e2d9f3":"rgba(130,110,170,0.45)",fontVariantNumeric:"tabular-nums"}}>{fmt(a.symbol,p)}</span>
-              {pc!==null&&<span style={{fontSize:8,color:pc>=0?"#34d399":"#f87171"}}>{pc>=0?"+":""}{pc.toFixed(2)}%</span>}
+            <button key={a.symbol} onClick={()=>setChartAsset(a.symbol)} style={{flexShrink:0,display:"flex",alignItems:"center",gap:6,padding:"0 14px",height:"100%",background:sel?"rgba(124,58,237,0.12)":"transparent",border:"none",borderBottom:sel?"2px solid #7c3aed":"2px solid transparent",cursor:"pointer",transition:"all .15s"}}>
+              <span style={{fontSize:11,fontWeight:700,color:sel?"#c4b5fd":"rgba(255,255,255,0.35)",letterSpacing:".03em"}}>{a.symbol}</span>
+              {pc!=null&&<span style={{fontSize:9,color:pc>=0?"#10b981":"#ef4444",fontWeight:600}}>{pc>=0?"+":""}{pc.toFixed(2)}%</span>}
             </button>
           );
         })}
-        </div>
-        <button onClick={()=>setActiveTab&&setActiveTab("matrix")}
-          style={{flexShrink:0,padding:"0 16px",background:"transparent",border:"none",
-            borderLeft:"1px solid rgba(139,92,246,0.15)",cursor:"pointer",height:"100%",minHeight:48,
-            color:"rgba(139,92,246,0.6)",fontSize:10,fontFamily:"inherit",whiteSpace:"nowrap",
-            transition:"color .15s"}}
-          onMouseEnter={e=>e.target.style.color="#a78bfa"}
-          onMouseLeave={e=>e.target.style.color="rgba(139,92,246,0.6)"}>
-          ← Matrix
+      </div>
+
+      {/* ── CONTROLS ROW ────────────────────────────────────────────────── */}
+      <div style={{display:"flex",alignItems:"center",height:34,padding:"0 12px",borderBottom:"1px solid rgba(255,255,255,0.05)",background:"#07050f",flexShrink:0,gap:2}}>
+        {/* Timeframes */}
+        {TF_LIST.map(tf=>(
+          <button key={tf} onClick={()=>setChartTf(tf)} style={{background:chartTf===tf?"rgba(124,58,237,0.25)":"transparent",border:"none",borderRadius:2,cursor:"pointer",color:chartTf===tf?"#c4b5fd":"rgba(255,255,255,0.3)",fontSize:10,padding:"3px 10px",fontFamily:"inherit",fontWeight:chartTf===tf?700:500,letterSpacing:".04em",transition:"all .15s"}}>
+            {tf}
+          </button>
+        ))}
+        <div style={{width:1,height:16,background:"rgba(255,255,255,0.08)",margin:"0 8px"}}/>
+        {/* Chart type */}
+        {[["candle","Candles"],["line","Line"]].map(([k,label])=>(
+          <button key={k} onClick={()=>setChartType(k)} style={{background:chartType===k?"rgba(124,58,237,0.25)":"transparent",border:"none",borderRadius:2,cursor:"pointer",color:chartType===k?"#c4b5fd":"rgba(255,255,255,0.3)",fontSize:10,padding:"3px 10px",fontFamily:"inherit",fontWeight:chartType===k?700:500,letterSpacing:".04em",transition:"all .15s"}}>
+            {label}
+          </button>
+        ))}
+        {viewOffset > 0 && (
+          <button onClick={()=>setViewOffset(0)} style={{marginLeft:8,background:"rgba(16,185,129,0.12)",border:"1px solid rgba(16,185,129,0.25)",borderRadius:3,cursor:"pointer",color:"#10b981",fontSize:10,padding:"3px 10px",fontFamily:"inherit",fontWeight:700,letterSpacing:".04em"}}>
+            Latest
+          </button>
+        )}
+        <button onClick={()=>setZoomBars(CHART_VISIBLE_BARS)} style={{marginLeft:8,background:"transparent",border:"1px solid rgba(255,255,255,0.12)",borderRadius:3,cursor:"pointer",color:"rgba(255,255,255,0.5)",fontSize:10,padding:"3px 10px",fontFamily:"inherit",fontWeight:700,letterSpacing:".04em"}}>
+          Reset Zoom
         </button>
-      </div>
-
-      {/* Info bar */}
-      <div style={{display:"flex",alignItems:"center",gap:12,flexShrink:0,padding:"7px 16px",borderBottom:"1px solid rgba(139,92,246,0.1)",flexWrap:"wrap",background:"rgba(7,5,18,0.96)"}}>
-        <span style={{fontSize:18,color:asset.color}}>{asset.icon}</span>
-        <span style={{fontFamily:"'Outfit',sans-serif",fontSize:15,fontWeight:800,color:asset.color}}>{asset.symbol}</span>
-        <span style={{fontFamily:"'Outfit',sans-serif",fontSize:20,fontWeight:800,color:"#f0eaff",fontVariantNumeric:"tabular-nums"}}>{fmt(asset.symbol,cur)}</span>
-        {pct!==null&&<span style={{fontSize:11,fontWeight:700,padding:"2px 7px",borderRadius:4,color:pct>=0?"#34d399":"#f87171",background:pct>=0?"rgba(52,211,153,0.1)":"rgba(248,113,113,0.1)"}}>
-          {pct>=0?"+":""}{pct.toFixed(3)}%
-        </span>}
-        <div style={{display:"flex",gap:12,fontSize:10,color:"rgba(110,90,160,0.55)",marginLeft:"auto",flexWrap:"wrap"}}>
-          {hiBar&&<span>H: <b style={{color:"#34d399"}}>{fmt(asset.symbol,hiBar)}</b></span>}
-          {loBar&&<span>L: <b style={{color:"#f87171"}}>{fmt(asset.symbol,loBar)}</b></span>}
-          <span>Candles: <b style={{color:"#a78bfa"}}>{bars.length}</b></span>
-          {loadingAsset===chartAsset
-            ? <span style={{color:"#8b5cf6"}}>⟳ Loading…</span>
-            : <span style={{color:"rgba(80,60,120,0.5)"}}>{base.length?"Binance+Pyth":"Pyth only"}</span>}
+        {/* Stats */}
+        <div style={{marginLeft:"auto",display:"flex",gap:16,fontSize:9,letterSpacing:".04em"}}>
+          {bars.length>0&&<span style={{color:"rgba(255,255,255,0.25)"}}>H: <span style={{color:"#10b981"}}>{fmtP(Math.max(...bars.map(b=>b.h)))}</span></span>}
+          {bars.length>0&&<span style={{color:"rgba(255,255,255,0.25)"}}>L: <span style={{color:"#ef4444"}}>{fmtP(Math.min(...bars.map(b=>b.l)))}</span></span>}
+          <span style={{color:"rgba(255,255,255,0.2)"}}>{visibleBars} visible · {bars.length} bars</span>
         </div>
       </div>
 
-      {/* Controls */}
-      <div style={{display:"flex",alignItems:"center",gap:6,flexShrink:0,padding:"5px 14px",borderBottom:"1px solid rgba(139,92,246,0.08)",background:"rgba(7,5,18,0.95)"}}>
-        <div style={{display:"flex",gap:1,background:"rgba(0,0,0,0.5)",borderRadius:5,padding:2}}>
-          {TF_LIST.map(tf=>(
-            <button key={tf} onClick={()=>setChartTf(tf)}
-              style={{background:chartTf===tf?"rgba(139,92,246,0.4)":"transparent",border:"none",borderRadius:4,
-                cursor:"pointer",color:chartTf===tf?"#fff":"rgba(100,80,160,0.55)",
-                fontSize:10,padding:"3px 10px",fontFamily:"inherit",fontWeight:chartTf===tf?700:400,transition:"all .15s"}}>{tf}</button>
-          ))}
-        </div>
-        <div style={{display:"flex",gap:1,background:"rgba(0,0,0,0.5)",borderRadius:5,padding:2,marginLeft:4}}>
-          {[["candle","🕯"],["line","📈"]].map(([k,ic])=>(
-            <button key={k} onClick={()=>setChartType(k)}
-              style={{background:chartType===k?"rgba(139,92,246,0.4)":"transparent",border:"none",borderRadius:4,
-                cursor:"pointer",color:chartType===k?"#fff":"rgba(100,80,160,0.55)",
-                fontSize:10,padding:"3px 11px",fontFamily:"inherit",transition:"all .15s"}}>{ic}</button>
-          ))}
-        </div>
-      </div>
-
-      {/* Canvas */}
+      {/* ── CHART AREA ──────────────────────────────────────────────────── */}
       <div style={{flex:1,position:"relative",minHeight:0}}>
-        <CandleChart bars={bars} chartType={chartType}/>
+        <canvas
+          ref={canvasRef}
+          onPointerDown={onChartPointerDown}
+          onPointerMove={onChartPointerMove}
+          onPointerUp={stopDragging}
+          onPointerCancel={stopDragging}
+          onPointerLeave={(e)=>{ stopDragging(e); clearCrosshair(); }}
+          onPointerMoveCapture={updateCrosshair}
+          onWheel={onChartWheel}
+          style={{position:"absolute",inset:0,width:"100%",height:"100%",cursor:isDragging?"grabbing":"grab",touchAction:"none"}}
+        />
+        {crosshairActive && crosshairX != null && (
+          <div style={{position:"absolute",top:0,bottom:0,left:crosshairX,width:1,background:"rgba(196,181,253,0.45)",pointerEvents:"none",boxShadow:"0 0 0 1px rgba(124,58,237,0.08)"}}/>
+        )}
+        <div style={{position:"absolute",left:16,bottom:12,padding:"4px 8px",background:"rgba(7,5,15,0.72)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:4,color:"rgba(255,255,255,0.38)",fontSize:9,letterSpacing:".04em",pointerEvents:"none"}}>
+          Drag to pan · Wheel to zoom
+        </div>
+
+      </div>
+
+      {/* ── RESIZE HANDLE ────────────────────────────────────────────────── */}
+      <div
+        onPointerDown={(e) => {
+          corrResizeRef.current = { active:true, startY:e.clientY, startH:corrHeight };
+          e.currentTarget.setPointerCapture(e.pointerId);
+        }}
+        onPointerMove={(e) => {
+          if (!corrResizeRef.current.active) return;
+          const delta = corrResizeRef.current.startY - e.clientY;
+          setCorrHeight(Math.max(60, Math.min(520, corrResizeRef.current.startH + delta)));
+        }}
+        onPointerUp={(e) => {
+          corrResizeRef.current.active = false;
+          if (e.currentTarget.hasPointerCapture?.(e.pointerId)) e.currentTarget.releasePointerCapture(e.pointerId);
+        }}
+        style={{height:8,flexShrink:0,cursor:"row-resize",display:"flex",alignItems:"center",justifyContent:"center",
+          borderTop:"1px solid rgba(255,255,255,0.07)",borderBottom:"1px solid rgba(255,255,255,0.04)",
+          background:"rgba(255,255,255,0.02)",userSelect:"none",zIndex:5}}
+        onPointerEnter={(e)=>{ e.currentTarget.style.background="rgba(124,58,237,0.18)"; }}
+        onPointerLeave={(e)=>{ e.currentTarget.style.background="rgba(255,255,255,0.02)"; }}
+      >
+        <div style={{width:32,height:2,borderRadius:2,background:"rgba(255,255,255,0.15)"}}/>
+      </div>
+
+      {/* ── CORRELATION TIMELINE ─────────────────────────────────────────── */}
+      <div style={{height:corrHeight,flexShrink:0,background:"#080614",minHeight:0,position:"relative",overflow:"hidden"}}>
+        {/* Canvas — full width, same as main chart → crosshair aligns 1:1 */}
+        <canvas ref={corrCanvasRef} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>
+
+        {/* ── Info overlay: compact number by default, full panel on hover ── */}
+        <div
+          onMouseEnter={() => setCorrInfoHovered(true)}
+          onMouseLeave={() => setCorrInfoHovered(false)}
+          style={{position:"absolute",top:0,left:0,
+            background:"rgba(6,4,16,0.82)",
+            borderRight:"1px solid rgba(124,58,237,0.20)",
+            borderBottom:"1px solid rgba(124,58,237,0.20)",
+            borderRadius:"0 0 10px 0",
+            backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",
+            zIndex:2,cursor:"default",overflow:"hidden",
+            transition:"all .18s ease",
+          }}
+        >
+          {/* accent line */}
+          <div style={{position:"absolute",top:0,left:0,right:0,height:2,background:`linear-gradient(90deg,${liveCorr==null?"rgba(196,181,253,0.5)":liveCorr>=0?"#10b981":"#ef4444"} 0%,transparent 100%)`}}/>
+          {corrInfoHovered ? (
+            /* ── expanded (hover) ── */
+            <div style={{padding:"9px 13px 10px"}}>
+              <div style={{fontSize:8,fontWeight:700,color:"rgba(196,181,253,0.50)",letterSpacing:".14em",textTransform:"uppercase",marginBottom:3}}>Corr Timeline</div>
+              <div style={{fontSize:11,fontWeight:700,color:"rgba(255,255,255,0.70)",letterSpacing:"-.01em",marginBottom:6}}>
+                {chartAsset} <span style={{color:"rgba(255,255,255,0.28)",fontWeight:400}}>vs</span> {benchmarkSymbol}
+              </div>
+              <div style={{display:"flex",alignItems:"baseline",gap:5}}>
+                <span style={{fontSize:26,fontWeight:800,fontVariantNumeric:"tabular-nums",letterSpacing:"-.02em",lineHeight:1,color:liveCorr==null?"rgba(255,255,255,0.20)":liveCorr>=0?"#34d399":"#f87171"}}>
+                  {liveCorr==null?"–":liveCorr.toFixed(3)}
+                </span>
+                {liveCorr!=null&&(
+                  <span style={{fontSize:8,fontWeight:700,letterSpacing:".06em",color:Math.abs(liveCorr)>=0.7?"#34d399":Math.abs(liveCorr)>=0.4?"#a78bfa":"rgba(255,255,255,0.30)"}}>
+                    {Math.abs(liveCorr)>=0.7?"STRONG":Math.abs(liveCorr)>=0.4?"MODERATE":"WEAK"}
+                  </span>
+                )}
+              </div>
+            </div>
+          ) : (
+            /* ── compact (default) — just the number ── */
+            <div style={{padding:"6px 10px 7px"}}>
+              <div style={{fontSize:13,fontWeight:800,fontVariantNumeric:"tabular-nums",letterSpacing:"-.01em",lineHeight:1,color:liveCorr==null?"rgba(255,255,255,0.20)":liveCorr>=0?"#34d399":"#f87171"}}>
+                {liveCorr==null?"–":liveCorr.toFixed(3)}
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* ── Crosshair — same x as main chart, zero remapping ── */}
+        {crosshairActive && crosshairX != null && (
+          <div style={{position:"absolute",top:0,bottom:0,left:crosshairX,width:1,background:"rgba(196,181,253,0.45)",pointerEvents:"none",zIndex:3}}/>
+        )}
+      </div>
+
+    </div>
+  );
+}
+
+
+/* ─── CORRELATION VIEW ───────────────────────────────────────────────────── */
+function drawCorrChart(canvas, ha, hb, symA, symB, colorA, colorB) {
+  if (!canvas) return;
+  const par = canvas.parentElement;
+  if (!par) return;
+  const W = par.clientWidth, H = par.clientHeight;
+  if (W < 10 || H < 10) return;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#07050f"; ctx.fillRect(0,0,W,H);
+
+  const n = Math.min(ha.length, hb.length);
+  if (n < 10) {
+    ctx.fillStyle = "rgba(124,58,237,0.4)";
+    ctx.font = "13px 'Space Mono',monospace";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("Accumulating data… (" + n + "/10 ticks)", W/2, H/2);
+    return;
+  }
+
+  const PAD = {t:40, r:60, b:50, l:60};
+  const CW = W - PAD.l - PAD.r;
+  const CH = H - PAD.t - PAD.b;
+
+  // Normalise both series to % returns
+  const retA = ha.slice(-n).map((v,i,a)=> i===0 ? 0 : (v - a[i-1]) / a[i-1] * 100);
+  const retB = hb.slice(-n).map((v,i,a)=> i===0 ? 0 : (v - a[i-1]) / a[i-1] * 100);
+  const pts   = retA.slice(1).map((v,i)=>({x:v, y:retB[i+1]}));
+
+  const minX = Math.min(...pts.map(p=>p.x));
+  const maxX = Math.max(...pts.map(p=>p.x));
+  const minY = Math.min(...pts.map(p=>p.y));
+  const maxY = Math.max(...pts.map(p=>p.y));
+  const padX = (maxX - minX) * 0.12 || 0.1;
+  const padY = (maxY - minY) * 0.12 || 0.1;
+  const xMin = minX - padX, xMax = maxX + padX;
+  const yMin = minY - padY, yMax = maxY + padY;
+
+  const toX = v => PAD.l + (v - xMin) / (xMax - xMin) * CW;
+  const toY = v => PAD.t + CH - (v - yMin) / (yMax - yMin) * CH;
+
+  // Grid
+  ctx.strokeStyle = "rgba(255,255,255,0.04)"; ctx.lineWidth = 1;
+  for (let i=0; i<=4; i++) {
+    const xv = xMin + (xMax-xMin)/4*i, yv = yMin + (yMax-yMin)/4*i;
+    ctx.beginPath(); ctx.moveTo(toX(xv), PAD.t); ctx.lineTo(toX(xv), PAD.t+CH); ctx.stroke();
+    ctx.beginPath(); ctx.moveTo(PAD.l, toY(yv)); ctx.lineTo(PAD.l+CW, toY(yv)); ctx.stroke();
+  }
+
+  // Zero axes
+  if (xMin < 0 && xMax > 0) {
+    const x0 = toX(0);
+    ctx.strokeStyle = "rgba(255,255,255,0.12)"; ctx.lineWidth = 1;
+    ctx.setLineDash([3,4]);
+    ctx.beginPath(); ctx.moveTo(x0, PAD.t); ctx.lineTo(x0, PAD.t+CH); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+  if (yMin < 0 && yMax > 0) {
+    const y0 = toY(0);
+    ctx.strokeStyle = "rgba(255,255,255,0.12)"; ctx.lineWidth = 1;
+    ctx.setLineDash([3,4]);
+    ctx.beginPath(); ctx.moveTo(PAD.l, y0); ctx.lineTo(PAD.l+CW, y0); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Regression line
+  const meanX = pts.reduce((s,p)=>s+p.x,0)/pts.length;
+  const meanY = pts.reduce((s,p)=>s+p.y,0)/pts.length;
+  const num   = pts.reduce((s,p)=>s+(p.x-meanX)*(p.y-meanY),0);
+  const den   = pts.reduce((s,p)=>s+(p.x-meanX)**2,0);
+  if (den !== 0) {
+    const slope = num/den, intercept = meanY - slope*meanX;
+    const x1=xMin, y1=slope*x1+intercept;
+    const x2=xMax, y2=slope*x2+intercept;
+    ctx.strokeStyle = "rgba(167,139,250,0.5)"; ctx.lineWidth = 1.5;
+    ctx.setLineDash([6,4]);
+    ctx.beginPath(); ctx.moveTo(toX(x1), toY(y1)); ctx.lineTo(toX(x2), toY(y2)); ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Scatter dots — colour by time (old=dim, new=bright)
+  pts.forEach((p, i) => {
+    const age = i / (pts.length - 1);
+    const alpha = 0.15 + age * 0.7;
+    const r = 2.5 + age * 1.5;
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = age > 0.7 ? colorA : "rgba(100,80,140,1)";
+    ctx.beginPath(); ctx.arc(toX(p.x), toY(p.y), r, 0, Math.PI*2); ctx.fill();
+  });
+  ctx.globalAlpha = 1;
+
+  // Axis labels
+  ctx.fillStyle = "rgba(255,255,255,0.2)"; ctx.font = "9px 'Space Mono',monospace";
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  ctx.fillText(symA + " returns (%)", PAD.l + CW/2, PAD.t + CH + 18);
+  ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  ctx.save(); ctx.translate(PAD.l - 28, PAD.t + CH/2);
+  ctx.rotate(-Math.PI/2); ctx.fillText(symB + " returns (%)", 0, 0); ctx.restore();
+
+  // Tick labels X
+  ctx.textAlign = "center"; ctx.textBaseline = "top"; ctx.fillStyle = "rgba(255,255,255,0.15)";
+  ctx.font = "8px 'Space Mono',monospace";
+  for (let i=0; i<=4; i++) {
+    const v = xMin + (xMax-xMin)/4*i;
+    ctx.fillText(v.toFixed(1), toX(v), PAD.t+CH+4);
+  }
+  // Tick labels Y
+  ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  for (let i=0; i<=4; i++) {
+    const v = yMin + (yMax-yMin)/4*i;
+    ctx.fillText(v.toFixed(1), PAD.l-6, toY(v));
+  }
+}
+
+function drawRollingCorr(canvas, ha, hb, window=30) {
+  if (!canvas) return;
+  const par = canvas.parentElement;
+  if (!par) return;
+  const W = par.clientWidth, H = par.clientHeight;
+  if (W < 10 || H < 10) return;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#07050f"; ctx.fillRect(0,0,W,H);
+
+  const n = Math.min(ha.length, hb.length);
+  if (n < window + 2) {
+    ctx.fillStyle = "rgba(124,58,237,0.3)"; ctx.font = "11px 'Space Mono',monospace";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("Need " + (window+2) + " ticks for rolling corr", W/2, H/2);
+    return;
+  }
+
+  const PAD = {t:16, r:60, b:28, l:40};
+  const CW = W - PAD.l - PAD.r;
+  const CH = H - PAD.t - PAD.b;
+  const toY = v => PAD.t + CH * (1 - (v+1)/2);
+  const toX = i => PAD.l + (i / (pts.length-1)) * CW;
+
+  const pts = [];
+  for (let i = window; i <= n; i++) {
+    const v = pearson(ha.slice(i-window, i), hb.slice(i-window, i));
+    if (v !== null) pts.push(v);
+  }
+  if (pts.length < 2) return;
+
+  // Bands
+  [1, 0.5, 0, -0.5, -1].forEach(v => {
+    const y = toY(v);
+    ctx.strokeStyle = v===0 ? "rgba(255,255,255,0.1)" : "rgba(255,255,255,0.04)";
+    ctx.lineWidth = v===0 ? 1 : 1; ctx.setLineDash(v===0?[]:[3,4]);
+    ctx.beginPath(); ctx.moveTo(PAD.l,y); ctx.lineTo(PAD.l+CW,y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = "rgba(255,255,255,0.18)"; ctx.font = "8px 'Space Mono',monospace";
+    ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    ctx.fillText(v.toFixed(1), PAD.l-4, y);
+  });
+
+  // Fill area
+  const last = pts[pts.length-1];
+  const grd = ctx.createLinearGradient(0,PAD.t,0,PAD.t+CH);
+  grd.addColorStop(0, last>=0 ? "rgba(16,185,129,0.15)" : "rgba(239,68,68,0.15)");
+  grd.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.beginPath();
+  pts.forEach((v,i)=>{ const x=toX(i),y=toY(v); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
+  ctx.lineTo(toX(pts.length-1), toY(0)); ctx.lineTo(toX(0), toY(0));
+  ctx.closePath(); ctx.fillStyle=grd; ctx.fill();
+
+  // Line
+  const lg = ctx.createLinearGradient(0,0,W,0);
+  lg.addColorStop(0,"rgba(124,58,237,0.8)");
+  lg.addColorStop(1, last>=0?"#10b981":"#ef4444");
+  ctx.strokeStyle=lg; ctx.lineWidth=2; ctx.lineJoin="round";
+  ctx.beginPath();
+  pts.forEach((v,i)=>{ const x=toX(i),y=toY(v); i===0?ctx.moveTo(x,y):ctx.lineTo(x,y); });
+  ctx.stroke();
+
+  // Current dot + label
+  const lx=toX(pts.length-1), ly=toY(last);
+  ctx.fillStyle = last>=0?"#10b981":"#ef4444";
+  ctx.beginPath(); ctx.arc(lx,ly,4,0,Math.PI*2); ctx.fill();
+  ctx.fillRect(W-PAD.r+2,ly-8,PAD.r-4,16);
+  ctx.fillStyle="#fff"; ctx.font="bold 9px 'Space Mono',monospace";
+  ctx.textAlign="left"; ctx.textBaseline="middle";
+  ctx.fillText(last.toFixed(3), W-PAD.r+5, ly);
+}
+
+function buildRollingCorrelationSeries(primaryBars, secondaryBars, window = 30) {
+  if (!primaryBars?.length || !secondaryBars?.length) return [];
+  const secondaryMap = new Map(secondaryBars.map(b => [b.t, b.c]));
+  const aligned = primaryBars
+    .filter(b => secondaryMap.has(b.t))
+    .map(b => ({ t: b.t, a: b.c, b: secondaryMap.get(b.t) }));
+  if (aligned.length < window + 2) return [];
+
+  const series = [];
+  for (let i = window - 1; i < aligned.length; i++) {
+    const slice = aligned.slice(i - window + 1, i + 1);
+    const value = pearson(slice.map(p => p.a), slice.map(p => p.b));
+    if (value !== null) series.push({ t: aligned[i].t, v: value });
+  }
+  return series;
+}
+
+function drawRollingCorrTimeline(canvas, primaryBars, secondaryBars, view = {}) {
+  if (!canvas) return;
+  const par = canvas.parentElement;
+  if (!par) return;
+  const W = par.clientWidth, H = par.clientHeight;
+  if (W < 10 || H < 10) return;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#07050f";
+  ctx.fillRect(0, 0, W, H);
+
+  if (!primaryBars?.length || !secondaryBars?.length) {
+    ctx.fillStyle = "rgba(124,58,237,0.3)";
+    ctx.font = "11px 'Space Mono',monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("Loading correlation history...", W / 2, H / 2);
+    return;
+  }
+
+  const PAD = { t: 14, r: 80, b: 28, l: 8 };
+  const CW = W - PAD.l - PAD.r;
+  const CH = H - PAD.t - PAD.b;
+  const visibleCount = Math.max(20, Math.min(view.visibleCount || CHART_VISIBLE_BARS, primaryBars.length));
+  const maxOffset = Math.max(0, primaryBars.length - visibleCount);
+  const overscrollBars = Math.max(0, view.overscrollBars ?? CHART_OVERSCROLL_BARS);
+  const panBars = Math.max(-overscrollBars, Math.min(view.offset || 0, maxOffset + overscrollBars));
+  const historyOffset = Math.max(0, Math.min(maxOffset, panBars));
+  const end = Math.max(visibleCount, primaryBars.length - historyOffset);
+  const start = Math.max(0, end - visibleCount);
+  const visibleBars = primaryBars.slice(start, end);
+  const overscrollShiftBars = historyOffset - panBars;
+  const totalSlots = Math.max(visibleCount, 1);
+
+  const series = buildRollingCorrelationSeries(primaryBars, secondaryBars, 30);
+  const valueByTime = new Map(series.map(p => [p.t, p.v]));
+
+  // First pass — collect x/v without y so we can compute auto-range
+  const rawPts = visibleBars.map((b, i) => {
+    const v = valueByTime.get(b.t);
+    if (v == null) return null;
+    return { i, x: PAD.l + ((i + 0.5 - overscrollShiftBars) / totalSlots) * CW, v, t: b.t };
+  }).filter(Boolean);
+
+  if (rawPts.length < 2) {
+    ctx.fillStyle = "rgba(124,58,237,0.3)";
+    ctx.font = "11px 'Space Mono',monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("Need more aligned bars for correlation", W / 2, H / 2);
+    return;
+  }
+
+  // Auto-scale: fit visible data with padding, clamped to [-1, 1]
+  const vals = rawPts.map(p => p.v);
+  const rawMin = Math.min(...vals), rawMax = Math.max(...vals);
+  const rangePad = Math.max(0.08, (rawMax - rawMin) * 0.25);
+  const rangeMin = Math.max(-1.0, rawMin - rangePad);
+  const rangeMax = Math.min( 1.0, rawMax + rangePad);
+  const toY = v => PAD.t + CH * (1 - (v - rangeMin) / (rangeMax - rangeMin));
+
+  // Second pass — add y
+  const drawn = rawPts.map(p => ({ ...p, y: toY(p.v) }));
+
+  // Grid lines at round values visible within the auto range; labels on RIGHT (PAD.r area)
+  [-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1].filter(v => v >= rangeMin - 0.02 && v <= rangeMax + 0.02).forEach(v => {
+    const y = toY(v);
+    ctx.strokeStyle = v === 0 ? "rgba(255,255,255,0.15)" : "rgba(255,255,255,0.05)";
+    ctx.lineWidth = 1;
+    ctx.setLineDash(v === 0 ? [] : [3, 4]);
+    ctx.beginPath(); ctx.moveTo(PAD.l, y); ctx.lineTo(PAD.l + CW, y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle = v === 0 ? "rgba(255,255,255,0.35)" : "rgba(255,255,255,0.20)";
+    ctx.font = "8px 'Space Mono',monospace";
+    ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.fillText(v === 0 ? "0" : v.toFixed(2), W - PAD.r + 4, y);
+  });
+
+  const last = drawn[drawn.length - 1];
+  const zeroY = toY(Math.max(rangeMin, Math.min(rangeMax, 0)));
+  const grd = ctx.createLinearGradient(0, PAD.t, 0, PAD.t + CH);
+  grd.addColorStop(0, last.v >= 0 ? "rgba(16,185,129,0.22)" : "rgba(239,68,68,0.22)");
+  grd.addColorStop(1, "rgba(0,0,0,0)");
+  ctx.beginPath();
+  drawn.forEach((p, i) => { i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y); });
+  ctx.lineTo(drawn[drawn.length - 1].x, zeroY);
+  ctx.lineTo(drawn[0].x, zeroY);
+  ctx.closePath();
+  ctx.fillStyle = grd;
+  ctx.fill();
+
+  const lg = ctx.createLinearGradient(PAD.l, 0, PAD.l + CW, 0);
+  lg.addColorStop(0, "rgba(124,58,237,0.85)");
+  lg.addColorStop(1, last.v >= 0 ? "#10b981" : "#ef4444");
+  ctx.strokeStyle = lg;
+  ctx.lineWidth = 2;
+  ctx.lineJoin = "round";
+  ctx.beginPath();
+  drawn.forEach((p, i) => { i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y); });
+  ctx.stroke();
+
+  ctx.fillStyle = last.v >= 0 ? "#10b981" : "#ef4444";
+  ctx.beginPath();
+  ctx.arc(last.x, last.y, 4, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.fillRect(W - PAD.r + 2, last.y - 8, PAD.r - 4, 16);
+  ctx.fillStyle = "#fff";
+  ctx.font = "bold 9px 'Space Mono',monospace";
+  ctx.textAlign = "left";
+  ctx.textBaseline = "middle";
+  ctx.fillText(last.v.toFixed(3), W - PAD.r + 6, last.y);
+}
+
+/* ─── CORRELATION VIEW ───────────────────────────────────────────────────── */
+const CORR_PAIRS = [
+  // Crypto pairs
+  ["BTC","ETH"],["BTC","SOL"],["BTC","DOGE"],
+  ["ETH","SOL"],["SOL","DOGE"],
+  // Crypto vs Macro
+  ["BTC","XAU/USD"],["ETH","XAU/USD"],
+  ["BTC","EUR/USD"],["ETH","EUR/USD"],
+  // Macro pairs
+  ["XAU/USD","EUR/USD"],["XAU/USD","GBP/USD"],
+  // Crypto vs Equity
+  ["BTC","AAPL"],["ETH","AAPL"],
+  // Index pairs
+  ["SPY","QQQ"],["SPY","DIA"],["SPY","IWM"],
+  // Indices vs Crypto
+  ["BTC","SPY"],["ETH","QQQ"],
+  // Indices vs Equity
+  ["SPY","AAPL"],["QQQ","AAPL"],
+];
+// fetchCloses: uses Pyth Benchmarks for ALL assets — no CORS, no Binance dependency
+// Returns array of close prices (same interface as before)
+async function fetchCloses(sym, tf = "1m", limit = 300) {
+  const bars = await fetchPyth(sym, tf, limit);
+  return bars.map(b => b.c);
+}
+
+
+function pctReturns(closes) {
+  const r = [];
+  for (let i=1;i<closes.length;i++) r.push((closes[i]-closes[i-1])/closes[i-1]*100);
+  return r;
+}
+
+function rollingPearson(ra, rb, win) {
+  const n = Math.min(ra.length, rb.length);
+  const pts = [];
+  for (let i=win; i<=n; i++) {
+    const v = pearson(ra.slice(i-win,i), rb.slice(i-win,i));
+    if (v !== null) pts.push(v);
+  }
+  return pts;
+}
+
+function drawScatter(canvas, ra, rb, symA, symB, colA, colB) {
+  if (!canvas) return;
+  const par = canvas.parentElement; if (!par) return;
+  const W = par.clientWidth, H = par.clientHeight;
+  if (W<10||H<10) return;
+  canvas.width=W; canvas.height=H;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle="#07050f"; ctx.fillRect(0,0,W,H);
+
+  const pts = ra.slice(-Math.min(ra.length,rb.length,200))
+                .map((v,i)=>({x:v,y:rb[rb.length-Math.min(ra.length,rb.length,200)+i]}))
+                .filter(p=>isFinite(p.x)&&isFinite(p.y));
+  if (pts.length < 4) {
+    ctx.fillStyle="rgba(124,58,237,0.4)"; ctx.font="12px 'Space Mono',monospace";
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText("Loading data…", W/2, H/2); return;
+  }
+
+  const PAD={t:32,r:24,b:48,l:56};
+  const CW=W-PAD.l-PAD.r, CH=H-PAD.t-PAD.b;
+
+  const xs=pts.map(p=>p.x), ys=pts.map(p=>p.y);
+  const xPad=(Math.max(...xs)-Math.min(...xs))*0.15||0.05;
+  const yPad=(Math.max(...ys)-Math.min(...ys))*0.15||0.05;
+  const xMin=Math.min(...xs)-xPad, xMax=Math.max(...xs)+xPad;
+  const yMin=Math.min(...ys)-yPad, yMax=Math.max(...ys)+yPad;
+  const toX=v=>PAD.l+(v-xMin)/(xMax-xMin)*CW;
+  const toY=v=>PAD.t+CH-(v-yMin)/(yMax-yMin)*CH;
+
+  // Grid
+  ctx.strokeStyle="rgba(255,255,255,0.04)"; ctx.lineWidth=1;
+  for(let i=0;i<=4;i++){
+    const xv=xMin+(xMax-xMin)/4*i, yv=yMin+(yMax-yMin)/4*i;
+    ctx.beginPath();ctx.moveTo(toX(xv),PAD.t);ctx.lineTo(toX(xv),PAD.t+CH);ctx.stroke();
+    ctx.beginPath();ctx.moveTo(PAD.l,toY(yv));ctx.lineTo(PAD.l+CW,toY(yv));ctx.stroke();
+  }
+  // Zero lines
+  if(xMin<0&&xMax>0){ctx.strokeStyle="rgba(255,255,255,0.1)";ctx.setLineDash([3,4]);ctx.beginPath();ctx.moveTo(toX(0),PAD.t);ctx.lineTo(toX(0),PAD.t+CH);ctx.stroke();ctx.setLineDash([]);}
+  if(yMin<0&&yMax>0){ctx.strokeStyle="rgba(255,255,255,0.1)";ctx.setLineDash([3,4]);ctx.beginPath();ctx.moveTo(PAD.l,toY(0));ctx.lineTo(PAD.l+CW,toY(0));ctx.stroke();ctx.setLineDash([]);}
+
+  // Regression
+  const mX=xs.reduce((s,v)=>s+v,0)/xs.length, mY=ys.reduce((s,v)=>s+v,0)/ys.length;
+  const num=pts.reduce((s,p)=>s+(p.x-mX)*(p.y-mY),0);
+  const den=pts.reduce((s,p)=>s+(p.x-mX)**2,0);
+  if(den){
+    const sl=num/den, ic=mY-sl*mX;
+    ctx.strokeStyle="rgba(167,139,250,0.45)"; ctx.lineWidth=1.5; ctx.setLineDash([5,4]);
+    ctx.beginPath();ctx.moveTo(toX(xMin),toY(sl*xMin+ic));ctx.lineTo(toX(xMax),toY(sl*xMax+ic));ctx.stroke();
+    ctx.setLineDash([]);
+  }
+
+  // Dots — recent = brighter & larger
+  pts.forEach((p,i)=>{
+    const age=i/(pts.length-1);
+    ctx.globalAlpha=0.15+age*0.75;
+    ctx.fillStyle=age>0.6?colA:"rgba(100,80,150,1)";
+    ctx.beginPath();ctx.arc(toX(p.x),toY(p.y),1.8+age*2.2,0,Math.PI*2);ctx.fill();
+  });
+  ctx.globalAlpha=1;
+
+  // Axis labels
+  ctx.fillStyle="rgba(255,255,255,0.2)"; ctx.font="9px 'Space Mono',monospace";
+  ctx.textAlign="center"; ctx.textBaseline="top";
+  ctx.fillText(symA+" return %", PAD.l+CW/2, PAD.t+CH+20);
+  ctx.save();ctx.translate(PAD.l-36,PAD.t+CH/2);ctx.rotate(-Math.PI/2);
+  ctx.fillText(symB+" return %",0,0);ctx.restore();
+
+  // Axis ticks
+  ctx.fillStyle="rgba(255,255,255,0.15)"; ctx.font="8px 'Space Mono',monospace";
+  ctx.textAlign="center"; ctx.textBaseline="top";
+  for(let i=0;i<=4;i++){const v=xMin+(xMax-xMin)/4*i;ctx.fillText(v.toFixed(1),toX(v),PAD.t+CH+5);}
+  ctx.textAlign="right"; ctx.textBaseline="middle";
+  for(let i=0;i<=4;i++){const v=yMin+(yMax-yMin)/4*i;ctx.fillText(v.toFixed(1),PAD.l-6,toY(v));}
+}
+
+function drawRolling(canvas, pts) {
+  if (!canvas) return;
+  const par=canvas.parentElement; if(!par) return;
+  const W=par.clientWidth, H=par.clientHeight;
+  if(W<10||H<10) return;
+  canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext("2d");
+  ctx.fillStyle="#07050f"; ctx.fillRect(0,0,W,H);
+
+  if(!pts||pts.length<2){
+    ctx.fillStyle="rgba(124,58,237,0.3)"; ctx.font="11px 'Space Mono',monospace";
+    ctx.textAlign="center"; ctx.textBaseline="middle";
+    ctx.fillText("Accumulating…",W/2,H/2); return;
+  }
+
+  const PAD={t:16,r:60,b:28,l:40};
+  const CW=W-PAD.l-PAD.r, CH=H-PAD.t-PAD.b;
+  const toY=v=>PAD.t+CH*(1-(v+1)/2);
+  const toX=i=>PAD.l+(i/(pts.length-1))*CW;
+
+  // Bands
+  [-1,-0.5,0,0.5,1].forEach(v=>{
+    const y=toY(v);
+    ctx.strokeStyle=v===0?"rgba(255,255,255,0.1)":"rgba(255,255,255,0.04)";
+    ctx.lineWidth=1; ctx.setLineDash(v===0?[]:[3,4]);
+    ctx.beginPath();ctx.moveTo(PAD.l,y);ctx.lineTo(PAD.l+CW,y);ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle="rgba(255,255,255,0.2)"; ctx.font="8px 'Space Mono',monospace";
+    ctx.textAlign="right"; ctx.textBaseline="middle";
+    ctx.fillText(v.toFixed(1),PAD.l-4,y);
+  });
+
+  const last=pts[pts.length-1];
+  const col=last>=0.7?"#10b981":last>=0?"#f59e0b":"#ef4444";
+
+  // Fill
+  const grd=ctx.createLinearGradient(0,PAD.t,0,PAD.t+CH);
+  grd.addColorStop(0,last>=0?"rgba(16,185,129,0.18)":"rgba(239,68,68,0.18)");
+  grd.addColorStop(1,"rgba(0,0,0,0)");
+  ctx.beginPath();
+  pts.forEach((v,i)=>{const x=toX(i),y=toY(v);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+  ctx.lineTo(toX(pts.length-1),toY(0));ctx.lineTo(toX(0),toY(0));
+  ctx.closePath();ctx.fillStyle=grd;ctx.fill();
+
+  // Line
+  const lg=ctx.createLinearGradient(0,0,W,0);
+  lg.addColorStop(0,"rgba(124,58,237,0.7)");lg.addColorStop(1,col);
+  ctx.strokeStyle=lg;ctx.lineWidth=2;ctx.lineJoin="round";
+  ctx.beginPath();
+  pts.forEach((v,i)=>{const x=toX(i),y=toY(v);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
+  ctx.stroke();
+
+  // Current badge
+  const lx=toX(pts.length-1),ly=toY(last);
+  ctx.fillStyle=col; ctx.beginPath();ctx.arc(lx,ly,4,0,Math.PI*2);ctx.fill();
+  ctx.fillRect(W-PAD.r+2,ly-8,PAD.r-4,16);
+  ctx.fillStyle="#fff"; ctx.font="bold 9px 'Space Mono',monospace";
+  ctx.textAlign="left"; ctx.textBaseline="middle";
+  ctx.fillText(last.toFixed(3),W-PAD.r+5,ly);
+}
+
+function CorrView({histRef, prices, assets, setActiveTab, status}) {
+  const scatterRef = useRef();
+  const rollingRef = useRef();
+  const [activePair, setActivePair] = useState(0);
+  const [closes, setCloses] = useState({});   // {SYM: float[]}
+  const [loading, setLoading] = useState(false);
+  const [, tick] = useState(0);
+
+  const [symA, symB] = CORR_PAIRS[activePair];
+
+  // Fetch Binance closes for active pair
+  useEffect(()=>{
+    let dead=false;
+    const toFetch=[symA,symB].filter(s=>!closes[s]);
+    if(!toFetch.length) return;
+    setLoading(true);
+    Promise.all(toFetch.map(s=>fetchCloses(s,"1m",300)))
+      .then(results=>{
+        if(dead) return;
+        const upd={};
+        toFetch.forEach((s,i)=>{upd[s]=results[i];});
+        setCloses(p=>({...p,...upd}));
+      })
+      .catch(()=>{})
+      .finally(()=>{if(!dead)setLoading(false);});
+    return()=>{dead=true;};
+  },[symA,symB]);
+
+  // Merge live Pyth ticks into closes
+  const getCloses = (sym) => {
+    const base = closes[sym] || [];
+    const live = histRef.current[sym] || [];
+    if (!base.length) return live;
+    // append recent live ticks not yet in base
+    return [...base, ...live].slice(-300);
+  };
+
+  // Redraw every 2s
+  useEffect(()=>{
+    const iv=setInterval(()=>tick(n=>n+1),2000);
+    return()=>clearInterval(iv);
+  },[]);
+
+  // Draw
+  useEffect(()=>{
+    const cA=getCloses(symA), cB=getCloses(symB);
+    const ra=pctReturns(cA), rb=pctReturns(cB);
+    const aAsset=assets.find(a=>a.symbol===symA)||assets[0];
+    drawScatter(scatterRef.current, ra, rb, symA, symB, aAsset.color, "#a78bfa");
+    const WIN=20;
+    const rpts=rollingPearson(ra,rb,WIN);
+    drawRolling(rollingRef.current, rpts);
+  });
+
+  // Resize observers
+  useEffect(()=>{
+    const redraw=()=>{
+      const cA=getCloses(symA),cB=getCloses(symB);
+      const ra=pctReturns(cA),rb=pctReturns(cB);
+      const aAsset=assets.find(a=>a.symbol===symA)||assets[0];
+      drawScatter(scatterRef.current,ra,rb,symA,symB,aAsset.color,"#a78bfa");
+      drawRolling(rollingRef.current,rollingPearson(ra,rb,20));
+    };
+    const ro1=new ResizeObserver(redraw),ro2=new ResizeObserver(redraw);
+    if(scatterRef.current?.parentElement) ro1.observe(scatterRef.current.parentElement);
+    if(rollingRef.current?.parentElement) ro2.observe(rollingRef.current.parentElement);
+    return()=>{ro1.disconnect();ro2.disconnect();};
+  },[activePair,closes]);
+
+  const cA=getCloses(symA),cB=getCloses(symB);
+  const ra=pctReturns(cA),rb=pctReturns(cB);
+  const n=Math.min(ra.length,rb.length);
+  const corrVal=n>=4?pearson(ra.slice(-Math.min(n,60)),rb.slice(-Math.min(n,60))):null;
+  const aAsset=assets.find(a=>a.symbol===symA)||assets[0];
+  const bAsset=assets.find(a=>a.symbol===symB)||assets[0];
+  const fmtP=v=>!v?"–":v>=10000?"$"+v.toLocaleString(undefined,{maximumFractionDigits:0}):v>=100?"$"+v.toFixed(2):v>=1?"$"+v.toFixed(4):"$"+v.toFixed(6);
+  const corrColor=corrVal===null?"rgba(255,255,255,0.2)":corrVal>=0.7?"#10b981":corrVal>=0.3?"#f59e0b":corrVal>=-0.3?"rgba(255,255,255,0.5)":corrVal>=-0.7?"#f59e0b":"#ef4444";
+  const corrLabel=corrVal===null?"–":corrVal>=0.7?"Strong +":corrVal>=0.3?"Moderate +":corrVal>=-0.3?"Weak":corrVal>=-0.7?"Moderate −":"Strong −";
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",width:"100%",height:"100%",background:"#07050f",fontFamily:"'Space Mono',monospace",overflow:"hidden"}}>
+
+      {/* Top bar */}
+      <div style={{display:"flex",alignItems:"center",height:48,padding:"0 16px",borderBottom:"1px solid rgba(255,255,255,0.06)",background:"#0b0917",flexShrink:0,gap:16}}>
+        <PythLogo size={22}/>
+        <span style={{fontSize:13,fontWeight:700,color:"#7c3aed",letterSpacing:".06em"}}>PYTH</span>
+        <span style={{fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.25)"}}>CORRELATION</span>
+        <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>
+          {loading&&<span style={{fontSize:9,color:"rgba(124,58,237,0.6)",letterSpacing:".06em"}}>LOADING…</span>}
+          <div style={{display:"flex",alignItems:"center",gap:5,padding:"3px 8px",borderRadius:3,background:status==="live"?"rgba(16,185,129,0.1)":"rgba(239,68,68,0.1)",border:`1px solid ${status==="live"?"rgba(16,185,129,0.25)":"rgba(239,68,68,0.25)"}`}}>
+            <span style={{width:5,height:5,borderRadius:"50%",background:status==="live"?"#10b981":"#ef4444",display:"inline-block"}}/>
+            <span style={{fontSize:10,fontWeight:700,letterSpacing:".08em",color:status==="live"?"#10b981":"#ef4444"}}>{status==="live"?"LIVE":"DEMO"}</span>
+          </div>
+          <button className="chart-back-btn" onClick={()=>setActiveTab("matrix")} style={{background:"transparent",border:"1px solid rgba(255,255,255,0.12)",borderRadius:4,padding:"6px 15px",color:"rgba(255,255,255,0.5)",cursor:"pointer",fontSize:11,fontFamily:"inherit",fontWeight:700,letterSpacing:".05em",transition:"all .15s"}}
+            onMouseEnter={e=>{e.currentTarget.style.borderColor="rgba(124,58,237,0.6)";e.currentTarget.style.color="#a78bfa";}}
+            onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(255,255,255,0.12)";e.currentTarget.style.color="rgba(255,255,255,0.5)";}}>
+            ← MATRIX
+          </button>
+        </div>
+      </div>
+
+      {/* Pair selector */}
+      <div style={{display:"flex",alignItems:"center",height:38,padding:"0 12px",borderBottom:"1px solid rgba(255,255,255,0.05)",background:"#080614",flexShrink:0,gap:2,overflowX:"auto",scrollbarWidth:"none"}}>
+        {CORR_PAIRS.map(([a,b],i)=>{
+          const sel=i===activePair;
+          const aA=assets.find(x=>x.symbol===a)||assets[0];
+          return (
+            <button key={i} onClick={()=>setActivePair(i)} style={{flexShrink:0,background:sel?"rgba(124,58,237,0.2)":"transparent",border:"none",borderRadius:3,padding:"3px 14px",cursor:"pointer",fontSize:10,fontWeight:sel?700:500,color:sel?"#c4b5fd":"rgba(255,255,255,0.3)",fontFamily:"inherit",letterSpacing:".04em",borderBottom:sel?"2px solid #7c3aed":"2px solid transparent"}}>
+              <span style={{color:sel?aA.color:"inherit"}}>{a}</span> / {b}
+            </button>
+          );
+        })}
+      </div>
+
+      {/* Stats bar */}
+      <div style={{display:"flex",alignItems:"center",gap:0,padding:"0 16px",height:56,borderBottom:"1px solid rgba(255,255,255,0.04)",flexShrink:0}}>
+        <div style={{display:"flex",alignItems:"baseline",gap:6,marginRight:20}}>
+          <span style={{fontSize:11,fontWeight:700,color:aAsset.color,letterSpacing:".04em"}}>{symA}</span>
+          <span style={{fontSize:18,fontWeight:700,color:"#fff"}}>{fmtP(prices[symA])}</span>
+        </div>
+        <div style={{width:1,height:24,background:"rgba(255,255,255,0.06)",marginRight:20}}/>
+        <div style={{display:"flex",alignItems:"baseline",gap:6,marginRight:24}}>
+          <span style={{fontSize:11,fontWeight:700,color:bAsset.color,letterSpacing:".04em"}}>{symB}</span>
+          <span style={{fontSize:18,fontWeight:700,color:"#fff"}}>{fmtP(prices[symB])}</span>
+        </div>
+        <div style={{width:1,height:24,background:"rgba(255,255,255,0.06)",marginRight:24}}/>
+        {/* Correlation gauge */}
+        <div style={{display:"flex",alignItems:"center",gap:10}}>
+          <div style={{display:"flex",flexDirection:"column"}}>
+            <span style={{fontSize:8,color:"rgba(255,255,255,0.3)",letterSpacing:".1em"}}>PEARSON r</span>
+            <span style={{fontSize:24,fontWeight:800,color:corrColor,lineHeight:1,letterSpacing:"-.02em"}}>{corrVal===null?"–":corrVal.toFixed(3)}</span>
+          </div>
+          <div style={{display:"flex",flexDirection:"column",gap:3}}>
+            <span style={{fontSize:9,padding:"2px 8px",borderRadius:2,background:corrColor==="rgba(255,255,255,0.2)"?"rgba(255,255,255,0.05)":`${corrColor}22`,color:corrColor,fontWeight:700,letterSpacing:".06em"}}>{corrLabel}</span>
+            <span style={{fontSize:8,color:"rgba(255,255,255,0.2)"}}>last 60 ticks · {n} pts</span>
+          </div>
+        </div>
+        {/* Mini correlation bar */}
+        {corrVal!==null&&<div style={{marginLeft:"auto",width:120,height:6,borderRadius:3,background:"rgba(255,255,255,0.06)",overflow:"hidden"}}>
+          <div style={{width:`${((corrVal+1)/2)*100}%`,height:"100%",background:`linear-gradient(90deg,#ef4444,#f59e0b,#10b981)`,borderRadius:3}}/>
+        </div>}
+      </div>
+
+      {/* Charts side by side */}
+      <div style={{flex:1,display:"flex",gap:1,minHeight:0}}>
+        <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
+          <div style={{padding:"8px 16px 4px",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <span style={{fontSize:9,color:"rgba(255,255,255,0.25)",letterSpacing:".08em"}}>SCATTER — RETURNS ({n} pts)</span>
+            <span style={{fontSize:8,color:"rgba(255,255,255,0.15)"}}>recent = brighter</span>
+          </div>
+          <div style={{flex:1,position:"relative",minHeight:0}}>
+            <canvas ref={scatterRef} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>
+          </div>
+        </div>
+        <div style={{width:1,background:"rgba(255,255,255,0.05)",flexShrink:0}}/>
+        <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
+          <div style={{padding:"8px 16px 4px",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <span style={{fontSize:9,color:"rgba(255,255,255,0.25)",letterSpacing:".08em"}}>ROLLING CORRELATION (win=20)</span>
+            <span style={{fontSize:8,color:"rgba(255,255,255,0.15)"}}>{rollingPearson(pctReturns(cA),pctReturns(cB),20).length} pts</span>
+          </div>
+          <div style={{flex:1,position:"relative",minHeight:0}}>
+            <canvas ref={rollingRef} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ENTROPY MODULE
+   Pipeline: Binance closes → pct returns → quantile bins →
+             Shannon H(X) → MI(X,Y) → NMI → Bootstrap CI
+             Seed: mulberry32 PRNG seeded from Pyth live prices + timestamp
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+/* ── Math helpers ─────────────────────────────────────────────────────────── */
+function mulberry32(seed) {
+  return function() {
+    seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+    let t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+function pythSeed(prices) {
+  const syms = ["BTC","ETH","SOL","DOGE","XAU/USD"];
+  let h = Date.now() & 0xFFFFFF;
+  for (const s of syms) {
+    const v = prices[s];
+    if (v) h = Math.imul(h ^ 0x9e3779b9, Math.floor(v * 100) | 0);
+  }
+  return h >>> 0;
+}
+
+// ── Gaussian Differential Entropy: H = 0.5·ln(2πe·σ²)
+// Physically meaningful, gives clear separation between assets:
+// USDC (σ≈0.001%) → very low H; BTC/DOGE (σ≈2-3%) → high H
+function gaussianEntropy(arr) {
+  if (!arr || arr.length < 4) return null;
+  const mean = arr.reduce((s,v)=>s+v,0)/arr.length;
+  const variance = arr.reduce((s,v)=>s+(v-mean)**2,0)/arr.length;
+  if (variance <= 0) return 0;
+  return 0.5 * Math.log(2 * Math.PI * Math.E * variance);
+}
+
+// ── Quantile bins on POPULATION edges (for MI/NMI computation only)
+function quantileBins(arr, nBins = 8) {
+  const sorted = [...arr].sort((a,b)=>a-b);
+  const n = sorted.length;
+  const edges = [];
+  for (let i=1; i<nBins; i++) edges.push(sorted[Math.min(Math.floor(i/nBins*n), n-1)]);
+  return arr.map(v => { let b=0; for(const e of edges){if(v>e)b++;else break;} return b; });
+}
+
+function shannonH(bins, nBins = 8) {
+  const counts = new Array(nBins).fill(0);
+  for (const b of bins) counts[b]++;
+  let H = 0;
+  for (const c of counts) { if(c>0){const p=c/bins.length; H-=p*Math.log2(p);} }
+  return H;
+}
+
+function jointH(binsX, binsY, nBins = 8) {
+  const counts = {};
+  for (let i=0; i<binsX.length; i++) {
+    const k = binsX[i]*nBins+binsY[i];
+    counts[k] = (counts[k]||0)+1;
+  }
+  let H=0;
+  for (const c of Object.values(counts)){const p=c/binsX.length; H-=p*Math.log2(p);}
+  return H;
+}
+
+function computeMI(ra, rb, nBins = 8) {
+  const n = Math.min(ra.length, rb.length);
+  if (n < 20) return null;
+  const a = ra.slice(-n), b = rb.slice(-n);
+  const bA = quantileBins(a,nBins), bB = quantileBins(b,nBins);
+  const hA = shannonH(bA,nBins), hB = shannonH(bB,nBins);
+  const hAB = jointH(bA,bB,nBins);
+  const mi = hA+hB-hAB;
+  const nmi = Math.sqrt(hA*hB) > 0 ? mi/Math.sqrt(hA*hB) : 0;
+  return { mi:Math.max(0,mi), nmi:Math.max(0,Math.min(1,nmi)), hA, hB };
+}
+
+// ── Bootstrap Gaussian Entropy
+// Point estimate = gaussianEntropy of FULL returns series (stable, asset-specific)
+// CI = variation across bootstrap resamples (with-replacement, per-asset RNG)
+function bootstrapEntropy(returns, seed, nIter = 60) {
+  const syms = Object.keys(returns);
+  const out = {};
+
+  for (let si = 0; si < syms.length; si++) {
+    const s = syms[si];
+    const arr = returns[s];
+    if (!arr || arr.length < 10) { out[s] = null; continue; }
+    const n = arr.length;
+
+    // Point estimate: gaussian differential entropy of full series
+    // H = 0.5 * ln(2πe * σ²) — meaningful, asset-specific
+    const hFull = gaussianEntropy(arr);
+    if (hFull === null) { out[s] = null; continue; }
+
+    // Per-asset RNG: seed xored with asset index → independent streams
+    const rng = mulberry32((seed ^ (si * 0x9E3779B9)) >>> 0);
+
+    // Bootstrap CI: with-replacement resamples to estimate uncertainty
+    const resampleSize = Math.min(150, Math.max(20, Math.floor(n * 0.7)));
+    const hVals = [];
+    for (let iter = 0; iter < nIter; iter++) {
+      // Sample WITH replacement — true bootstrap
+      let sumV = 0, sumV2 = 0;
+      for (let k = 0; k < resampleSize; k++) {
+        const v = arr[Math.floor(rng() * n)];
+        sumV += v; sumV2 += v * v;
+      }
+      const mean = sumV / resampleSize;
+      const variance = sumV2 / resampleSize - mean * mean;
+      if (variance > 0) hVals.push(0.5 * Math.log(2 * Math.PI * Math.E * variance));
+    }
+
+    if (!hVals.length) { out[s] = null; continue; }
+    const hMean = hVals.reduce((a,b)=>a+b,0)/hVals.length;
+    const hStd = Math.sqrt(hVals.reduce((a,v)=>a+(v-hMean)**2,0)/hVals.length);
+    const sorted = [...hVals].sort((a,b)=>a-b);
+    out[s] = {
+      mean: hFull,  // point estimate from full data
+      std: hStd,
+      ci95lo: sorted[Math.floor(hVals.length*0.025)] ?? hFull - hStd*1.96,
+      ci95hi: sorted[Math.floor(hVals.length*0.975)] ?? hFull + hStd*1.96,
+    };
+  }
+  return out;
+}
+
+function interpolateValue(a, b, t) {
+  return a + (b - a) * t;
+}
+
+function interpolateMatrix(prev = [], next = [], t = 1) {
+  if (!next.length) return [];
+  return next.map((row, i) =>
+    row.map((val, j) => interpolateValue(prev[i]?.[j] ?? val, val, t))
+  );
+}
+
+function interpolateEntropyRanking(prev = [], next = [], t = 1) {
+  if (!next.length) return [];
+  const prevBySym = new Map(prev.map(item => [item.sym, item]));
+  return next.map(item => {
+    if (!item?.data) return item;
+    const prevItem = prevBySym.get(item.sym);
+    if (!prevItem?.data) return item;
+    return {
+      ...item,
+      data: {
+        mean: interpolateValue(prevItem.data.mean, item.data.mean, t),
+        std: interpolateValue(prevItem.data.std, item.data.std, t),
+        ci95lo: interpolateValue(prevItem.data.ci95lo, item.data.ci95lo, t),
+        ci95hi: interpolateValue(prevItem.data.ci95hi, item.data.ci95hi, t),
+      },
+    };
+  });
+}
+
+/* ── Canvas draws ─────────────────────────────────────────────────────────── */
+function drawEntropyBars(canvas, ranking, assets, minH, maxH) {
+  if (minH === undefined) { minH = 0; }
+  if (!canvas) return;
+  const par = canvas.parentElement; if (!par) return;
+  const W = par.clientWidth, H = par.clientHeight;
+  if (W < 10 || H < 10) return;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#07050f"; ctx.fillRect(0, 0, W, H);
+
+  if (!ranking.length) {
+    ctx.fillStyle = "rgba(124,58,237,0.4)"; ctx.font = "12px 'Space Mono',monospace";
+    ctx.textAlign = "center"; ctx.textBaseline = "middle";
+    ctx.fillText("Computing…", W / 2, H / 2); return;
+  }
+  // Filter out zero-entropy assets (no data) for display purposes
+  // They show as greyed-out rows at top
+
+  const PAD = { t: 16, r: 20, b: 24, l: 64 };
+  const CW = W - PAD.l - PAD.r;
+  const rowH = (H - PAD.t - PAD.b) / ranking.length;
+  const barH = Math.min(rowH * 0.55, 18);
+
+  ranking.forEach(({ sym, data }, i) => {
+    if (!data) return;
+    const asset = assets.find(a => a.symbol === sym);
+    const y = PAD.t + i * rowH + rowH / 2;
+    const noData = (data.std === 0 && data.mean === data.ci95lo && data.mean === data.ci95hi);
+
+    // Rank number
+    ctx.fillStyle = noData ? "rgba(255,255,255,0.08)" : "rgba(255,255,255,0.15)";
+    ctx.font = `700 9px 'Space Mono',monospace`;
+    ctx.textAlign = "right"; ctx.textBaseline = "middle";
+    ctx.fillText(`#${i + 1}`, PAD.l - 44, y);
+
+    // Symbol label
+    ctx.fillStyle = noData ? "rgba(255,255,255,0.15)" : (asset?.color || "#a78bfa");
+    ctx.font = `700 10px 'Space Mono',monospace`;
+    ctx.fillText(sym, PAD.l - 6, y);
+
+    // Bar background track
+    ctx.fillStyle = "rgba(255,255,255,0.03)";
+    ctx.fillRect(PAD.l, y - barH / 2, CW, barH);
+
+    if (noData) {
+      // No data — show placeholder
+      ctx.fillStyle = "rgba(255,255,255,0.035)";
+      ctx.fillRect(PAD.l + 1, y - barH / 2 + 1, CW - 2, barH - 2);
+      return;
+    }
+
+    const range = maxH - minH || 1;
+    const barW = Math.max(0, (data.mean - minH) / range * CW);
+    const ciLo = Math.max(0, (data.ci95lo - minH) / range * CW);
+    const ciHi = Math.max(0, (data.ci95hi - minH) / range * CW);
+
+    // Bar fill — gradient low=green(predictable) high=red(chaotic)
+    const t = data.mean / maxH;
+    const r = Math.floor(16 + t * 223), g = Math.floor(185 - t * 117), b2 = Math.floor(129 - t * 95);
+    const grad = ctx.createLinearGradient(PAD.l, 0, PAD.l + barW, 0);
+    grad.addColorStop(0, `rgba(${r},${g},${b2},0.9)`);
+    grad.addColorStop(1, `rgba(${r},${g},${b2},0.5)`);
+    ctx.fillStyle = grad;
+    ctx.fillRect(PAD.l, y - barH / 2, barW, barH);
+
+    // CI band (only meaningful if std > 0)
+    if (data.std > 0.01) {
+      ctx.fillStyle = "rgba(255,255,255,0.10)";
+      ctx.fillRect(PAD.l + ciLo, y - barH / 2 - 2, Math.max(ciHi - ciLo, 2), barH + 4);
+      ctx.strokeStyle = "rgba(255,255,255,0.4)"; ctx.lineWidth = 1.5;
+      ctx.beginPath(); ctx.moveTo(PAD.l + ciLo, y - barH / 2 - 3); ctx.lineTo(PAD.l + ciLo, y + barH / 2 + 3); ctx.stroke();
+      ctx.beginPath(); ctx.moveTo(PAD.l + ciHi, y - barH / 2 - 3); ctx.lineTo(PAD.l + ciHi, y + barH / 2 + 3); ctx.stroke();
+    }
+
+    // Value label
+    const ciStr = data.std > 0.01 ? ` ±${data.std.toFixed(2)}` : "";
+    ctx.fillStyle = "rgba(255,255,255,0.6)"; ctx.font = `9px 'Space Mono',monospace`;
+    ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.fillText(`${data.mean.toFixed(2)}${ciStr}`, PAD.l + barW + 6, y);
+  });
+
+  // X axis labels
+  ctx.fillStyle = "rgba(255,255,255,0.15)"; ctx.font = "8px 'Space Mono',monospace";
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  const range2 = maxH - minH || 1;
+  for (let i = 0; i <= 4; i++) {
+    const v = minH + range2 / 4 * i;
+    ctx.fillText(v.toFixed(1), PAD.l + (i / 4) * CW, H - PAD.b + 4);
+  }
+  ctx.fillStyle = "rgba(255,255,255,0.1)"; ctx.font = "8px 'Space Mono',monospace";
+  ctx.textAlign = "center"; ctx.textBaseline = "top";
+  ctx.fillText("predictable  ←  entropy of returns  →  chaotic", PAD.l + CW / 2, H - PAD.b + 14);
+}
+
+function drawNMIHeatmap(canvas, assets, nmiMatrix) {
+  if (!canvas) return;
+  const par = canvas.parentElement; if (!par) return;
+  const W = par.clientWidth, H = par.clientHeight;
+  if (W < 10 || H < 10) return;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#07050f"; ctx.fillRect(0, 0, W, H);
+
+  const n = assets.length;
+  const PAD = { t: 28, r: 8, b: 8, l: 48 };
+  const cellW = (W - PAD.l - PAD.r) / n;
+  const cellH = (H - PAD.t - PAD.b) / n;
+
+  // Column headers
+  ctx.font = `700 ${Math.min(cellW * 0.35, 9)}px 'Space Mono',monospace`;
+  ctx.textAlign = "center"; ctx.textBaseline = "bottom";
+  assets.forEach((a, j) => {
+    ctx.fillStyle = a.color || "#a78bfa";
+    ctx.fillText(a.symbol.replace("/USD", ""), PAD.l + j * cellW + cellW / 2, PAD.t - 3);
+  });
+
+  // Row labels
+  ctx.textAlign = "right"; ctx.textBaseline = "middle";
+  ctx.font = `700 ${Math.min(cellH * 0.4, 9)}px 'Space Mono',monospace`;
+  assets.forEach((a, i) => {
+    ctx.fillStyle = a.color || "#a78bfa";
+    ctx.fillText(a.symbol.replace("/USD", ""), PAD.l - 3, PAD.t + i * cellH + cellH / 2);
+  });
+
+  // Cells
+  assets.forEach((aI, i) => {
+    assets.forEach((aJ, j) => {
+      const v = nmiMatrix[i]?.[j] ?? 0;
+      const diag = i === j;
+      const x = PAD.l + j * cellW, y = PAD.t + i * cellH;
+
+      if (diag) {
+        ctx.fillStyle = "rgba(124,58,237,0.25)";
+        ctx.fillRect(x, y, cellW - 1, cellH - 1);
+        ctx.fillStyle = "#c4b5fd"; ctx.font = `700 ${Math.min(cellW * 0.3, 9)}px 'Space Mono',monospace`;
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText("—", x + cellW / 2, y + cellH / 2);
+        return;
+      }
+
+      // Color: 0=dark, 0.5=purple, 1=bright green
+      const alpha = 0.08 + v * 0.8;
+      const r = Math.floor(16 + (1 - v) * 100);
+      const g2 = Math.floor(v * 185);
+      const b2 = Math.floor(129 + (1 - v) * 80);
+      ctx.fillStyle = v > 0.5
+        ? `rgba(16,${Math.floor(v * 185)},${Math.floor(129 * (1 - v) + 80 * v)},${alpha})`
+        : `rgba(${100 + Math.floor(v * 100)},${Math.floor(v * 100)},${180 - Math.floor(v * 60)},${alpha})`;
+      ctx.fillRect(x, y, cellW - 1, cellH - 1);
+
+      // Value text
+      if (cellW > 30) {
+        ctx.fillStyle = v > 0.4 ? `rgba(255,255,255,0.85)` : `rgba(255,255,255,0.35)`;
+        ctx.font = `${Math.min(cellW * 0.28, 9)}px 'Space Mono',monospace`;
+        ctx.textAlign = "center"; ctx.textBaseline = "middle";
+        ctx.fillText(v > 0 ? v.toFixed(2) : "–", x + cellW / 2, y + cellH / 2);
+      }
+
+      // Highlight border for high NMI where Pearson is low (hidden connections)
+      if (v > 0.4) {
+        ctx.strokeStyle = `rgba(167,139,250,${(v - 0.4) * 0.8})`;
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y, cellW - 1, cellH - 1);
+      }
+    });
+  });
+}
+
+function drawHiddenConnections(canvas, assets, nmiMatrix, pearsonMatrix) {
+  if (!canvas) return;
+  const par = canvas.parentElement; if (!par) return;
+  const W = par.clientWidth, H = par.clientHeight;
+  if (W < 10 || H < 10) return;
+  canvas.width = W; canvas.height = H;
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#07050f"; ctx.fillRect(0, 0, W, H);
+
+  // Find pairs where |pearson| < 0.3 but NMI > 0.35
+  const hidden = [];
+  for (let i = 0; i < assets.length; i++) {
+    for (let j = i + 1; j < assets.length; j++) {
+      const nmi = nmiMatrix[i]?.[j] ?? 0;
+      const r = Math.abs(pearsonMatrix[i]?.[j] ?? 0);
+      if (nmi > 0.30 && r < 0.35) {
+        hidden.push({ i, j, nmi, r, symA: assets[i].symbol, symB: assets[j].symbol });
+      }
+    }
+  }
+  hidden.sort((a, b) => (b.nmi - b.r) - (a.nmi - a.r));
+
+  if (!hidden.length) {
+    ctx.strokeStyle = "rgba(124,58,237,0.22)";
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    ctx.arc(W / 2, H / 2 - 38, 14, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(W / 2 - 6, H / 2 - 38);
+    ctx.lineTo(W / 2 - 1, H / 2 - 33);
+    ctx.lineTo(W / 2 + 8, H / 2 - 44);
+    ctx.stroke();
+    ctx.fillStyle = "rgba(255,255,255,0.16)";
+    ctx.font = "700 12px 'Space Mono',monospace";
+    ctx.textAlign = "center";
+    ctx.textBaseline = "middle";
+    ctx.fillText("No hidden connections right now", W / 2, H / 2 - 10);
+    ctx.fillStyle = "rgba(255,255,255,0.09)";
+    ctx.font = "9px 'Space Mono',monospace";
+    ctx.fillText("Current nonlinear links are already visible in Pearson correlation.", W / 2, H / 2 + 12);
+    return;
+  }
+
+  const rowH = Math.min((H - 16) / Math.min(hidden.length, 6), 36);
+  const maxShow = Math.min(hidden.length, Math.floor((H - 16) / rowH));
+
+  hidden.slice(0, maxShow).forEach(({ symA, symB, nmi, r }, idx) => {
+    const y = 16 + idx * rowH;
+    const strength = nmi - r;
+
+    // Row bg
+    ctx.fillStyle = idx % 2 === 0 ? "rgba(124,58,237,0.05)" : "transparent";
+    ctx.fillRect(0, y, W, rowH);
+
+    // Lightning bolt icon
+    ctx.fillStyle = "#f59e0b"; ctx.font = "12px sans-serif";
+    ctx.textAlign = "left"; ctx.textBaseline = "middle";
+    ctx.fillText("⚡", 10, y + rowH / 2);
+
+    // Pair names
+    const aAsset = assets.find(a => a.symbol === symA);
+    const bAsset = assets.find(a => a.symbol === symB);
+    ctx.font = `700 10px 'Space Mono',monospace`;
+    ctx.fillStyle = aAsset?.color || "#a78bfa";
+    ctx.fillText(symA, 30, y + rowH / 2 - 6);
+    ctx.fillStyle = "rgba(255,255,255,0.3)"; ctx.font = `9px 'Space Mono',monospace`;
+    ctx.fillText("/", 30 + ctx.measureText(symA).width + 2, y + rowH / 2 - 6);
+    ctx.fillStyle = bAsset?.color || "#7c3aed";
+    ctx.font = `700 10px 'Space Mono',monospace`;
+    ctx.fillText(symB, 30 + ctx.measureText(symA).width + 10, y + rowH / 2 - 6);
+
+    // Metrics row
+    ctx.font = `8px 'Space Mono',monospace`;
+    ctx.fillStyle = "rgba(255,255,255,0.3)";
+    ctx.fillText(`r=${r.toFixed(2)}`, 30, y + rowH / 2 + 6);
+    ctx.fillStyle = "#a78bfa";
+    ctx.fillText(`NMI=${nmi.toFixed(2)}`, 80, y + rowH / 2 + 6);
+
+    // Strength bar
+    const barX = 160, barW = W - barX - 80;
+    ctx.fillStyle = "rgba(255,255,255,0.05)";
+    ctx.fillRect(barX, y + rowH / 2 - 3, barW, 6);
+    const grad = ctx.createLinearGradient(barX, 0, barX + barW, 0);
+    grad.addColorStop(0, "rgba(124,58,237,0.8)");
+    grad.addColorStop(1, "#f59e0b");
+    ctx.fillStyle = grad;
+    ctx.fillRect(barX, y + rowH / 2 - 3, Math.min(strength / 0.6, 1) * barW, 6);
+
+    // Label
+    const label = nmi > 0.6 ? "strong nonlinear" : nmi > 0.45 ? "regime corr" : "weak nonlinear";
+    ctx.fillStyle = "rgba(245,158,11,0.7)"; ctx.font = `700 8px 'Space Mono',monospace`;
+    ctx.textAlign = "right";
+    ctx.fillText(label, W - 6, y + rowH / 2);
+    ctx.textAlign = "left";
+  });
+}
+
+/* ── EntropyView component ────────────────────────────────────────────────── */
+function EntropyView({ histRef, prices, assets, setActiveTab, status, liveRun, setLiveRun, corrAlertEnabled, setCorrAlertEnabled, corrAlertPair, setCorrAlertPair, corrAlertThreshold, setCorrAlertThreshold, corrAlertHit, corrAlertOptions }) {
+  const barRef     = useRef();
+  const heatRef    = useRef();
+  const hiddenRef  = useRef();
+  const animRef    = useRef({ raf: null, ranking: [], nmi: [], pearson: [] });
+  const [entropyData, setEntropyData] = useState(null); // bootstrap results
+  const [nmiMatrix,   setNmiMatrix]   = useState([]);
+  const [pearsonMat,  setPearsonMat]  = useState([]);
+  const [closes,      setCloses]      = useState({});
+  const [loading,     setLoading]     = useState(false);
+  const [seedInfo,    setSeedInfo]    = useState(null);
+  const [lastRun,     setLastRun]     = useState(null);
+  const [autoRun,     setAutoRun]     = useState(true);
+  const [showAlertHelp, setShowAlertHelp] = useState(false);
+  const [, tick]                      = useState(0);
+
+  const BINS = 8, N_ITER = 40, SAMPLE = 120;
+
+  // Fetch Binance closes for all assets
+  useEffect(() => {
+    let dead = false;
+    const needed = assets.filter(a => !closes[a.symbol] && PYTH_SYM[a.symbol]);
+    if (!needed.length) return;
+    setLoading(true);
+    Promise.all(needed.map(a => fetchCloses(a.symbol, "1m", 300)))
+      .then(results => {
+        if (dead) return;
+        const upd = {};
+        needed.forEach((a, i) => { upd[a.symbol] = results[i]; });
+        setCloses(p => ({ ...p, ...upd }));
+      })
+      .catch(() => {})
+      .finally(() => { if (!dead) setLoading(false); });
+    return () => { dead = true; };
+  }, []);
+
+  // Merge Binance + live Pyth ticks
+  const getReturns = () => {
+    const ret = {};
+    for (const a of assets) {
+      const base  = closes[a.symbol] || [];
+      const live  = histRef.current[a.symbol] || [];
+      const merged = base.length ? [...base, ...live].slice(-300) : live;
+      if (merged.length >= 10) ret[a.symbol] = pctReturns(merged);
+    }
+    return ret;
+  };
+
+  // Run analysis
+  const runAnalysis = () => {
+    const returns = getReturns();
+    if (Object.keys(returns).length < 2) return;
+    const seed = pythSeed(prices);
+    setSeedInfo({ value: seed, hex: seed.toString(16).padStart(8,"0").toUpperCase(), ts: new Date() });
+    const bsResult = bootstrapEntropy(returns, seed, N_ITER);
+    const validSyms = Object.keys(bsResult).filter(s => bsResult[s]);
+    const ranking = validSyms
+      .map(sym => ({ sym, data: bsResult[sym] }))
+      .sort((a, b) => a.data.mean - b.data.mean);
+    setEntropyData(ranking);
+    const n = assets.length;
+    const nmi  = Array.from({ length: n }, () => new Array(n).fill(0));
+    const pears = Array.from({ length: n }, () => new Array(n).fill(0));
+    for (let i = 0; i < n; i++) {
+      for (let j = 0; j < n; j++) {
+        if (i === j) { nmi[i][j] = 1; pears[i][j] = 1; continue; }
+        const rA = returns[assets[i].symbol], rB = returns[assets[j].symbol];
+        if (!rA || !rB) continue;
+        const mi = computeMI(rA, rB, BINS);
+        nmi[i][j]  = mi?.nmi ?? 0;
+        pears[i][j] = Math.abs(pearson(rA, rB) ?? 0);
+      }
+    }
+    setNmiMatrix(nmi);
+    setPearsonMat(pears);
+    setLastRun(new Date());
+  };
+
+  const drawEntropyScene = useCallback((ranking, nmi, pears) => {
+    if (!ranking?.length) return;
+    const allH = ranking.filter(d=>d.data).map(d=>d.data.mean);
+    const minH = allH.length ? Math.min(...allH) : -6;
+    const maxH = allH.length ? Math.max(...allH) + 0.5 : 4;
+    drawEntropyBars(barRef.current, ranking, assets, minH, maxH);
+    drawNMIHeatmap(heatRef.current, assets, nmi);
+    drawHiddenConnections(hiddenRef.current, assets, nmi, pears);
+  }, [assets]);
+
+  // Auto-run when data loads, or after timeout fallback
+  useEffect(() => {
+    if (!loading && autoRun) {
+      // Run even if some Binance fetches failed — use Pyth ticks as fallback
+      setTimeout(() => {
+        const ret = getReturns();
+        if (Object.keys(ret).length >= 2) { runAnalysis(); setAutoRun(false); }
+      }, 200);
+    }
+  }, [loading, closes]);
+
+  // Safety: run after 4s even if still loading (CORS blocked some assets)
+  useEffect(() => {
+    const t = setTimeout(() => {
+      const ret = getReturns();
+      if (Object.keys(ret).length >= 2 && !entropyData) { runAnalysis(); }
+    }, 4000);
+    return () => clearTimeout(t);
+  }, []);
+
+  // Animated redraw on data change
+  useEffect(() => {
+    if (!entropyData) return;
+    const prevRanking = animRef.current.ranking?.length ? animRef.current.ranking : entropyData;
+    const prevNmi = animRef.current.nmi?.length ? animRef.current.nmi : nmiMatrix;
+    const prevPearson = animRef.current.pearson?.length ? animRef.current.pearson : pearsonMat;
+    if (animRef.current.raf) cancelAnimationFrame(animRef.current.raf);
+
+    const duration = liveRun ? 900 : 320;
+    const start = performance.now();
+
+    const frame = (now) => {
+      const t = Math.min(1, (now - start) / duration);
+      const ease = 1 - Math.pow(1 - t, 3);
+      const ranking = interpolateEntropyRanking(prevRanking, entropyData, ease);
+      const nmi = interpolateMatrix(prevNmi, nmiMatrix, ease);
+      const pears = interpolateMatrix(prevPearson, pearsonMat, ease);
+      animRef.current.ranking = ranking;
+      animRef.current.nmi = nmi;
+      animRef.current.pearson = pears;
+      drawEntropyScene(ranking, nmi, pears);
+      if (t < 1) {
+        animRef.current.raf = requestAnimationFrame(frame);
+      } else {
+        animRef.current.raf = null;
+      }
+    };
+
+    animRef.current.raf = requestAnimationFrame(frame);
+    return () => {
+      if (animRef.current.raf) cancelAnimationFrame(animRef.current.raf);
+    };
+  }, [entropyData, nmiMatrix, pearsonMat, liveRun, drawEntropyScene]);
+
+  // Resize observers
+  useEffect(() => {
+    if (!entropyData) return;
+    const redraw = () => {
+      drawEntropyScene(
+        animRef.current.ranking?.length ? animRef.current.ranking : entropyData,
+        animRef.current.nmi?.length ? animRef.current.nmi : nmiMatrix,
+        animRef.current.pearson?.length ? animRef.current.pearson : pearsonMat
+      );
+    };
+    const obs = [barRef, heatRef, hiddenRef].map(r => {
+      const ro = new ResizeObserver(redraw);
+      if (r.current?.parentElement) ro.observe(r.current.parentElement);
+      return ro;
+    });
+    return () => obs.forEach(ro => ro.disconnect());
+  }, [entropyData, nmiMatrix, pearsonMat, drawEntropyScene]);
+
+  // Live tick
+  useEffect(() => {
+    const iv = setInterval(() => tick(n => n + 1), 3000);
+    return () => clearInterval(iv);
+  }, []);
+
+  useEffect(() => {
+    if (!liveRun) return;
+    runAnalysis();
+    const iv = setInterval(() => {
+      runAnalysis();
+      tick(n => n + 1);
+    }, 2500);
+    return () => clearInterval(iv);
+  }, [liveRun, closes, prices]);
+
+  const returns = getReturns();
+  const nAssets = Object.keys(returns).length;
+  const mostPredictable = entropyData?.[0] || null;
+  const mostChaotic = entropyData?.[entropyData.length - 1] || null;
+  const hiddenPairsCount = pearsonMat.length
+    ? assets.reduce((count, _, i) => count + assets.slice(i + 1).reduce((rowCount, __, j2) => {
+        const j = i + 1 + j2;
+        const nmi = nmiMatrix[i]?.[j] ?? 0;
+        const r = Math.abs(pearsonMat[i]?.[j] ?? 0);
+        return rowCount + (nmi > 0.30 && r < 0.35 ? 1 : 0);
+      }, 0), 0)
+    : 0;
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",width:"100%",height:"100%",background:"#07050f",fontFamily:"'Space Mono',monospace",overflow:"hidden"}}>
+
+      {/* ── Top bar ─────────────────────────────────────────────────── */}
+      <div style={{display:"flex",alignItems:"center",height:48,padding:"0 16px",borderBottom:"1px solid rgba(255,255,255,0.06)",background:"#0b0917",flexShrink:0,gap:12}}>
+        <PythLogo size={22}/>
+        <span style={{fontSize:13,fontWeight:700,color:"#7c3aed",letterSpacing:".06em"}}>PYTH</span>
+        <span style={{fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.25)"}}>ENTROPY</span>
+        <div style={{height:16,width:1,background:"rgba(255,255,255,0.08)"}}/>
+        {seedInfo && (
+          <div style={{display:"flex",alignItems:"center",gap:6,padding:"2px 8px",borderRadius:3,background:"rgba(124,58,237,0.1)",border:"1px solid rgba(124,58,237,0.2)"}}>
+            <span style={{fontSize:8,color:"rgba(167,139,250,0.6)",letterSpacing:".08em"}}>SEED</span>
+            <span style={{fontSize:10,fontWeight:700,color:"#c4b5fd",letterSpacing:".04em"}}>0x{seedInfo.hex}</span>
+            <span style={{fontSize:8,color:"rgba(255,255,255,0.2)"}}>Pyth live</span>
+          </div>
+        )}
+        <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>
+          {loading && <span style={{fontSize:9,color:"rgba(124,58,237,0.6)",letterSpacing:".06em",animation:"pulse 1s infinite"}}>LOADING DATA…</span>}
+          {liveRun && <span style={{fontSize:9,color:"#10b981",letterSpacing:".08em",animation:"pulse 1s infinite"}}>LIVE MEASURING</span>}
+          {lastRun && <span style={{fontSize:8,color:"rgba(255,255,255,0.2)"}}>ran {lastRun.toLocaleTimeString()}</span>}
+          <div style={{display:"flex",alignItems:"center",gap:5,padding:"3px 8px",borderRadius:3,background:status==="live"?"rgba(16,185,129,0.1)":"rgba(239,68,68,0.1)",border:`1px solid ${status==="live"?"rgba(16,185,129,0.25)":"rgba(239,68,68,0.25)"}`}}>
+            <span style={{width:5,height:5,borderRadius:"50%",background:status==="live"?"#10b981":"#ef4444",display:"inline-block"}}/>
+            <span style={{fontSize:10,fontWeight:700,color:status==="live"?"#10b981":"#ef4444"}}>{status==="live"?"LIVE":"DEMO"}</span>
+          </div>
+          <button onClick={()=>setLiveRun(v=>!v)} style={{background:liveRun?"rgba(239,68,68,0.18)":"rgba(124,58,237,0.2)",border:`1px solid ${liveRun?"rgba(239,68,68,0.42)":"rgba(124,58,237,0.4)"}`,borderRadius:4,padding:"5px 14px",color:liveRun?"#fca5a5":"#c4b5fd",cursor:"pointer",fontSize:10,fontFamily:"inherit",fontWeight:700,letterSpacing:".08em",transition:"all .18s",boxShadow:liveRun?"0 0 18px rgba(239,68,68,0.18)":"none"}}
+            onMouseEnter={e=>{e.currentTarget.style.background=liveRun?"rgba(239,68,68,0.28)":"rgba(124,58,237,0.35)";}}
+            onMouseLeave={e=>{e.currentTarget.style.background=liveRun?"rgba(239,68,68,0.18)":"rgba(124,58,237,0.2)";}}>
+            {liveRun ? "■ STOP" : "▶ RUN"}
+          </button>
+          <button className="chart-back-btn" onClick={()=>setActiveTab("matrix")} style={{background:"transparent",border:"1px solid rgba(255,255,255,0.12)",borderRadius:4,padding:"6px 15px",color:"rgba(255,255,255,0.5)",cursor:"pointer",fontSize:11,fontFamily:"inherit",fontWeight:700,letterSpacing:".05em",transition:"all .15s"}}
+            onMouseEnter={e=>{e.currentTarget.style.borderColor="rgba(124,58,237,0.6)";e.currentTarget.style.color="#a78bfa";}}
+            onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(255,255,255,0.12)";e.currentTarget.style.color="rgba(255,255,255,0.5)";}}>
+            ← MATRIX
+          </button>
+        </div>
+      </div>
+
+      {/* ── Config bar ──────────────────────────────────────────────── */}
+      <div style={{display:"flex",alignItems:"center",gap:20,padding:"6px 16px",borderBottom:"1px solid rgba(255,255,255,0.04)",background:"#080614",flexShrink:0}}>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <span style={{fontSize:8,color:"rgba(255,255,255,0.2)",letterSpacing:".08em"}}>BOOTSTRAP</span>
+          <span style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.5)"}}>{N_ITER} iter × {SAMPLE} samples</span>
+        </div>
+        <div style={{width:1,height:14,background:"rgba(255,255,255,0.06)"}}/>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <span style={{fontSize:8,color:"rgba(255,255,255,0.2)",letterSpacing:".08em"}}>BINS</span>
+          <span style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.5)"}}>{BINS} quantile</span>
+        </div>
+        <div style={{width:1,height:14,background:"rgba(255,255,255,0.06)"}}/>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <span style={{fontSize:8,color:"rgba(255,255,255,0.2)",letterSpacing:".08em"}}>ASSETS</span>
+          <span style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.5)"}}>{nAssets} / {assets.length} ready</span>
+        </div>
+        <div style={{width:1,height:14,background:"rgba(255,255,255,0.06)"}}/>
+        <div style={{display:"flex",alignItems:"center",gap:6}}>
+          <span style={{fontSize:8,color:"rgba(255,255,255,0.2)",letterSpacing:".08em"}}>SEED SOURCE</span>
+          <span style={{fontSize:10,fontWeight:700,color:"#a78bfa"}}>Pyth price ticks</span>
+        </div>
+        <div style={{marginLeft:"auto",fontSize:8,color:"rgba(255,255,255,0.18)",letterSpacing:".08em"}}>
+          live uncertainty map
+        </div>
+      </div>
+
+      {/* ── Main grid ───────────────────────────────────────────────── */}
+      <div style={{padding:"10px 16px",borderBottom:"1px solid rgba(255,255,255,0.04)",background:"#080614",display:"flex",alignItems:"center",gap:12,flexWrap:"wrap",position:"relative"}}>
+        <div style={{display:"flex",alignItems:"center",gap:6,minWidth:220}}>
+          <span style={{fontSize:9,color:"rgba(255,255,255,0.28)",letterSpacing:".1em",textTransform:"uppercase"}}>Correlation Stability Alert</span>
+          <div
+            onMouseEnter={()=>setShowAlertHelp(true)}
+            onMouseLeave={()=>setShowAlertHelp(false)}
+            style={{position:"relative",display:"inline-flex",alignItems:"center",justifyContent:"center",width:18,height:18,borderRadius:"50%",background:"linear-gradient(135deg, rgba(124,58,237,0.95), rgba(59,130,246,0.95))",border:"1px solid rgba(255,255,255,0.24)",color:"#fff",fontSize:10,fontWeight:800,cursor:"help"}}
+          >
+            i
+            {showAlertHelp && (
+              <div style={{position:"absolute",top:22,left:-6,width:240,padding:"8px 10px",background:"#0b0917",border:"1px solid rgba(124,58,237,0.35)",borderRadius:6,color:"rgba(255,255,255,0.78)",fontSize:10,lineHeight:1.45,boxShadow:"0 8px 24px rgba(0,0,0,0.35)",zIndex:4}}>
+                Turn it on, choose a pair and a minimum |r| level. The alert triggers when recent correlation prints stay tight and strong, which usually means the pair has entered a stable regime.
+              </div>
+            )}
+          </div>
+        </div>
+        <span style={{fontSize:11,color:corrAlertHit?"#10b981":"rgba(255,255,255,0.42)"}}>
+          {corrAlertHit ? "stabilized now" : "waiting for stable correlation regime"}
+        </span>
+        <select value={corrAlertPair} onChange={e=>setCorrAlertPair(e.target.value)} style={{background:"#0b0917",border:"1px solid rgba(255,255,255,0.1)",borderRadius:6,color:"#fff",padding:"8px 10px",fontFamily:"inherit",fontSize:11}}>
+          {corrAlertOptions.map(opt=><option key={opt.key} value={opt.key}>{opt.label}</option>)}
+        </select>
+        <select value={corrAlertThreshold} onChange={e=>setCorrAlertThreshold(parseFloat(e.target.value))} style={{background:"#0b0917",border:"1px solid rgba(255,255,255,0.1)",borderRadius:6,color:"#fff",padding:"8px 10px",fontFamily:"inherit",fontSize:11}}>
+          {[0.6,0.7,0.8,0.9].map(v=><option key={v} value={v}>|r| ≥ {v.toFixed(1)}</option>)}
+        </select>
+        <button onClick={()=>setCorrAlertEnabled(v=>!v)} style={{background:corrAlertEnabled?"rgba(16,185,129,0.14)":"rgba(124,58,237,0.18)",border:`1px solid ${corrAlertEnabled?"rgba(16,185,129,0.35)":"rgba(124,58,237,0.35)"}`,borderRadius:6,color:corrAlertEnabled?"#34d399":"#c4b5fd",padding:"8px 12px",fontFamily:"inherit",fontSize:11,fontWeight:700,cursor:"pointer"}}>
+          {corrAlertEnabled ? "ALERT ON" : "ENABLE ALERT"}
+        </button>
+        <div style={{marginLeft:"auto",fontSize:10,color:corrAlertHit?"#10b981":"rgba(255,255,255,0.3)",letterSpacing:".06em"}}>
+          {corrAlertEnabled ? (corrAlertHit ? "STABLE CORRELATION DETECTED" : "MONITORING LIVE") : "ALERT DISABLED"}
+        </div>
+      </div>
+
+      <div style={{display:"grid",gridTemplateColumns:"repeat(4, minmax(0, 1fr))",gap:1,background:"rgba(255,255,255,0.04)",borderBottom:"1px solid rgba(255,255,255,0.04)",flexShrink:0}}>
+        <div style={{padding:"12px 16px",background:"#080614"}}>
+          <div style={{fontSize:9,color:"rgba(255,255,255,0.28)",letterSpacing:".1em",textTransform:"uppercase"}}>Most Predictable</div>
+          <div style={{marginTop:6,fontSize:18,fontWeight:800,color:mostPredictable ? (assets.find(a=>a.symbol===mostPredictable.sym)?.color || "#10b981") : "rgba(255,255,255,0.25)"}}>{mostPredictable?.sym || "—"}</div>
+          <div style={{marginTop:2,fontSize:10,color:"rgba(255,255,255,0.42)"}}>{mostPredictable?.data ? `${mostPredictable.data.mean.toFixed(2)} entropy` : "waiting for sample"}</div>
+        </div>
+        <div style={{padding:"12px 16px",background:"#080614"}}>
+          <div style={{fontSize:9,color:"rgba(255,255,255,0.28)",letterSpacing:".1em",textTransform:"uppercase"}}>Most Chaotic</div>
+          <div style={{marginTop:6,fontSize:18,fontWeight:800,color:mostChaotic ? (assets.find(a=>a.symbol===mostChaotic.sym)?.color || "#ef4444") : "rgba(255,255,255,0.25)"}}>{mostChaotic?.sym || "—"}</div>
+          <div style={{marginTop:2,fontSize:10,color:"rgba(255,255,255,0.42)"}}>{mostChaotic?.data ? `${mostChaotic.data.mean.toFixed(2)} entropy` : "waiting for sample"}</div>
+        </div>
+        <div style={{padding:"12px 16px",background:"#080614"}}>
+          <div style={{fontSize:9,color:"rgba(255,255,255,0.28)",letterSpacing:".1em",textTransform:"uppercase"}}>Hidden Links</div>
+          <div style={{marginTop:6,fontSize:18,fontWeight:800,color:hiddenPairsCount ? "#f59e0b" : "rgba(255,255,255,0.25)"}}>{hiddenPairsCount}</div>
+          <div style={{marginTop:2,fontSize:10,color:"rgba(255,255,255,0.42)"}}>nonlinear pairs correlation misses</div>
+        </div>
+        <div style={{padding:"12px 16px",background:"#080614"}}>
+          <div style={{fontSize:9,color:"rgba(255,255,255,0.28)",letterSpacing:".1em",textTransform:"uppercase"}}>Assets Ready</div>
+          <div style={{marginTop:6,fontSize:18,fontWeight:800,color:nAssets >= 2 ? "#c4b5fd" : "rgba(255,255,255,0.25)"}}>{nAssets}/{assets.length}</div>
+          <div style={{marginTop:2,fontSize:10,color:"rgba(255,255,255,0.42)"}}>enough history to rank entropy</div>
+        </div>
+      </div>
+
+      <div style={{flex:1,display:"grid",gridTemplateColumns:"1fr 1fr",gridTemplateRows:"1fr 200px",gap:1,minHeight:0,background:"rgba(255,255,255,0.04)"}}>
+
+        {/* Entropy Ranking bar chart */}
+        <div style={{display:"flex",flexDirection:"column",background:"#07050f",minHeight:0}}>
+          <div style={{padding:"8px 16px 4px",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <span style={{fontSize:9,color:"rgba(255,255,255,0.25)",letterSpacing:".08em"}}>ENTROPY RANKING — predictability ladder</span>
+            <div style={{display:"flex",gap:8,fontSize:8,color:"rgba(255,255,255,0.2)"}}>
+              <span style={{color:"#10b981"}}>■ low = predictable</span>
+              <span style={{color:"#ef4444"}}>■ high = chaotic</span>
+            </div>
+          </div>
+          <div style={{flex:1,position:"relative",minHeight:0}}>
+            <canvas ref={barRef} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>
+          </div>
+        </div>
+
+        {/* NMI Heatmap */}
+        <div style={{display:"flex",flexDirection:"column",background:"#07050f",minHeight:0}}>
+          <div style={{padding:"8px 16px 4px",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+            <span style={{fontSize:9,color:"rgba(255,255,255,0.25)",letterSpacing:".08em"}}>NMI HEATMAP — hidden structure map</span>
+            <div style={{display:"flex",gap:8,fontSize:8,color:"rgba(255,255,255,0.2)"}}>
+              <span style={{color:"rgba(100,80,180,0.8)"}}>■ 0.0</span>
+              <span style={{color:"#a78bfa"}}>■ 0.5</span>
+              <span style={{color:"#10b981"}}>■ 1.0</span>
+            </div>
+          </div>
+          <div style={{flex:1,position:"relative",minHeight:0}}>
+            <canvas ref={heatRef} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>
+          </div>
+        </div>
+
+        {/* Hidden connections — spans full width */}
+        <div style={{display:"flex",flexDirection:"column",background:"#07050f",minHeight:0,gridColumn:"1 / -1"}}>
+          <div style={{padding:"8px 16px 4px",flexShrink:0,display:"flex",alignItems:"center",gap:12}}>
+            <span style={{fontSize:9,color:"rgba(255,255,255,0.25)",letterSpacing:".08em"}}>⚡ HIDDEN CONNECTIONS</span>
+            <span style={{fontSize:8,color:"rgba(255,255,255,0.15)"}}>pairs that look weak on Pearson but still move with meaningful nonlinear dependence</span>
+          </div>
+          <div style={{flex:1,position:"relative",minHeight:0}}>
+            <canvas ref={hiddenRef} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>
+          </div>
+        </div>
+
       </div>
     </div>
   );
