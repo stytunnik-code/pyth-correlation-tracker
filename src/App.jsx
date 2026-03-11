@@ -1128,7 +1128,55 @@ export default function App(){
     }
   },[]);  // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(()=>{fetchPrices();const iv=setInterval(fetchPrices,3000);return()=>clearInterval(iv);},[fetchPrices]);
+  // ── PREFETCH: load historical prices from Benchmarks API on mount ──────────
+  // This pre-fills histRef with 60 data points so the correlation matrix
+  // is ready immediately instead of waiting 3 minutes for live ticks.
+  const prefetchHistory = useCallback(async () => {
+    const now = Math.floor(Date.now() / 1000);
+    const from = now - 60 * 60; // last 60 minutes
+    const PYTH_SYM = {
+      "BTC":"Crypto.BTC/USD","ETH":"Crypto.ETH/USD","SOL":"Crypto.SOL/USD",
+      "DOGE":"Crypto.DOGE/USD","USDC":"Crypto.USDC/USD",
+      "EUR/USD":"FX.EUR/USD","GBP/USD":"FX.GBP/USD",
+      "XAU/USD":"Metal.XAU/USD","WTI":"Energy.WTI/USD",
+      "AAPL":"Equity.US.AAPL/USD",
+      "SPY":"Equity.US.SPY/USD","QQQ":"Equity.US.QQQ/USD",
+      "DIA":"Equity.US.DIA/USD","IWM":"Equity.US.IWM/USD",
+    };
+    const loaded = {};
+    await Promise.allSettled(
+      ASSETS.map(async (asset) => {
+        const sym = PYTH_SYM[asset.symbol];
+        if (!sym) return;
+        try {
+          const qs = `/api/benchmarks?symbol=${encodeURIComponent(sym)}&resolution=1&from=${from}&to=${now}&countback=60`;
+          const r = await fetch(qs);
+          if (!r.ok) return;
+          const d = await r.json();
+          if (d.s !== "ok" || !d.c?.length) return;
+          // Use close prices as history seed
+          d.c.forEach(price => {
+            if (isFinite(price) && price > 0) push(asset.symbol, price);
+          });
+          loaded[asset.symbol] = d.c.length;
+        } catch {}
+      })
+    );
+    if (Object.keys(loaded).length > 0) {
+      setHistory({...histRef.current});
+      setStatus("live");
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+
+  // On mount: prefetch history first, then start live polling
+  useEffect(()=>{
+    prefetchHistory().finally(()=>{
+      fetchPrices();
+    });
+    const iv=setInterval(fetchPrices,3000);
+    return()=>clearInterval(iv);
+  },[fetchPrices,prefetchHistory]);
 
   useEffect(()=>{
     const nc={};
