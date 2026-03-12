@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import SmokeBackground from "./SmokeBackground";
 
 const ASSETS = [
@@ -1075,10 +1075,30 @@ export default function App(){
   const [corrAlertPair,setCorrAlertPair]=useState("BTC-ETH");
   const [corrAlertThreshold,setCorrAlertThreshold]=useState(0.8);
   const [corrAlertHit,setCorrAlertHit]=useState(false);
+  const DEFAULT_COINS=new Set(["BTC","ETH","SOL","DOGE","AVAX","ADA","LINK","SUI","NEAR","HYPE"]);
+  const [selectedCoins,setSelectedCoins]=useState(()=>{
+    try{const s=localStorage.getItem("sc");return s?new Set(JSON.parse(s)):new Set(DEFAULT_COINS);}catch{return new Set(DEFAULT_COINS);}
+  });
+  const [pickerOpen,setPickerOpen]=useState(false);
+  const pickerRef=useRef(null);
   const histRef=useRef({});
   const corrTraceRef=useRef({});
 
   useEffect(()=>{setTimeout(()=>setMounted(true),80);},[]);
+
+  // Save coin selection to localStorage
+  useEffect(()=>{
+    if(selectedCoins===null) localStorage.removeItem("sc");
+    else localStorage.setItem("sc",JSON.stringify([...selectedCoins]));
+  },[selectedCoins]);
+
+  // Close picker on outside click
+  useEffect(()=>{
+    if(!pickerOpen)return;
+    const handler=(e)=>{if(pickerRef.current&&!pickerRef.current.contains(e.target))setPickerOpen(false);};
+    document.addEventListener("mousedown",handler);
+    return()=>document.removeEventListener("mousedown",handler);
+  },[pickerOpen]);
 
   function push(sym,price){
     if(!histRef.current[sym])histRef.current[sym]=[];
@@ -1220,7 +1240,17 @@ export default function App(){
     setCorrAlertHit(max - min <= 0.04 && avgAbs >= corrAlertThreshold);
   },[corr, corrAlertEnabled, corrAlertPair, corrAlertThreshold]);
 
-  const vis=filter==="all"?ASSETS:ASSETS.filter(a=>a.category===filter);
+  const visCat=filter==="all"?ASSETS:ASSETS.filter(a=>a.category===filter);
+  // If selectedCoins is null → all enabled; if empty Set → fallback to all (avoid empty grid)
+  const vis=(!selectedCoins||selectedCoins.size===0)?visCat:visCat.filter(a=>selectedCoins.has(a.symbol));
+  // visAll = selectedCoins filtered without category (for Charts / Entropy / Correlation tabs)
+  const visAll=(!selectedCoins||selectedCoins.size===0)?ASSETS:ASSETS.filter(a=>selectedCoins.has(a.symbol));
+  // If current chart asset was deselected, fallback to first available
+  useEffect(()=>{
+    if(visAll.length>0&&!visAll.find(a=>a.symbol===chartAsset)){
+      setChartAsset(visAll[0].symbol);
+    }
+  },[visAll,chartAsset,setChartAsset]);
   const corrAlertOptions = [];
   for(let i=0;i<ASSETS.length;i++) for(let j=i+1;j<ASSETS.length;j++) {
     corrAlertOptions.push({
@@ -1238,11 +1268,11 @@ export default function App(){
     return dir==="pos"?pairs.sort((x,y)=>y.v-x.v).slice(0,6):pairs.sort((x,y)=>x.v-y.v).slice(0,6);
   }
 
-  // Stats
+  // Stats — based on visible (selected) assets only
   const validCorrs=[];
-  for(let i=0;i<ASSETS.length;i++)for(let j=i+1;j<ASSETS.length;j++){
-    const v=corr[`${ASSETS[i].symbol}-${ASSETS[j].symbol}`];
-    if(v!==null&&v!==undefined&&isFinite(v)&&ASSETS[i].symbol!==ASSETS[j].symbol)validCorrs.push(v);
+  for(let i=0;i<vis.length;i++)for(let j=i+1;j<vis.length;j++){
+    const v=corr[`${vis[i].symbol}-${vis[j].symbol}`];
+    if(v!==null&&v!==undefined&&isFinite(v)&&vis[i].symbol!==vis[j].symbol)validCorrs.push(v);
   }
   const avgCorr=validCorrs.length?validCorrs.reduce((a,b)=>a+b,0)/validCorrs.length:0;
   const strongPos=validCorrs.filter(v=>v>0.7).length;
@@ -1313,6 +1343,66 @@ export default function App(){
               <button key={k} onClick={()=>setActiveTab(k)} style={{background:activeTab===k?"rgba(139,92,246,0.35)":"transparent",border:"none",borderRadius:4,padding:"4px 12px",fontFamily:"inherit",fontSize:11,fontWeight:600,color:activeTab===k?"#e2d9f3":"rgba(139,92,246,0.5)",cursor:"pointer"}}>{l}</button>
             ))}
           </div>
+          {/* Coin picker — always visible in header */}
+          <div ref={pickerRef} style={{position:"relative",marginRight:6}}>
+            <button onClick={()=>setPickerOpen(o=>!o)} style={{display:"flex",alignItems:"center",gap:5,background:(selectedCoins&&selectedCoins.size<ASSETS.length)?"rgba(124,58,237,0.22)":"rgba(255,255,255,0.05)",border:`1px solid ${(selectedCoins&&selectedCoins.size<ASSETS.length)?"rgba(124,58,237,0.5)":"rgba(255,255,255,0.1)"}`,borderRadius:6,padding:"4px 10px",cursor:"pointer",color:(selectedCoins&&selectedCoins.size<ASSETS.length)?"#c4b5fd":"rgba(255,255,255,0.5)",fontFamily:"inherit",fontSize:11,fontWeight:600,letterSpacing:".04em",transition:"all .15s"}}>
+              <span style={{fontSize:13}}>⊞</span>
+              {(!selectedCoins||selectedCoins.size===0||selectedCoins.size>=ASSETS.length)?`All ${ASSETS.length}`:`${selectedCoins.size} / ${ASSETS.length}`}
+              <span style={{fontSize:9,opacity:.7,marginLeft:1}}>{pickerOpen?"▲":"▼"}</span>
+            </button>
+            {pickerOpen&&(
+              <div style={{position:"absolute",top:"calc(100% + 6px)",right:0,zIndex:9999,background:"#0f0b1e",border:"1px solid rgba(124,58,237,0.35)",borderRadius:10,padding:"14px",minWidth:320,maxHeight:"70vh",overflowY:"auto",boxShadow:"0 12px 48px rgba(0,0,0,0.85)",backdropFilter:"blur(16px)"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,paddingBottom:10,borderBottom:"1px solid rgba(124,58,237,0.2)"}}>
+                  <span style={{color:"#e2d9f3",fontSize:12,fontWeight:700,letterSpacing:".08em"}}>SELECT COINS</span>
+                  <div style={{display:"flex",gap:5}}>
+                    <button onClick={()=>setSelectedCoins(new Set(DEFAULT_COINS))} style={{background:"rgba(124,58,237,0.18)",border:"1px solid rgba(124,58,237,0.3)",borderRadius:4,padding:"3px 9px",cursor:"pointer",color:"#c4b5fd",fontSize:10,fontFamily:"inherit",fontWeight:600}}>Default</button>
+                    <button onClick={()=>setSelectedCoins(new Set(ASSETS.map(a=>a.symbol)))} style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:4,padding:"3px 9px",cursor:"pointer",color:"rgba(255,255,255,0.55)",fontSize:10,fontFamily:"inherit",fontWeight:600}}>All</button>
+                    <button onClick={()=>setSelectedCoins(new Set())} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:4,padding:"3px 9px",cursor:"pointer",color:"rgba(255,255,255,0.35)",fontSize:10,fontFamily:"inherit",fontWeight:600}}>None</button>
+                  </div>
+                </div>
+                {["crypto","fx","commodity","equity","index"].map(cat=>{
+                  const catAssets=ASSETS.filter(a=>a.category===cat);
+                  if(!catAssets.length)return null;
+                  const allOn=catAssets.every(a=>!selectedCoins||selectedCoins.size===0||selectedCoins.has(a.symbol));
+                  return(
+                    <div key={cat} style={{marginBottom:10}}>
+                      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:5,paddingBottom:4,borderBottom:"1px solid rgba(124,58,237,0.15)"}}>
+                        <span style={{color:"rgba(124,58,237,0.7)",fontSize:9,fontWeight:700,letterSpacing:".1em",textTransform:"uppercase"}}>
+                          {cat==="fx"?"FX Pairs":cat==="commodity"?"Commodities":cat==="equity"?"Equities":cat==="index"?"Indices":"Crypto"}
+                        </span>
+                        <button onClick={()=>{
+                          const syms=catAssets.map(a=>a.symbol);
+                          const cur=selectedCoins&&selectedCoins.size>0?new Set(selectedCoins):new Set(ASSETS.map(a=>a.symbol));
+                          const allSel=syms.every(s=>cur.has(s));
+                          const next=new Set(cur);
+                          if(allSel) syms.forEach(s=>next.delete(s)); else syms.forEach(s=>next.add(s));
+                          setSelectedCoins(next.size>=ASSETS.length?new Set(ASSETS.map(a=>a.symbol)):next);
+                        }} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(124,58,237,0.6)",fontSize:9,fontFamily:"inherit",textDecoration:"underline",padding:0}}>
+                          {allOn?"deselect all":"select all"}
+                        </button>
+                      </div>
+                      <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                        {catAssets.map(a=>{
+                          const on=!selectedCoins||selectedCoins.size===0||selectedCoins.has(a.symbol);
+                          return(
+                            <button key={a.symbol} onClick={()=>{
+                              const cur=selectedCoins&&selectedCoins.size>0?new Set(selectedCoins):new Set(ASSETS.map(a=>a.symbol));
+                              const next=new Set(cur);
+                              if(on) next.delete(a.symbol); else next.add(a.symbol);
+                              setSelectedCoins(next);
+                            }} style={{display:"flex",alignItems:"center",gap:4,background:on?"rgba(124,58,237,0.2)":"rgba(255,255,255,0.04)",border:`1px solid ${on?"rgba(124,58,237,0.4)":"rgba(255,255,255,0.08)"}`,borderRadius:5,padding:"3px 8px",cursor:"pointer",color:on?a.color:"rgba(255,255,255,0.3)",fontFamily:"inherit",fontSize:11,fontWeight:700,transition:"all .12s"}}>
+                              {on&&<span style={{color:"rgba(124,58,237,0.8)",fontSize:9}}>✓</span>}
+                              {a.symbol}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
           <div className={`pill ${status}`}><span className="dot"/>{status==="live"?"LIVE":"DEMO"}</div>
           <div className="tick-badge">#{tickCount}</div>
         </div>
@@ -1320,15 +1410,17 @@ export default function App(){
 
       {/* ══ FILTER BAR ══════════════════════════════════════════════════ */}
       <div className="fbar" style={{display:activeTab==="charts"||activeTab==="corr"||activeTab==="entropy"||activeTab==="docs"?"none":"flex"}}>
-        {["all","crypto","fx","commodity","equity","index"].map(c=>(
-          <button key={c} className={`fbtn${filter===c?" a":""}`} onClick={()=>setFilter(c)}>
-            {c==="all"?"All Assets":c==="fx"?"FX Pairs":c==="commodity"?"Commodities":c==="index"?"Indices":c.charAt(0).toUpperCase()+c.slice(1)}
-            <span className="fbtn-count">{c==="all"?ASSETS.length:ASSETS.filter(a=>a.category===c).length}</span>
-          </button>
-        ))}
-        <div className="fbar-right">
-          <div className="window-badge">⏱ 200-tick window · 3s interval</div>
-        </div>
+        {["all","crypto","fx","commodity","equity","index"].map(c=>{
+          const base=c==="all"?ASSETS:ASSETS.filter(a=>a.category===c);
+          const cnt=(!selectedCoins||selectedCoins.size===0)?base.length:base.filter(a=>selectedCoins.has(a.symbol)).length;
+          return(
+            <button key={c} className={`fbtn${filter===c?" a":""}`} onClick={()=>setFilter(c)}>
+              {c==="all"?"All Assets":c==="fx"?"FX Pairs":c==="commodity"?"Commodities":c==="index"?"Indices":c==="equity"?"Equity":"Crypto"}
+              <span className="fbtn-count">{cnt}</span>
+            </button>
+          );
+        })}
+        <div className="fbar-right"><div className="window-badge">⏱ 200-tick · 3s</div></div>
       </div>
 
       <main className="main" style={{display:activeTab==="charts"||activeTab==="corr"||activeTab==="entropy"||activeTab==="docs"?"none":"block"}}>
@@ -1623,15 +1715,15 @@ export default function App(){
       </main>
 
       {activeTab==="charts"&&<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#070512",zIndex:200,display:"flex",flexDirection:"column",fontFamily:"'Space Mono',monospace",animation:"fadein .22s ease"}}>
-        <ChartView assets={ASSETS} prices={prices} chartAsset={chartAsset} setChartAsset={setChartAsset} chartTf={chartTf} setChartTf={setChartTf} chartType={chartType} setChartType={setChartType} chartHist={chartHist} setChartHist={setChartHist} setActiveTab={setActiveTab} status={status} histRef={histRef}/>
+        <ChartView assets={visAll} prices={prices} chartAsset={chartAsset} setChartAsset={setChartAsset} chartTf={chartTf} setChartTf={setChartTf} chartType={chartType} setChartType={setChartType} chartHist={chartHist} setChartHist={setChartHist} setActiveTab={setActiveTab} status={status} histRef={histRef}/>
       </div>}
 
       {activeTab==="corr"&&<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#07050f",zIndex:200,display:"flex",flexDirection:"column",animation:"fadein .22s ease"}}>
-        <CorrView histRef={histRef} prices={prices} assets={ASSETS} setActiveTab={setActiveTab} status={status}/>
+        <CorrView histRef={histRef} prices={prices} assets={visAll} setActiveTab={setActiveTab} status={status}/>
       </div>}
 
       <div className={activeTab==="entropy"?"tab-overlay-enter":""} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#07050f",zIndex:200,display:activeTab==="entropy"?"flex":"none",flexDirection:"column"}}>
-        <EntropyView histRef={histRef} prices={prices} assets={ASSETS} setActiveTab={setActiveTab} status={status} liveRun={entropyLiveRun} setLiveRun={setEntropyLiveRun} corrAlertEnabled={corrAlertEnabled} setCorrAlertEnabled={setCorrAlertEnabled} corrAlertPair={corrAlertPair} setCorrAlertPair={setCorrAlertPair} corrAlertThreshold={corrAlertThreshold} setCorrAlertThreshold={setCorrAlertThreshold} corrAlertHit={corrAlertHit} corrAlertOptions={corrAlertOptions}/>
+        <EntropyView histRef={histRef} prices={prices} assets={visAll} setActiveTab={setActiveTab} status={status} liveRun={entropyLiveRun} setLiveRun={setEntropyLiveRun} corrAlertEnabled={corrAlertEnabled} setCorrAlertEnabled={setCorrAlertEnabled} corrAlertPair={corrAlertPair} setCorrAlertPair={setCorrAlertPair} corrAlertThreshold={corrAlertThreshold} setCorrAlertThreshold={setCorrAlertThreshold} corrAlertHit={corrAlertHit} corrAlertOptions={corrAlertOptions}/>
       </div>
 
       {activeTab==="docs" && <div style={{position:"fixed",inset:0,zIndex:200,display:"flex",flexDirection:"column",animation:"fadein .22s ease"}}>
@@ -2066,15 +2158,11 @@ async function fetchPyth(symbol, tf = "1m", countback = 300) {
 }
 
 const CHART_VISIBLE_BARS = 180;
-const CHART_FETCH_BARS = 500;
+const CHART_FETCH_BARS = 200;
 const CHART_RIGHT_PAD_RATIO = 0;
 const CHART_MIN_VISIBLE_BARS = 30;
 const CHART_MAX_VISIBLE_BARS = 400;
 const CHART_OVERSCROLL_BARS = 80;
-
-// Preload Pyth logo for canvas watermark once at module level
-const _pythLogoImg = new Image();
-_pythLogoImg.src = "/pyth-logo.png";
 
 function drawCandles(canvas, bars, chartType, view = {}) {
   if (!canvas) return;
@@ -2303,17 +2391,24 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
     let dead = false;
     setViewOffset(0);
     setZoomBars(CHART_VISIBLE_BARS);
-    Promise.all([
-      fetchPyth(chartAsset, chartTf, CHART_FETCH_BARS),
-      fetchPyth(benchmarkSymbol, chartTf, CHART_FETCH_BARS),
-    ]).then(([mainCandles, benchmarkCandles]) => {
-      if (dead) return;
-      setChartHist(p=>({
-        ...p,
-        [chartAsset]: { ...(p[chartAsset]||{}), [chartTf]: mainCandles?.length ? mainCandles : ((p[chartAsset]||{})[chartTf] || []) },
-        [benchmarkSymbol]: { ...(p[benchmarkSymbol]||{}), [chartTf]: benchmarkCandles?.length ? benchmarkCandles : ((p[benchmarkSymbol]||{})[chartTf] || []) },
-      }));
-    });
+    // Load main asset first — show chart immediately, then load benchmark in background
+    // Skip fetch if we already have cached data for this asset+tf
+    if (!((chartHist[chartAsset]||{})[chartTf]?.length)) {
+      fetchPyth(chartAsset, chartTf, CHART_FETCH_BARS).then(mainCandles => {
+        if (dead) return;
+        if (mainCandles?.length) {
+          setChartHist(p=>({...p, [chartAsset]: {...(p[chartAsset]||{}), [chartTf]: mainCandles}}));
+        }
+      });
+    }
+    if (!((chartHist[benchmarkSymbol]||{})[chartTf]?.length)) {
+      fetchPyth(benchmarkSymbol, chartTf, CHART_FETCH_BARS).then(benchmarkCandles => {
+        if (dead) return;
+        if (benchmarkCandles?.length) {
+          setChartHist(p=>({...p, [benchmarkSymbol]: {...(p[benchmarkSymbol]||{}), [chartTf]: benchmarkCandles}}));
+        }
+      });
+    }
     return ()=>{dead=true;};
   },[chartAsset, chartTf, benchmarkSymbol]);
 
@@ -3128,7 +3223,24 @@ function CorrView({histRef, prices, assets, setActiveTab, status}) {
   const [loading, setLoading] = useState(false);
   const [, tick] = useState(0);
 
-  const [symA, symB] = CORR_PAIRS[activePair];
+  // Build pairs dynamically from selected assets (filter static CORR_PAIRS to only show available ones, then add any missing pairs from selected assets)
+  const dynPairs = useMemo(()=>{
+    const syms = new Set(assets.map(a=>a.symbol));
+    const valid = CORR_PAIRS.filter(([a,b])=>syms.has(a)&&syms.has(b));
+    // if fewer than 3 static pairs match, build pairs from selected assets
+    if(valid.length >= 1) return valid;
+    const out=[];
+    const arr=assets.slice(0,8);
+    for(let i=0;i<arr.length;i++) for(let j=i+1;j<arr.length;j++) out.push([arr[i].symbol,arr[j].symbol]);
+    return out.slice(0,20);
+  },[assets]);
+
+  // Reset activePair when dynPairs changes and current index is out of range
+  useEffect(()=>{
+    if(activePair >= dynPairs.length) setActivePair(0);
+  },[dynPairs, activePair]);
+
+  const [symA, symB] = dynPairs[Math.min(activePair, dynPairs.length-1)] || [assets[0]?.symbol||"BTC", assets[1]?.symbol||"ETH"];
 
   // Fetch Binance closes for active pair
   useEffect(()=>{
@@ -3223,7 +3335,7 @@ function CorrView({histRef, prices, assets, setActiveTab, status}) {
 
       {/* Pair selector */}
       <div style={{display:"flex",alignItems:"center",height:38,padding:"0 12px",borderBottom:"1px solid rgba(255,255,255,0.05)",background:"#080614",flexShrink:0,gap:2,overflowX:"auto",scrollbarWidth:"none"}}>
-        {CORR_PAIRS.map(([a,b],i)=>{
+        {dynPairs.map(([a,b],i)=>{
           const sel=i===activePair;
           const aA=assets.find(x=>x.symbol===a)||assets[0];
           return (
