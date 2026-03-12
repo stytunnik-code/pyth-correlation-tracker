@@ -2082,14 +2082,40 @@ function drawCandles(canvas, bars, chartType, view = {}) {
   // Background
   ctx.fillStyle = "#07050f"; ctx.fillRect(0,0,W,H);
 
-  // PYTH watermark
-  if (_pythLogoImg.complete && _pythLogoImg.naturalWidth > 0) {
-    const wSize = Math.min(W * 0.28, 220);
-    const wx = (W - wSize) / 2;
-    const wy = (H - wSize) / 2;
+  // PYTH horizontal watermark — canvas-drawn, no image file
+  {
+    const wH = Math.min(H * 0.10, 62);
+    const sw = wH * 0.072;
+    const r  = wH * 0.295;
+    const fontSize = wH * 0.88;
     ctx.save();
-    ctx.globalAlpha = 0.055;
-    ctx.drawImage(_pythLogoImg, wx, wy, wSize, wSize);
+    ctx.globalAlpha = 0.065;
+    ctx.strokeStyle = "#fff";
+    ctx.fillStyle   = "#fff";
+    ctx.lineWidth   = sw;
+    ctx.lineCap     = "round";
+    ctx.font = `900 ${fontSize}px Arial, Helvetica, sans-serif`;
+    const textW  = ctx.measureText("PYTH").width;
+    const iconW  = wH * 0.62;
+    const gap    = wH * 0.38;
+    const ox = (W - iconW - gap - textW) / 2;
+    const oy = H / 2;
+    // vertical stem
+    const stemX = ox + sw / 2;
+    ctx.beginPath();
+    ctx.moveTo(stemX, oy - wH * 0.46);
+    ctx.lineTo(stemX, oy + wH * 0.46);
+    ctx.stroke();
+    // circular loop (opens at lower-left)
+    const cx = ox + wH * 0.32;
+    const cy = oy - wH * 0.08;
+    ctx.beginPath();
+    ctx.arc(cx, cy, r, Math.PI * 0.68, Math.PI * 2.58, false);
+    ctx.stroke();
+    // PYTH text
+    ctx.textBaseline = "middle";
+    ctx.textAlign    = "left";
+    ctx.fillText("PYTH", ox + iconW + gap, oy);
     ctx.restore();
   }
 
@@ -2231,31 +2257,6 @@ function drawCandles(canvas, bars, chartType, view = {}) {
   }
 
   // ── Watermark: Pyth logo + "PythNetwork" text ───────────────────────────
-  {
-    ctx.save();
-    const alpha = 0.06;
-    const logoSz = Math.min(CW * 0.07, 44);
-    const fontSize = Math.min(CW * 0.045, 32);
-    const cx = PAD.l + CW * 0.5;
-    const cy = PAD.t + PH * 0.5;
-    const totalW = logoSz + 8 + ctx.measureText("PythNetwork").width;
-    // measure first, then position
-    ctx.font = `700 ${fontSize}px 'Outfit','Space Mono',sans-serif`;
-    const textW = ctx.measureText("PythNetwork").width;
-    const blockW = logoSz + 10 + textW;
-    const startX = cx - blockW / 2;
-    // draw logo
-    ctx.globalAlpha = alpha;
-    if (_pythLogoImg.complete && _pythLogoImg.naturalWidth > 0) {
-      ctx.drawImage(_pythLogoImg, startX, cy - logoSz / 2, logoSz, logoSz);
-    }
-    // draw text
-    ctx.fillStyle = "#ffffff";
-    ctx.textAlign = "left";
-    ctx.textBaseline = "middle";
-    ctx.fillText("PythNetwork", startX + logoSz + 10, cy);
-    ctx.restore();
-  }
 }
 
 
