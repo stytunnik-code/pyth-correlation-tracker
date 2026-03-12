@@ -1184,7 +1184,13 @@ export default function App(){
     }
   },[]);  // eslint-disable-line react-hooks/exhaustive-deps
 
-  useEffect(()=>{prefetchHistory().finally(()=>{fetchPrices();const iv=setInterval(fetchPrices,3000);});},[prefetchHistory,fetchPrices]);
+  useEffect(()=>{
+    // Start live prices immediately — don't wait for history
+    fetchPrices();
+    const iv=setInterval(fetchPrices,3000);
+    prefetchHistory(); // load history in background
+    return ()=>clearInterval(iv);
+  },[prefetchHistory,fetchPrices]);
 
   useEffect(()=>{
     const nc={};
@@ -2060,7 +2066,7 @@ async function fetchPyth(symbol, tf = "1m", countback = 300) {
 }
 
 const CHART_VISIBLE_BARS = 180;
-const CHART_FETCH_BARS = 1000;
+const CHART_FETCH_BARS = 500;
 const CHART_RIGHT_PAD_RATIO = 0;
 const CHART_MIN_VISIBLE_BARS = 30;
 const CHART_MAX_VISIBLE_BARS = 400;
