@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from "react";
+import { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import SmokeBackground from "./SmokeBackground";
 
 const ASSETS = [
@@ -1025,6 +1025,7 @@ export default function App(){
   const [prevPrices,setPrevPrices]=useState({});
   const [status,setStatus]=useState("connecting");
   const [filter,setFilter]=useState("all");
+  const [sortBy,setSortBy]=useState("default");
   const [selected,setSelected]=useState(null);
   const [hmTooltip,setHmTooltip]=useState(null); // {x,y,symA,symB,val}
   const [mounted,setMounted]=useState(false);
@@ -1075,10 +1076,30 @@ export default function App(){
   const [corrAlertPair,setCorrAlertPair]=useState("BTC-ETH");
   const [corrAlertThreshold,setCorrAlertThreshold]=useState(0.8);
   const [corrAlertHit,setCorrAlertHit]=useState(false);
+  const DEFAULT_COINS=new Set(["BTC","ETH","SOL","DOGE","AVAX","ADA","LINK","SUI","NEAR","HYPE"]);
+  const [selectedCoins,setSelectedCoins]=useState(()=>{
+    try{const s=localStorage.getItem("sc");return s?new Set(JSON.parse(s)):new Set(DEFAULT_COINS);}catch{return new Set(DEFAULT_COINS);}
+  });
+  const [pickerOpen,setPickerOpen]=useState(false);
+  const pickerRef=useRef(null);
   const histRef=useRef({});
   const corrTraceRef=useRef({});
 
   useEffect(()=>{setTimeout(()=>setMounted(true),80);},[]);
+
+  // Save coin selection to localStorage
+  useEffect(()=>{
+    if(selectedCoins===null) localStorage.removeItem("sc");
+    else localStorage.setItem("sc",JSON.stringify([...selectedCoins]));
+  },[selectedCoins]);
+
+  // Close picker on outside click
+  useEffect(()=>{
+    if(!pickerOpen)return;
+    const handler=(e)=>{if(pickerRef.current&&!pickerRef.current.contains(e.target))setPickerOpen(false);};
+    document.addEventListener("mousedown",handler);
+    return()=>document.removeEventListener("mousedown",handler);
+  },[pickerOpen]);
 
   function push(sym,price){
     if(!histRef.current[sym])histRef.current[sym]=[];
@@ -1220,7 +1241,38 @@ export default function App(){
     setCorrAlertHit(max - min <= 0.04 && avgAbs >= corrAlertThreshold);
   },[corr, corrAlertEnabled, corrAlertPair, corrAlertThreshold]);
 
-  const vis=filter==="all"?ASSETS:ASSETS.filter(a=>a.category===filter);
+  const visCat=filter==="all"?ASSETS:ASSETS.filter(a=>a.category===filter);
+  // If selectedCoins is null → all enabled; if empty Set → fallback to all (avoid empty grid)
+  const vis=(!selectedCoins||selectedCoins.size===0)?visCat:visCat.filter(a=>selectedCoins.has(a.symbol));
+
+  const sortedVis=useMemo(()=>{
+    const arr=[...vis];
+    if(sortBy==="price_desc") return arr.sort((a,b)=>(prices[b.symbol]||0)-(prices[a.symbol]||0));
+    if(sortBy==="price_asc")  return arr.sort((a,b)=>(prices[a.symbol]||0)-(prices[b.symbol]||0));
+    if(sortBy==="corr_desc"||sortBy==="corr_asc"){
+      const avgCorr=a=>{
+        const vals=vis.filter(b=>b.symbol!==a.symbol).map(b=>{
+          const v=corr[`${a.symbol}-${b.symbol}`]??corr[`${b.symbol}-${a.symbol}`]??null;
+          return v;
+        }).filter(v=>v!==null&&isFinite(v));
+        return vals.length?vals.reduce((s,v)=>s+Math.abs(v),0)/vals.length:null;
+      };
+      return arr.sort((a,b)=>{
+        const pa=avgCorr(a),pb=avgCorr(b);
+        if(pa===null&&pb===null)return 0;if(pa===null)return 1;if(pb===null)return -1;
+        return sortBy==="corr_desc"?pb-pa:pa-pb;
+      });
+    }
+    return arr;
+  },[vis,sortBy,prices,corr]);
+  // visAll = selectedCoins filtered without category (for Charts / Entropy / Correlation tabs)
+  const visAll=(!selectedCoins||selectedCoins.size===0)?ASSETS:ASSETS.filter(a=>selectedCoins.has(a.symbol));
+  // If current chart asset was deselected, fallback to first available
+  useEffect(()=>{
+    if(visAll.length>0&&!visAll.find(a=>a.symbol===chartAsset)){
+      setChartAsset(visAll[0].symbol);
+    }
+  },[visAll,chartAsset,setChartAsset]);
   const corrAlertOptions = [];
   for(let i=0;i<ASSETS.length;i++) for(let j=i+1;j<ASSETS.length;j++) {
     corrAlertOptions.push({
@@ -1238,11 +1290,11 @@ export default function App(){
     return dir==="pos"?pairs.sort((x,y)=>y.v-x.v).slice(0,6):pairs.sort((x,y)=>x.v-y.v).slice(0,6);
   }
 
-  // Stats
+  // Stats — based on visible (selected) assets only
   const validCorrs=[];
-  for(let i=0;i<ASSETS.length;i++)for(let j=i+1;j<ASSETS.length;j++){
-    const v=corr[`${ASSETS[i].symbol}-${ASSETS[j].symbol}`];
-    if(v!==null&&v!==undefined&&isFinite(v)&&ASSETS[i].symbol!==ASSETS[j].symbol)validCorrs.push(v);
+  for(let i=0;i<vis.length;i++)for(let j=i+1;j<vis.length;j++){
+    const v=corr[`${vis[i].symbol}-${vis[j].symbol}`];
+    if(v!==null&&v!==undefined&&isFinite(v)&&vis[i].symbol!==vis[j].symbol)validCorrs.push(v);
   }
   const avgCorr=validCorrs.length?validCorrs.reduce((a,b)=>a+b,0)/validCorrs.length:0;
   const strongPos=validCorrs.filter(v=>v>0.7).length;
@@ -1309,9 +1361,69 @@ export default function App(){
         <div className="hdr-r">
           <div className="hdr-upd">{lastUpdate?`UPD ${lastUpdate.toLocaleTimeString()}`:""}</div>
           <div style={{display:"flex",gap:2,background:"rgba(0,0,0,0.4)",borderRadius:6,padding:3,marginRight:6}}>
-            {[["matrix","Matrix"],["charts","Charts"],["corr","Correlation"],["entropy","Entropy"],["docs","Docs"]].map(([k,l])=>(
+            {[["matrix","Matrix"],["charts","Charts"],["corr","Correlation"],["leadlag","Lead-Lag"],["entropy","Entropy"],["docs","Docs"]].map(([k,l])=>(
               <button key={k} onClick={()=>setActiveTab(k)} style={{background:activeTab===k?"rgba(139,92,246,0.35)":"transparent",border:"none",borderRadius:4,padding:"4px 12px",fontFamily:"inherit",fontSize:11,fontWeight:600,color:activeTab===k?"#e2d9f3":"rgba(139,92,246,0.5)",cursor:"pointer"}}>{l}</button>
             ))}
+          </div>
+          {/* Coin picker — always visible in header */}
+          <div ref={pickerRef} style={{position:"relative",marginRight:6}}>
+            <button onClick={()=>setPickerOpen(o=>!o)} style={{display:"flex",alignItems:"center",gap:5,background:(selectedCoins&&selectedCoins.size<ASSETS.length)?"rgba(124,58,237,0.22)":"rgba(255,255,255,0.05)",border:`1px solid ${(selectedCoins&&selectedCoins.size<ASSETS.length)?"rgba(124,58,237,0.5)":"rgba(255,255,255,0.1)"}`,borderRadius:6,padding:"4px 10px",cursor:"pointer",color:(selectedCoins&&selectedCoins.size<ASSETS.length)?"#c4b5fd":"rgba(255,255,255,0.5)",fontFamily:"inherit",fontSize:11,fontWeight:600,letterSpacing:".04em",transition:"all .15s"}}>
+              <span style={{fontSize:13}}>⊞</span>
+              {(!selectedCoins||selectedCoins.size===0||selectedCoins.size>=ASSETS.length)?`All ${ASSETS.length}`:`${selectedCoins.size} / ${ASSETS.length}`}
+              <span style={{fontSize:9,opacity:.7,marginLeft:1}}>{pickerOpen?"▲":"▼"}</span>
+            </button>
+            {pickerOpen&&(
+              <div style={{position:"absolute",top:"calc(100% + 6px)",right:0,zIndex:9999,background:"#0f0b1e",border:"1px solid rgba(124,58,237,0.35)",borderRadius:10,padding:"14px",minWidth:320,maxHeight:"70vh",overflowY:"auto",boxShadow:"0 12px 48px rgba(0,0,0,0.85)",backdropFilter:"blur(16px)"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,paddingBottom:10,borderBottom:"1px solid rgba(124,58,237,0.2)"}}>
+                  <span style={{color:"#e2d9f3",fontSize:12,fontWeight:700,letterSpacing:".08em"}}>SELECT COINS</span>
+                  <div style={{display:"flex",gap:5}}>
+                    <button onClick={()=>setSelectedCoins(new Set(DEFAULT_COINS))} style={{background:"rgba(124,58,237,0.18)",border:"1px solid rgba(124,58,237,0.3)",borderRadius:4,padding:"3px 9px",cursor:"pointer",color:"#c4b5fd",fontSize:10,fontFamily:"inherit",fontWeight:600}}>Default</button>
+                    <button onClick={()=>setSelectedCoins(new Set(ASSETS.map(a=>a.symbol)))} style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:4,padding:"3px 9px",cursor:"pointer",color:"rgba(255,255,255,0.55)",fontSize:10,fontFamily:"inherit",fontWeight:600}}>All</button>
+                    <button onClick={()=>setSelectedCoins(new Set())} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:4,padding:"3px 9px",cursor:"pointer",color:"rgba(255,255,255,0.35)",fontSize:10,fontFamily:"inherit",fontWeight:600}}>None</button>
+                  </div>
+                </div>
+                {["crypto","fx","commodity","equity","index"].map(cat=>{
+                  const catAssets=ASSETS.filter(a=>a.category===cat);
+                  if(!catAssets.length)return null;
+                  const allOn=catAssets.every(a=>!selectedCoins||selectedCoins.size===0||selectedCoins.has(a.symbol));
+                  return(
+                    <div key={cat} style={{marginBottom:10}}>
+                      <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:5,paddingBottom:4,borderBottom:"1px solid rgba(124,58,237,0.15)"}}>
+                        <span style={{color:"rgba(124,58,237,0.7)",fontSize:9,fontWeight:700,letterSpacing:".1em",textTransform:"uppercase"}}>
+                          {cat==="fx"?"FX Pairs":cat==="commodity"?"Commodities":cat==="equity"?"Equities":cat==="index"?"Indices":"Crypto"}
+                        </span>
+                        <button onClick={()=>{
+                          const syms=catAssets.map(a=>a.symbol);
+                          const cur=selectedCoins&&selectedCoins.size>0?new Set(selectedCoins):new Set(ASSETS.map(a=>a.symbol));
+                          const allSel=syms.every(s=>cur.has(s));
+                          const next=new Set(cur);
+                          if(allSel) syms.forEach(s=>next.delete(s)); else syms.forEach(s=>next.add(s));
+                          setSelectedCoins(next.size>=ASSETS.length?new Set(ASSETS.map(a=>a.symbol)):next);
+                        }} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(124,58,237,0.6)",fontSize:9,fontFamily:"inherit",textDecoration:"underline",padding:0}}>
+                          {allOn?"deselect all":"select all"}
+                        </button>
+                      </div>
+                      <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                        {catAssets.map(a=>{
+                          const on=!selectedCoins||selectedCoins.size===0||selectedCoins.has(a.symbol);
+                          return(
+                            <button key={a.symbol} onClick={()=>{
+                              const cur=selectedCoins&&selectedCoins.size>0?new Set(selectedCoins):new Set(ASSETS.map(a=>a.symbol));
+                              const next=new Set(cur);
+                              if(on) next.delete(a.symbol); else next.add(a.symbol);
+                              setSelectedCoins(next);
+                            }} style={{display:"flex",alignItems:"center",gap:4,background:on?"rgba(124,58,237,0.2)":"rgba(255,255,255,0.04)",border:`1px solid ${on?"rgba(124,58,237,0.4)":"rgba(255,255,255,0.08)"}`,borderRadius:5,padding:"3px 8px",cursor:"pointer",color:on?a.color:"rgba(255,255,255,0.3)",fontFamily:"inherit",fontSize:11,fontWeight:700,transition:"all .12s"}}>
+                              {on&&<span style={{color:"rgba(124,58,237,0.8)",fontSize:9}}>✓</span>}
+                              {a.symbol}
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
           </div>
           <div className={`pill ${status}`}><span className="dot"/>{status==="live"?"LIVE":"DEMO"}</div>
           <div className="tick-badge">#{tickCount}</div>
@@ -1319,15 +1431,31 @@ export default function App(){
       </header>
 
       {/* ══ FILTER BAR ══════════════════════════════════════════════════ */}
-      <div className="fbar" style={{display:activeTab==="charts"||activeTab==="corr"||activeTab==="entropy"||activeTab==="docs"?"none":"flex"}}>
-        {["all","crypto","fx","commodity","equity","index"].map(c=>(
-          <button key={c} className={`fbtn${filter===c?" a":""}`} onClick={()=>setFilter(c)}>
-            {c==="all"?"All Assets":c==="fx"?"FX Pairs":c==="commodity"?"Commodities":c==="index"?"Indices":c.charAt(0).toUpperCase()+c.slice(1)}
-            <span className="fbtn-count">{c==="all"?ASSETS.length:ASSETS.filter(a=>a.category===c).length}</span>
-          </button>
-        ))}
+      <div className="fbar" style={{display:activeTab==="charts"||activeTab==="corr"||activeTab==="leadlag"||activeTab==="entropy"||activeTab==="docs"?"none":"flex"}}>
+        {["all","crypto","fx","commodity","equity","index"].map(c=>{
+          const base=c==="all"?ASSETS:ASSETS.filter(a=>a.category===c);
+          const cnt=(!selectedCoins||selectedCoins.size===0)?base.length:base.filter(a=>selectedCoins.has(a.symbol)).length;
+          return(
+            <button key={c} className={`fbtn${filter===c?" a":""}`} onClick={()=>setFilter(c)}>
+              {c==="all"?"All Assets":c==="fx"?"FX Pairs":c==="commodity"?"Commodities":c==="index"?"Indices":c==="equity"?"Equity":"Crypto"}
+              <span className="fbtn-count">{cnt}</span>
+            </button>
+          );
+        })}
         <div className="fbar-right">
-          <div className="window-badge">⏱ 200-tick window · 3s interval</div>
+          <div className="sort-wrap">
+            <span className="sort-label">Sort:</span>
+            {[
+              {k:"default",    t:"Default"},
+              {k:"price_desc", t:"Price ↓"},
+              {k:"price_asc",  t:"Price ↑"},
+              {k:"corr_desc",  t:"Corr ↓"},
+              {k:"corr_asc",   t:"Corr ↑"},
+            ].map(({k,t})=>(
+              <button key={k} className={`sbtn${sortBy===k?" a":""}`} onClick={()=>setSortBy(k)}>{t}</button>
+            ))}
+          </div>
+          <div className="window-badge">⏱ 200-tick · 3s</div>
         </div>
       </div>
 
@@ -1343,8 +1471,8 @@ export default function App(){
         <section className={`sec${mobileTab!=="tickers"?" mh":""}`} id="sec-tickers">
           <div className="tgrid">
             {status==="connecting"?(
-              vis.map((_,i)=><TickerSkeleton key={i}/>)
-            ):vis.map((asset,i)=>{
+              sortedVis.map((_,i)=><TickerSkeleton key={i}/>)
+            ):sortedVis.map((asset,i)=>{
               const h=history[asset.symbol]||[],cur=prices[asset.symbol],prev=prevPrices[asset.symbol];
               const pct=prev&&cur?((cur-prev)/prev*100):null;
               const h1=h.length>1?h[0]:null;
@@ -1623,15 +1751,18 @@ export default function App(){
       </main>
 
       {activeTab==="charts"&&<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#070512",zIndex:200,display:"flex",flexDirection:"column",fontFamily:"'Space Mono',monospace",animation:"fadein .22s ease"}}>
-        <ChartView assets={ASSETS} prices={prices} chartAsset={chartAsset} setChartAsset={setChartAsset} chartTf={chartTf} setChartTf={setChartTf} chartType={chartType} setChartType={setChartType} chartHist={chartHist} setChartHist={setChartHist} setActiveTab={setActiveTab} status={status} histRef={histRef}/>
+        <ChartView assets={visAll} prices={prices} chartAsset={chartAsset} setChartAsset={setChartAsset} chartTf={chartTf} setChartTf={setChartTf} chartType={chartType} setChartType={setChartType} chartHist={chartHist} setChartHist={setChartHist} setActiveTab={setActiveTab} status={status} histRef={histRef}/>
       </div>}
 
       {activeTab==="corr"&&<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#07050f",zIndex:200,display:"flex",flexDirection:"column",animation:"fadein .22s ease"}}>
-        <CorrView histRef={histRef} prices={prices} assets={ASSETS} setActiveTab={setActiveTab} status={status}/>
+        <CorrView histRef={histRef} prices={prices} assets={visAll} setActiveTab={setActiveTab} status={status}/>
+      </div>}
+      {activeTab==="leadlag"&&<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#07050f",zIndex:200,display:"flex",flexDirection:"column",animation:"fadein .22s ease"}}>
+        <LeadLagView histRef={histRef} prices={prices} assets={visAll} setActiveTab={setActiveTab} status={status}/>
       </div>}
 
       <div className={activeTab==="entropy"?"tab-overlay-enter":""} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#07050f",zIndex:200,display:activeTab==="entropy"?"flex":"none",flexDirection:"column"}}>
-        <EntropyView histRef={histRef} prices={prices} assets={ASSETS} setActiveTab={setActiveTab} status={status} liveRun={entropyLiveRun} setLiveRun={setEntropyLiveRun} corrAlertEnabled={corrAlertEnabled} setCorrAlertEnabled={setCorrAlertEnabled} corrAlertPair={corrAlertPair} setCorrAlertPair={setCorrAlertPair} corrAlertThreshold={corrAlertThreshold} setCorrAlertThreshold={setCorrAlertThreshold} corrAlertHit={corrAlertHit} corrAlertOptions={corrAlertOptions}/>
+        <EntropyView histRef={histRef} prices={prices} assets={visAll} setActiveTab={setActiveTab} status={status} liveRun={entropyLiveRun} setLiveRun={setEntropyLiveRun} corrAlertEnabled={corrAlertEnabled} setCorrAlertEnabled={setCorrAlertEnabled} corrAlertPair={corrAlertPair} setCorrAlertPair={setCorrAlertPair} corrAlertThreshold={corrAlertThreshold} setCorrAlertThreshold={setCorrAlertThreshold} corrAlertHit={corrAlertHit} corrAlertOptions={corrAlertOptions}/>
       </div>
 
       {activeTab==="docs" && <div style={{position:"fixed",inset:0,zIndex:200,display:"flex",flexDirection:"column",animation:"fadein .22s ease"}}>
@@ -1759,7 +1890,12 @@ export default function App(){
         .fbtn:hover { border-color: var(--pud); color: var(--pul); }
         .fbtn.a { background: var(--pud); border-color: var(--pu); color: #fff; }
         .fbtn-count { background: rgba(255,255,255,0.1); border-radius: 10px; padding: 1px 6px; font-size: 8px; }
-        .fbar-right { margin-left: auto; flex-shrink: 0; }
+        .fbar-right { margin-left: auto; flex-shrink: 0; display: flex; align-items: center; gap: 8px; }
+        .sort-wrap { display: flex; align-items: center; gap: 3px; padding: 0 6px; border-left: 1px solid var(--cb2); }
+        .sort-label { font-size: 9px; color: rgba(255,255,255,0.3); letter-spacing: .06em; margin-right: 2px; white-space: nowrap; }
+        .sbtn { display: flex; align-items: center; padding: 3px 8px; border-radius: 12px; border: 1px solid var(--cb2); background: transparent; color: rgba(255,255,255,0.35); font-size: 9px; font-family: var(--fm); cursor: pointer; transition: all .15s; white-space: nowrap; letter-spacing: .04em; }
+        .sbtn:hover { border-color: var(--pud); color: var(--pul); }
+        .sbtn.a { background: rgba(124,58,237,0.2); border-color: var(--pu); color: #c4b5fd; }
         .window-badge { font-size: 9px; color: var(--tm); letter-spacing: .06em; white-space: nowrap; }
 
         /* MOBILE TABS */
@@ -2066,15 +2202,11 @@ async function fetchPyth(symbol, tf = "1m", countback = 300) {
 }
 
 const CHART_VISIBLE_BARS = 180;
-const CHART_FETCH_BARS = 500;
+const CHART_FETCH_BARS = 200;
 const CHART_RIGHT_PAD_RATIO = 0;
 const CHART_MIN_VISIBLE_BARS = 30;
 const CHART_MAX_VISIBLE_BARS = 400;
 const CHART_OVERSCROLL_BARS = 80;
-
-// Preload Pyth logo for canvas watermark once at module level
-const _pythLogoImg = new Image();
-_pythLogoImg.src = "/pyth-logo.png";
 
 function drawCandles(canvas, bars, chartType, view = {}) {
   if (!canvas) return;
@@ -2303,17 +2435,24 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
     let dead = false;
     setViewOffset(0);
     setZoomBars(CHART_VISIBLE_BARS);
-    Promise.all([
-      fetchPyth(chartAsset, chartTf, CHART_FETCH_BARS),
-      fetchPyth(benchmarkSymbol, chartTf, CHART_FETCH_BARS),
-    ]).then(([mainCandles, benchmarkCandles]) => {
-      if (dead) return;
-      setChartHist(p=>({
-        ...p,
-        [chartAsset]: { ...(p[chartAsset]||{}), [chartTf]: mainCandles?.length ? mainCandles : ((p[chartAsset]||{})[chartTf] || []) },
-        [benchmarkSymbol]: { ...(p[benchmarkSymbol]||{}), [chartTf]: benchmarkCandles?.length ? benchmarkCandles : ((p[benchmarkSymbol]||{})[chartTf] || []) },
-      }));
-    });
+    // Load main asset first — show chart immediately, then load benchmark in background
+    // Skip fetch if we already have cached data for this asset+tf
+    if (!((chartHist[chartAsset]||{})[chartTf]?.length)) {
+      fetchPyth(chartAsset, chartTf, CHART_FETCH_BARS).then(mainCandles => {
+        if (dead) return;
+        if (mainCandles?.length) {
+          setChartHist(p=>({...p, [chartAsset]: {...(p[chartAsset]||{}), [chartTf]: mainCandles}}));
+        }
+      });
+    }
+    if (!((chartHist[benchmarkSymbol]||{})[chartTf]?.length)) {
+      fetchPyth(benchmarkSymbol, chartTf, CHART_FETCH_BARS).then(benchmarkCandles => {
+        if (dead) return;
+        if (benchmarkCandles?.length) {
+          setChartHist(p=>({...p, [benchmarkSymbol]: {...(p[benchmarkSymbol]||{}), [chartTf]: benchmarkCandles}}));
+        }
+      });
+    }
     return ()=>{dead=true;};
   },[chartAsset, chartTf, benchmarkSymbol]);
 
@@ -2967,6 +3106,21 @@ async function fetchCloses(sym, tf = "1m", limit = 300) {
   return bars.map(b => b.c);
 }
 
+const WIN_CFG = {
+  "1D":  { tf:"1m",  limit:720,  win:60,  label:"1 Day"   },
+  "7D":  { tf:"1h",  limit:168,  win:24,  label:"7 Days"  },
+  "30D": { tf:"4h",  limit:180,  win:21,  label:"30 Days" },
+  "90D": { tf:"1d",  limit:90,   win:14,  label:"90 Days" },
+};
+
+function fmtAxisTime(t, windowKey) {
+  if (!t) return "";
+  const d = new Date(t * 1000);
+  if (windowKey === "1D") return d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
+  if (windowKey === "90D") return d.toLocaleDateString([], {month:"short", year:"2-digit"});
+  return d.toLocaleDateString([], {day:"2-digit", month:"short"});
+}
+
 
 function pctReturns(closes) {
   const r = [];
@@ -2982,6 +3136,324 @@ function rollingPearson(ra, rb, win) {
     if (v !== null) pts.push(v);
   }
   return pts;
+}
+
+/* ── LEAD-LAG MATH ──────────────────────────────────────────────────────── */
+const MAX_LAG = { "1D":60, "7D":24, "30D":7, "90D":7 };
+
+function crossCorrAtLag(ra, rb, k) {
+  if(k===0) return pearson(ra, rb);
+  if(k>0)   return pearson(ra.slice(0,ra.length-k), rb.slice(k));
+  return          pearson(ra.slice(-k), rb.slice(0,rb.length+k));
+}
+
+function crossCorrFull(ra, rb, maxLag) {
+  const out=[];
+  for(let k=-maxLag;k<=maxLag;k++){
+    const v=crossCorrAtLag(ra,rb,k);
+    if(v!==null) out.push({lag:k,corr:v});
+  }
+  return out;
+}
+
+function findLeadLag(symA, symB, ra, rb, maxLag) {
+  const pts=crossCorrFull(ra,rb,maxLag);
+  if(!pts.length) return null;
+  const best=pts.reduce((a,b)=>Math.abs(b.corr)>Math.abs(a.corr)?b:a);
+  return {
+    leader:    best.lag>=0?symA:symB,
+    follower:  best.lag>=0?symB:symA,
+    lagBars:   Math.abs(best.lag),
+    corrAtLag: best.corr,
+    corrAt0:   pts.find(p=>p.lag===0)?.corr??null,
+    pts,
+  };
+}
+
+function fmtLag(lagBars, windowKey) {
+  if(!lagBars) return "sync";
+  if(windowKey==="1D")  return `${lagBars}m`;
+  if(windowKey==="7D")  return `${lagBars}h`;
+  if(windowKey==="30D") return `${lagBars*4}h`;
+  if(windowKey==="90D") return lagBars===1?"1d":`${lagBars}d`;
+  return `${lagBars}`;
+}
+
+function drawXCorr(canvas, pts, symA, symB, windowKey, hoverIdx=null) {
+  if(!canvas||!pts||!pts.length) return;
+  const par=canvas.parentElement; if(!par) return;
+  const W=par.clientWidth||canvas.offsetWidth, H=par.clientHeight||canvas.offsetHeight;
+  if(W<10||H<10) return;
+  canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext("2d");
+  ctx.fillStyle="#07050f"; ctx.fillRect(0,0,W,H);
+
+  const PAD={t:32,r:22,b:50,l:46};
+  const CW=W-PAD.l-PAD.r, CH=H-PAD.t-PAD.b;
+  const n=pts.length;
+  const toX=i=>PAD.l+i*(CW/(n-1));
+  const toY=v=>PAD.t+CH*((1-v)/2);
+  const zero=toY(0);
+
+  // Zone backgrounds (B leads left, A leads right)
+  const zeroI=pts.findIndex(p=>p.lag===0);
+  if(zeroI>=0){
+    const zX=toX(zeroI);
+    const gA=ctx.createLinearGradient(zX,0,PAD.l+CW,0);
+    gA.addColorStop(0,"rgba(124,58,237,0.06)"); gA.addColorStop(1,"rgba(124,58,237,0.13)");
+    ctx.fillStyle=gA; ctx.fillRect(zX,PAD.t,PAD.l+CW-zX,CH);
+    const gB=ctx.createLinearGradient(PAD.l,0,zX,0);
+    gB.addColorStop(0,"rgba(59,130,246,0.09)"); gB.addColorStop(1,"rgba(59,130,246,0.02)");
+    ctx.fillStyle=gB; ctx.fillRect(PAD.l,PAD.t,zX-PAD.l,CH);
+  }
+
+  // Horizontal grid lines
+  [-1,-0.5,0,0.5,1].forEach(v=>{
+    const y=toY(v);
+    ctx.strokeStyle=v===0?"rgba(255,255,255,0.18)":"rgba(255,255,255,0.05)";
+    ctx.lineWidth=v===0?1.5:1; ctx.setLineDash(v===0?[]:[2,5]);
+    ctx.beginPath(); ctx.moveTo(PAD.l,y); ctx.lineTo(PAD.l+CW,y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle=v===0?"rgba(255,255,255,0.38)":"rgba(255,255,255,0.2)";
+    ctx.font=`${v===0?"bold ":""}9px 'Space Mono',monospace`;
+    ctx.textAlign="right"; ctx.textBaseline="middle";
+    ctx.fillText(v.toFixed(1),PAD.l-6,y);
+  });
+
+  // Find peak
+  const best=pts.reduce((a,b)=>Math.abs(b.corr)>Math.abs(a.corr)?b:a);
+  const peakI=pts.findIndex(p=>p.lag===best.lag);
+  const peakX=toX(peakI), peakY=toY(best.corr);
+  const peakCol=best.corr>=0?"#10b981":"#ef4444";
+  const peakColLight=best.corr>=0?"#34d399":"#f87171";
+
+  // ── Filled area — green where |r| high, red where |r| low ──
+  ctx.beginPath();
+  ctx.moveTo(toX(0), zero);
+  pts.forEach((p,i)=>ctx.lineTo(toX(i),toY(p.corr)));
+  ctx.lineTo(toX(n-1), zero);
+  ctx.closePath();
+  const fillGrad=ctx.createLinearGradient(0,PAD.t,0,PAD.t+CH);
+  fillGrad.addColorStop(0,   "rgba(16,185,129,0.25)");  // |r|=+1 → green
+  fillGrad.addColorStop(0.5, "rgba(239,68,68,0.12)");   // |r|=0  → red
+  fillGrad.addColorStop(1,   "rgba(16,185,129,0.25)");  // |r|=-1 → green
+  ctx.fillStyle=fillGrad; ctx.fill();
+
+  // ── Line colored by |corr|: red(weak) → green(strong) ──
+  ctx.lineWidth=2.5; ctx.lineJoin="round"; ctx.lineCap="round"; ctx.setLineDash([]);
+  for(let i=0;i<n-1;i++){
+    const mc=(Math.abs(pts[i].corr)+Math.abs(pts[i+1].corr))/2;
+    const t=Math.min(1,mc/0.65);
+    const r=Math.round(239+(16-239)*t);
+    const g=Math.round(68+(185-68)*t);
+    const b2=Math.round(68+(129-68)*t);
+    ctx.strokeStyle=`rgba(${r},${g},${b2},0.95)`;
+    ctx.beginPath();
+    ctx.moveTo(toX(i),toY(pts[i].corr));
+    ctx.lineTo(toX(i+1),toY(pts[i+1].corr));
+    ctx.stroke();
+  }
+
+  // Vertical zero-lag line
+  if(zeroI>=0){
+    const zX=toX(zeroI);
+    ctx.strokeStyle="rgba(124,58,237,0.8)"; ctx.lineWidth=1.5;
+    ctx.beginPath(); ctx.moveTo(zX,PAD.t); ctx.lineTo(zX,PAD.t+CH); ctx.stroke();
+    ctx.font="bold 8px 'Space Mono',monospace"; ctx.textBaseline="top";
+    ctx.fillStyle="rgba(167,139,250,0.65)"; ctx.textAlign="left";
+    ctx.fillText(`${symA} leads →`,zX+5,PAD.t+5);
+    ctx.fillStyle="rgba(96,165,250,0.6)"; ctx.textAlign="right";
+    ctx.fillText(`← ${symB} leads`,zX-5,PAD.t+5);
+  }
+
+  // Peak dashed guide line
+  ctx.strokeStyle=best.corr>=0?"rgba(16,185,129,0.35)":"rgba(239,68,68,0.35)";
+  ctx.lineWidth=1; ctx.setLineDash([3,4]);
+  ctx.beginPath(); ctx.moveTo(peakX,PAD.t+CH); ctx.lineTo(peakX,peakY); ctx.stroke();
+  ctx.setLineDash([]);
+
+  // Peak dot (glow)
+  ctx.shadowColor=peakCol; ctx.shadowBlur=14;
+  ctx.fillStyle=peakCol;
+  ctx.beginPath(); ctx.arc(peakX,peakY,5.5,0,Math.PI*2); ctx.fill();
+  ctx.shadowBlur=0;
+  ctx.fillStyle="#07050f"; ctx.beginPath(); ctx.arc(peakX,peakY,2.5,0,Math.PI*2); ctx.fill();
+  ctx.fillStyle=peakColLight; ctx.beginPath(); ctx.arc(peakX,peakY,1.5,0,Math.PI*2); ctx.fill();
+
+  // Peak value label (pill)
+  const isAbove=best.corr>=0;
+  const valTxt=`${best.corr>=0?"+":""}${best.corr.toFixed(3)}`;
+  ctx.font="bold 10px 'Space Mono',monospace"; ctx.textAlign="center";
+  const tw=ctx.measureText(valTxt).width;
+  const lx=Math.max(PAD.l+tw/2+6, Math.min(PAD.l+CW-tw/2-6, peakX));
+  const ly=isAbove ? peakY-10 : peakY+10;
+  const pillH=17, pillW=tw+14;
+  ctx.fillStyle="rgba(7,5,15,0.82)";
+  ctx.strokeStyle=peakCol+"88"; ctx.lineWidth=1;
+  ctx.beginPath();
+  ctx.roundRect ? ctx.roundRect(lx-pillW/2, ly-(isAbove?pillH:0), pillW, pillH, 4)
+                : ctx.rect(lx-pillW/2, ly-(isAbove?pillH:0), pillW, pillH);
+  ctx.fill(); ctx.stroke();
+  ctx.fillStyle=peakColLight; ctx.textBaseline=isAbove?"bottom":"top";
+  ctx.fillText(valTxt, lx, ly);
+
+  // X-axis lag labels
+  const step=Math.max(1,Math.ceil(n/10));
+  ctx.textAlign="center"; ctx.textBaseline="top"; ctx.font="9px 'Space Mono',monospace";
+  pts.forEach((p,i)=>{
+    if(i%step===0||p.lag===0||p.lag===best.lag){
+      const lbl=p.lag===0?"0":`${p.lag>0?"+":""}${fmtLag(Math.abs(p.lag),windowKey)}`;
+      ctx.fillStyle=p.lag===best.lag?peakColLight:"rgba(255,255,255,0.22)";
+      ctx.fillText(lbl,toX(i),PAD.t+CH+6);
+    }
+  });
+
+  // Bottom label
+  ctx.fillStyle="rgba(255,255,255,0.1)"; ctx.font="8px 'Space Mono',monospace";
+  ctx.textAlign="center"; ctx.textBaseline="top";
+  ctx.fillText("← lag (bars) →",PAD.l+CW/2,PAD.t+CH+28);
+
+  // Title
+  ctx.fillStyle="rgba(255,255,255,0.22)"; ctx.font="bold 9px 'Space Mono',monospace";
+  ctx.textAlign="center"; ctx.textBaseline="top";
+  ctx.fillText(`Cross-Correlation Function  ·  ${symA} vs ${symB}`,PAD.l+CW/2,6);
+
+  // ── Hover crosshair ──
+  if(hoverIdx!==null && hoverIdx>=0 && hoverIdx<pts.length){
+    const hp=pts[hoverIdx];
+    const hx=toX(hoverIdx), hy=toY(hp.corr);
+    // Vertical line
+    ctx.strokeStyle="rgba(255,255,255,0.28)"; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(hx,PAD.t); ctx.lineTo(hx,PAD.t+CH); ctx.stroke();
+    ctx.setLineDash([]);
+    // Horizontal dashed to y-axis
+    ctx.strokeStyle="rgba(255,255,255,0.12)"; ctx.lineWidth=1; ctx.setLineDash([2,4]);
+    ctx.beginPath(); ctx.moveTo(PAD.l,hy); ctx.lineTo(hx,hy); ctx.stroke();
+    ctx.setLineDash([]);
+    // Dot on line
+    ctx.shadowColor="rgba(255,255,255,0.5)"; ctx.shadowBlur=10;
+    ctx.fillStyle="#fff";
+    ctx.beginPath(); ctx.arc(hx,hy,4.5,0,Math.PI*2); ctx.fill();
+    ctx.shadowBlur=0;
+    ctx.fillStyle="#07050f";
+    ctx.beginPath(); ctx.arc(hx,hy,1.8,0,Math.PI*2); ctx.fill();
+  }
+}
+
+function drawPriceLines(canvas, cA, cB, symA, symB, colA, colB, result, windowKey, hoverIdx) {
+  if(!canvas) return;
+  const par=canvas.parentElement; if(!par) return;
+  const W=par.clientWidth||canvas.offsetWidth, H=par.clientHeight||canvas.offsetHeight;
+  if(W<10||H<10) return;
+  canvas.width=W; canvas.height=H;
+  const ctx=canvas.getContext("2d");
+  ctx.fillStyle="#07050f"; ctx.fillRect(0,0,W,H);
+
+  const N=Math.min(cA.length,cB.length);
+  if(N<2){ ctx.fillStyle="rgba(255,255,255,0.1)"; ctx.font="10px 'Space Mono',monospace"; ctx.textAlign="center"; ctx.fillText("ACCUMULATING DATA…",W/2,H/2); return; }
+
+  const PAD={t:28,r:20,b:36,l:54};
+  const CW=W-PAD.l-PAD.r, CH=H-PAD.t-PAD.b;
+  const slA=cA.slice(-N), slB=cB.slice(-N);
+  const nA=slA.map(v=>(v/slA[0]-1)*100);
+  const nB=slB.map(v=>(v/slB[0]-1)*100);
+
+  const all=[...nA,...nB];
+  const minV=Math.min(...all), maxV=Math.max(...all);
+  const range=maxV-minV||1;
+  const padV=range*0.1;
+  const lo=minV-padV, hi=maxV+padV;
+
+  const toX=i=>PAD.l+i*(CW/(N-1));
+  const toY=v=>PAD.t+CH*(1-(v-lo)/(hi-lo));
+
+  // hex → rgba helper
+  const hr=(hex,a)=>{ try{ const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16); return `rgba(${r},${g},${b},${a})`; }catch(e){ return `rgba(167,139,250,${a})`; } };
+
+  // Grid lines
+  const yStep=(hi-lo)/4;
+  for(let i=0;i<=4;i++){
+    const v=lo+yStep*i; const y=toY(v);
+    ctx.strokeStyle=v===0?"rgba(255,255,255,0.18)":"rgba(255,255,255,0.05)";
+    ctx.lineWidth=v===0?1.2:1; ctx.setLineDash(v===0?[]:[2,5]);
+    ctx.beginPath(); ctx.moveTo(PAD.l,y); ctx.lineTo(PAD.l+CW,y); ctx.stroke();
+    ctx.setLineDash([]);
+    ctx.fillStyle=v===0?"rgba(255,255,255,0.4)":"rgba(255,255,255,0.2)";
+    ctx.font=(v===0?"bold ":"")+"8px 'Space Mono',monospace";
+    ctx.textAlign="right"; ctx.textBaseline="middle";
+    ctx.fillText(`${v>=0?"+":""}${v.toFixed(1)}%`,PAD.l-5,y);
+  }
+
+  // Subtle fill areas using each asset's own color
+  const zeroY=toY(Math.max(lo,Math.min(hi,0)));
+  [[nA,colA],[nB,colB]].forEach(([arr,col])=>{
+    ctx.beginPath();
+    arr.forEach((v,i)=>{ i===0?ctx.moveTo(toX(i),toY(v)):ctx.lineTo(toX(i),toY(v)); });
+    ctx.lineTo(toX(N-1),zeroY); ctx.lineTo(toX(0),zeroY); ctx.closePath();
+    ctx.fillStyle=hr(col,0.05);
+    ctx.fill();
+  });
+
+  // Lines — each asset keeps its OWN color so they are always distinguishable
+  [[nA,colA],[nB,colB]].forEach(([arr,col])=>{
+    ctx.strokeStyle=hr(col,0.95);
+    ctx.lineWidth=2; ctx.lineJoin="round"; ctx.lineCap="round"; ctx.setLineDash([]);
+    ctx.beginPath();
+    arr.forEach((v,i)=>{ i===0?ctx.moveTo(toX(i),toY(v)):ctx.lineTo(toX(i),toY(v)); });
+    ctx.stroke();
+  });
+
+  // Legend
+  [[symA,colA,nA],[symB,colB,nB]].forEach(([sym,col,arr],i)=>{
+    const lx=PAD.l+8+i*110, ly=PAD.t+10;
+    const lastVal=arr[arr.length-1];
+    const col2=lastVal>=0?"#10b981":"#ef4444";
+    try{ ctx.fillStyle=col; }catch(e){ ctx.fillStyle="#a78bfa"; }
+    ctx.fillRect(lx,ly-3,20,3);
+    ctx.fillStyle="rgba(255,255,255,0.65)"; ctx.font="bold 9px 'Space Mono',monospace";
+    ctx.textAlign="left"; ctx.textBaseline="middle";
+    ctx.fillText(sym,lx+24,ly-1);
+    ctx.fillStyle=col2; ctx.font="8px 'Space Mono',monospace";
+    ctx.fillText(`${lastVal>=0?"+":""}${lastVal.toFixed(2)}%`,lx+24+ctx.measureText(sym).width+6,ly-1);
+  });
+
+  // X axis date labels
+  const msPerBar2={"1D":60*1000,"7D":3600*1000,"30D":4*3600*1000,"90D":86400*1000}[windowKey]||60*1000;
+  const step=Math.max(1,Math.floor(N/6));
+  ctx.textAlign="center"; ctx.textBaseline="top"; ctx.font="8px 'Space Mono',monospace"; ctx.fillStyle="rgba(255,255,255,0.2)";
+  for(let i=0;i<N;i+=step){
+    const barsAgo=N-1-i;
+    if(barsAgo===0){ ctx.fillText("зараз",toX(i),PAD.t+CH+5); continue; }
+    const d=new Date(Date.now()-barsAgo*msPerBar2);
+    const lbl=windowKey==="1D"
+      ? d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})
+      : windowKey==="7D"
+        ? `${d.getDate()} ${d.toLocaleString([],{month:"short"})} ${d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}`
+        : `${d.getDate()} ${d.toLocaleString([],{month:"short"})}`;
+    ctx.fillText(lbl,toX(i),PAD.t+CH+5);
+  }
+
+  // Title
+  ctx.fillStyle="rgba(255,255,255,0.18)"; ctx.font="bold 9px 'Space Mono',monospace";
+  ctx.textAlign="center"; ctx.textBaseline="top";
+  ctx.fillText(`Price  ·  ${symA} vs ${symB}`,PAD.l+CW/2,5);
+
+  // Hover crosshair
+  if(hoverIdx!==null&&hoverIdx>=0&&hoverIdx<N){
+    const hx=toX(hoverIdx);
+    ctx.strokeStyle="rgba(255,255,255,0.22)"; ctx.lineWidth=1; ctx.setLineDash([3,3]);
+    ctx.beginPath(); ctx.moveTo(hx,PAD.t); ctx.lineTo(hx,PAD.t+CH); ctx.stroke();
+    ctx.setLineDash([]);
+    [[nA,colA],[nB,colB]].forEach(([arr,col])=>{
+      const hy=toY(arr[hoverIdx]);
+      try{ ctx.shadowColor=col; }catch(e){}
+      ctx.shadowBlur=8;
+      try{ ctx.fillStyle=col; }catch(e){ ctx.fillStyle="#a78bfa"; }
+      ctx.beginPath(); ctx.arc(hx,hy,4.5,0,Math.PI*2); ctx.fill();
+      ctx.shadowBlur=0;
+      ctx.fillStyle="#07050f"; ctx.beginPath(); ctx.arc(hx,hy,1.8,0,Math.PI*2); ctx.fill();
+    });
+  }
 }
 
 function drawScatter(canvas, ra, rb, symA, symB, colA, colB) {
@@ -3059,7 +3531,7 @@ function drawScatter(canvas, ra, rb, symA, symB, colA, colB) {
   for(let i=0;i<=4;i++){const v=yMin+(yMax-yMin)/4*i;ctx.fillText(v.toFixed(1),PAD.l-6,toY(v));}
 }
 
-function drawRolling(canvas, pts) {
+function drawRolling(canvas, allPts, times, cutoff, windowKey) {
   if (!canvas) return;
   const par=canvas.parentElement; if(!par) return;
   const W=par.clientWidth, H=par.clientHeight;
@@ -3068,16 +3540,25 @@ function drawRolling(canvas, pts) {
   const ctx=canvas.getContext("2d");
   ctx.fillStyle="#07050f"; ctx.fillRect(0,0,W,H);
 
-  if(!pts||pts.length<2){
+  if(!allPts||allPts.length<2){
     ctx.fillStyle="rgba(124,58,237,0.3)"; ctx.font="11px 'Space Mono',monospace";
     ctx.textAlign="center"; ctx.textBaseline="middle";
     ctx.fillText("Accumulating…",W/2,H/2); return;
   }
 
-  const PAD={t:16,r:60,b:28,l:40};
+  // Always draw the full chart — cutoff only moves the playhead indicator
+  const pts = allPts;
+  const curIdx = Math.min(pts.length-1, Math.max(0, Math.round((cutoff??1)*(pts.length-1))));
+
+  const PAD={t:16,r:64,b:34,l:40};
   const CW=W-PAD.l-PAD.r, CH=H-PAD.t-PAD.b;
   const toY=v=>PAD.t+CH*(1-(v+1)/2);
-  const toX=i=>PAD.l+(i/(pts.length-1))*CW;
+  const toX=i=>PAD.l+(i/(Math.max(pts.length-1,1)))*CW;
+
+  const endVal=pts[pts.length-1];
+  const curVal=pts[curIdx];
+  const col=endVal>=0.7?"#10b981":endVal>=0?"#f59e0b":"#ef4444";
+  const curCol=curVal>=0.7?"#10b981":curVal>=0?"#f59e0b":"#ef4444";
 
   // Bands
   [-1,-0.5,0,0.5,1].forEach(v=>{
@@ -3091,71 +3572,511 @@ function drawRolling(canvas, pts) {
     ctx.fillText(v.toFixed(1),PAD.l-4,y);
   });
 
-  const last=pts[pts.length-1];
-  const col=last>=0.7?"#10b981":last>=0?"#f59e0b":"#ef4444";
-
-  // Fill
+  // Fill (always full)
   const grd=ctx.createLinearGradient(0,PAD.t,0,PAD.t+CH);
-  grd.addColorStop(0,last>=0?"rgba(16,185,129,0.18)":"rgba(239,68,68,0.18)");
+  grd.addColorStop(0,endVal>=0?"rgba(16,185,129,0.15)":"rgba(239,68,68,0.15)");
   grd.addColorStop(1,"rgba(0,0,0,0)");
   ctx.beginPath();
   pts.forEach((v,i)=>{const x=toX(i),y=toY(v);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
   ctx.lineTo(toX(pts.length-1),toY(0));ctx.lineTo(toX(0),toY(0));
   ctx.closePath();ctx.fillStyle=grd;ctx.fill();
 
-  // Line
-  const lg=ctx.createLinearGradient(0,0,W,0);
+  // Line (always full)
+  const lg=ctx.createLinearGradient(PAD.l,0,PAD.l+CW,0);
   lg.addColorStop(0,"rgba(124,58,237,0.7)");lg.addColorStop(1,col);
   ctx.strokeStyle=lg;ctx.lineWidth=2;ctx.lineJoin="round";
   ctx.beginPath();
   pts.forEach((v,i)=>{const x=toX(i),y=toY(v);i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);});
   ctx.stroke();
 
-  // Current badge
-  const lx=toX(pts.length-1),ly=toY(last);
-  ctx.fillStyle=col; ctx.beginPath();ctx.arc(lx,ly,4,0,Math.PI*2);ctx.fill();
-  ctx.fillRect(W-PAD.r+2,ly-8,PAD.r-4,16);
+  // Playhead — vertical indicator line at curIdx
+  const px=toX(curIdx), py=toY(curVal);
+  ctx.save();
+  ctx.strokeStyle=curCol; ctx.lineWidth=1.5; ctx.setLineDash([4,3]);
+  ctx.beginPath(); ctx.moveTo(px,PAD.t); ctx.lineTo(px,PAD.t+CH); ctx.stroke();
+  ctx.setLineDash([]);
+  ctx.restore();
+
+  // Dot at playhead
+  ctx.fillStyle=curCol; ctx.beginPath();ctx.arc(px,py,5,0,Math.PI*2);ctx.fill();
+  ctx.strokeStyle="rgba(0,0,0,0.6)"; ctx.lineWidth=1.5; ctx.stroke();
+
+  // Value badge next to playhead (right side if space, else left)
+  const bw=48, bh=16;
+  const bx=px+10+bw>PAD.l+CW ? px-bw-6 : px+10;
+  const by=Math.max(PAD.t,Math.min(py-bh/2,PAD.t+CH-bh));
+  ctx.fillStyle=`${curCol}33`; ctx.beginPath(); ctx.roundRect(bx,by,bw,bh,3); ctx.fill();
+  ctx.strokeStyle=curCol; ctx.lineWidth=0.8; ctx.stroke();
   ctx.fillStyle="#fff"; ctx.font="bold 9px 'Space Mono',monospace";
-  ctx.textAlign="left"; ctx.textBaseline="middle";
-  ctx.fillText(last.toFixed(3),W-PAD.r+5,ly);
+  ctx.textAlign="center"; ctx.textBaseline="middle";
+  ctx.fillText(curVal.toFixed(3),bx+bw/2,by+bh/2);
+
+  // X-axis time labels
+  if(times&&times.length>1){
+    const NUM_LABELS=5;
+    ctx.fillStyle="rgba(255,255,255,0.22)"; ctx.font="8px 'Space Mono',monospace";
+    ctx.textAlign="center"; ctx.textBaseline="top";
+    for(let li=0;li<NUM_LABELS;li++){
+      const idx=Math.round(li/(NUM_LABELS-1)*(allPts.length-1));
+      const t=times[Math.min(idx,times.length-1)];
+      if(!t) continue;
+      const x=toX(idx);
+      ctx.fillText(fmtAxisTime(t,windowKey),x,PAD.t+CH+4);
+    }
+  }
+}
+
+/* ══════════════════════════════════════════════════════════════════════════
+   LEAD-LAG VIEW
+   ══════════════════════════════════════════════════════════════════════════ */
+function LeadLagView({histRef, prices, assets, setActiveTab, status}) {
+  const xcRef = useRef();
+  const [llWindow, setLlWindow] = useState("7D");
+  const [llBars, setLlBars]     = useState({});
+  const [symA, setSymA]         = useState(()=>assets[0]?.symbol||"BTC");
+  const [symB, setSymB]         = useState(()=>assets[1]?.symbol||"ETH");
+  const [loading, setLoading]   = useState(false);
+  const [showTip, setShowTip]   = useState(false);
+  const [hoverInfo, setHoverInfo] = useState(null);
+  const hoverIdxRef = useRef(null);
+  const xcContRef = useRef();
+  const [, tick] = useState(0);
+
+  // Keep symbols valid if assets change
+  useEffect(()=>{
+    if(assets.length>0&&!assets.find(a=>a.symbol===symA)) setSymA(assets[0].symbol);
+    if(assets.length>1&&!assets.find(a=>a.symbol===symB)) setSymB(assets[1].symbol);
+  },[assets]); // eslint-disable-line
+
+  // Fetch bars for selected pair
+  useEffect(()=>{
+    let dead=false;
+    const {tf,limit}=WIN_CFG[llWindow];
+    const toFetch=[symA,symB].filter(s=>!llBars[`${llWindow}_${s}`]);
+    if(!toFetch.length) return;
+    setLoading(true);
+    Promise.all(toFetch.map(s=>fetchPyth(s,tf,limit)))
+      .then(results=>{
+        if(dead) return;
+        const upd={};
+        toFetch.forEach((s,i)=>{ upd[`${llWindow}_${s}`]=results[i]; });
+        setLlBars(p=>({...p,...upd}));
+      })
+      .catch(()=>{}).finally(()=>{ if(!dead) setLoading(false); });
+    return()=>{ dead=true; };
+  },[symA,symB,llWindow]); // eslint-disable-line
+
+  // Live refresh every 3s
+  useEffect(()=>{
+    const iv=setInterval(()=>tick(n=>n+1),3000);
+    return()=>clearInterval(iv);
+  },[]);
+
+  const getCloses = sym => {
+    const hist=llBars[`${llWindow}_${sym}`]||[];
+    // For 7D/30D/90D, candles are 1h/4h/1d — mixing 1-min live ticks creates a flat end
+    if(llWindow!=="1D") return hist.map(b=>b.c).slice(-500);
+    const live=histRef.current[sym]||[];
+    return [...hist.map(b=>b.c),...live].slice(-500);
+  };
+
+  const cA=getCloses(symA), cB=getCloses(symB);
+  const ra=pctReturns(cA), rb=pctReturns(cB);
+  const maxLag=MAX_LAG[llWindow]||24;
+  const result=symA!==symB&&ra.length>maxLag*2&&rb.length>maxLag*2
+    ? findLeadLag(symA,symB,ra,rb,maxLag) : null;
+
+  // Draw chart on every render (canvas)
+  useEffect(()=>{
+    const N=Math.min(cA.length,cB.length,300);
+    if(N>1) drawPriceLines(xcRef.current,cA,cB,symA,symB,aAsset.color,bAsset.color,result,llWindow,hoverIdxRef.current);
+  });
+  useEffect(()=>{
+    const redraw=()=>{
+      const N=Math.min(cA.length,cB.length,300);
+      if(N>1) drawPriceLines(xcRef.current,cA,cB,symA,symB,aAsset.color,bAsset.color,result,llWindow,hoverIdxRef.current);
+    };
+    const ro=new ResizeObserver(redraw);
+    if(xcRef.current?.parentElement) ro.observe(xcRef.current.parentElement);
+    return()=>ro.disconnect();
+  },[symA,symB,llBars,llWindow]); // eslint-disable-line
+
+  // Mouse handlers for hover tooltip
+  const handleChartMouseMove = (e) => {
+    if(!xcContRef.current) return;
+    const rect = xcContRef.current.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const PAD = {t:28,r:20,b:36,l:54};
+    const CW = rect.width - PAD.l - PAD.r;
+    const N = Math.min(cA.length, cB.length);
+    if(N<2 || mouseX<PAD.l || mouseX>PAD.l+CW) {
+      if(hoverIdxRef.current!==null){ hoverIdxRef.current=null; setHoverInfo(null); }
+      return;
+    }
+    const idx = Math.max(0, Math.min(N-1, Math.round((mouseX-PAD.l)/(CW/(N-1)))));
+    hoverIdxRef.current = idx;
+    setHoverInfo({ idx, cx: mouseX, cy: mouseY, N });
+  };
+  const handleChartMouseLeave = () => { hoverIdxRef.current=null; setHoverInfo(null); };
+
+  // All N*(N-1)/2 pairs from every visible asset (live data, updates every tick)
+  const allPairsRanked = useMemo(()=>{
+    const syms=assets.map(a=>a.symbol);
+    const rows=[];
+    for(let i=0;i<syms.length;i++){
+      for(let j=i+1;j<syms.length;j++){
+        const a=syms[i], b=syms[j];
+        const rra=pctReturns(getCloses(a)), rrb=pctReturns(getCloses(b));
+        const ml=Math.min(maxLag, Math.floor(Math.min(rra.length,rrb.length)/3));
+        if(ml>=1&&rra.length>ml*2&&rrb.length>ml*2){
+          const r=findLeadLag(a,b,rra,rrb,ml);
+          if(r) rows.push({a,b,r});
+        }
+      }
+    }
+    return rows.sort((x,y)=>Math.abs(y.r.corrAtLag)-Math.abs(x.r.corrAtLag));
+  },[assets,llBars,llWindow,tick]); // eslint-disable-line
+
+  const corrCol=v=>v==null?"rgba(255,255,255,0.3)":Math.abs(v)>=0.7?"#10b981":Math.abs(v)>=0.4?"#f59e0b":"rgba(255,255,255,0.35)";
+  const aAsset=assets.find(x=>x.symbol===symA)||{color:"#a78bfa",symbol:symA};
+  const bAsset=assets.find(x=>x.symbol===symB)||{color:"#7c3aed",symbol:symB};
+  const leaderAsset=result?assets.find(x=>x.symbol===result.leader)||aAsset:null;
+  const followerAsset=result?assets.find(x=>x.symbol===result.follower)||bAsset:null;
+  const totalPairs=assets.length*(assets.length-1)/2;
+
+  const selStyle={
+    background:"rgba(124,58,237,0.12)",border:"1px solid rgba(124,58,237,0.3)",
+    borderRadius:5,padding:"4px 10px",color:"#c4b5fd",fontSize:11,
+    fontFamily:"'Space Mono',monospace",fontWeight:700,cursor:"pointer",outline:"none",
+    appearance:"none",WebkitAppearance:"none",
+  };
+
+  return (
+    <div style={{display:"flex",flexDirection:"column",width:"100%",height:"100%",background:"#07050f",fontFamily:"'Space Mono',monospace",overflow:"hidden"}}>
+
+      {/* ── Top bar ── */}
+      <div style={{display:"flex",alignItems:"center",height:48,padding:"0 16px",borderBottom:"1px solid rgba(255,255,255,0.06)",background:"#0b0917",flexShrink:0,gap:16}}>
+        <PythLogo size={22}/>
+        <span style={{fontSize:13,fontWeight:700,color:"#7c3aed",letterSpacing:".06em"}}>PYTH</span>
+        <span style={{fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.25)"}}>LEAD-LAG DETECTOR</span>
+        {/* ── ? tooltip button ── */}
+        <div style={{position:"relative",display:"inline-flex",alignItems:"center"}}>
+          <button
+            onMouseEnter={()=>setShowTip(true)}
+            onMouseLeave={()=>setShowTip(false)}
+            style={{width:18,height:18,borderRadius:"50%",background:"rgba(124,58,237,0.2)",border:"1px solid rgba(124,58,237,0.45)",color:"#c4b5fd",fontSize:10,fontWeight:800,cursor:"pointer",display:"flex",alignItems:"center",justifyContent:"center",padding:0,lineHeight:1,flexShrink:0}}
+          >?</button>
+          {showTip&&(
+            <div style={{position:"absolute",top:"calc(100% + 10px)",left:"50%",transform:"translateX(-20%)",width:290,background:"#150f28",border:"1px solid rgba(124,58,237,0.35)",borderRadius:10,padding:"14px 16px",zIndex:999,boxShadow:"0 12px 40px rgba(0,0,0,0.7)",pointerEvents:"none"}}>
+              <div style={{fontSize:12,fontWeight:800,color:"#c4b5fd",marginBottom:8,letterSpacing:".04em"}}>What is Lead-Lag?</div>
+              <div style={{fontSize:10,color:"rgba(255,255,255,0.65)",lineHeight:1.7,marginBottom:10}}>
+                Detects which asset moves <span style={{color:"#a78bfa",fontWeight:700}}>first</span>. If BTC → ETH by 15 min, Bitcoin's price moves tend to be followed by Ethereum ~15 minutes later — giving a predictive signal.
+              </div>
+              <div style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.35)",letterSpacing:".08em",marginBottom:6}}>HOW TO USE</div>
+              <div style={{fontSize:9,color:"rgba(255,255,255,0.5)",lineHeight:1.8}}>
+                <span style={{color:"#7c3aed",fontWeight:700}}>1.</span> Pick two assets from the <span style={{color:"#c4b5fd"}}>PAIR</span> dropdowns<br/>
+                <span style={{color:"#7c3aed",fontWeight:700}}>2.</span> Choose a <span style={{color:"#c4b5fd"}}>time window</span> (1D = 1-min bars, 7D = hourly)<br/>
+                <span style={{color:"#7c3aed",fontWeight:700}}>3.</span> The chart shows correlation at every possible time-shift<br/>
+                <span style={{color:"#7c3aed",fontWeight:700}}>4.</span> The <span style={{color:"#10b981",fontWeight:700}}>peak</span> = best predictive lag between the pair<br/>
+                <span style={{color:"#7c3aed",fontWeight:700}}>5.</span> Right panel ranks <span style={{color:"#c4b5fd"}}>all pairs</span> by correlation strength
+              </div>
+            </div>
+          )}
+        </div>
+        <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>
+          {loading&&<span style={{fontSize:9,color:"rgba(124,58,237,0.6)",letterSpacing:".06em"}}>LOADING…</span>}
+          <div style={{display:"flex",alignItems:"center",gap:5,padding:"3px 8px",borderRadius:3,background:status==="live"?"rgba(16,185,129,0.1)":"rgba(239,68,68,0.1)",border:`1px solid ${status==="live"?"rgba(16,185,129,0.25)":"rgba(239,68,68,0.25)"}`}}>
+            <span style={{width:5,height:5,borderRadius:"50%",background:status==="live"?"#10b981":"#ef4444",display:"inline-block"}}/>
+            <span style={{fontSize:10,fontWeight:700,letterSpacing:".08em",color:status==="live"?"#10b981":"#ef4444"}}>{status==="live"?"LIVE":"DEMO"}</span>
+          </div>
+          <button onClick={()=>setActiveTab("matrix")} style={{background:"transparent",border:"1px solid rgba(255,255,255,0.12)",borderRadius:4,padding:"6px 15px",color:"rgba(255,255,255,0.5)",cursor:"pointer",fontSize:11,fontFamily:"inherit",fontWeight:700,letterSpacing:".05em"}}
+            onMouseEnter={e=>{e.currentTarget.style.borderColor="rgba(124,58,237,0.6)";e.currentTarget.style.color="#a78bfa";}}
+            onMouseLeave={e=>{e.currentTarget.style.borderColor="rgba(255,255,255,0.12)";e.currentTarget.style.color="rgba(255,255,255,0.5)";}}>
+            ← MATRIX
+          </button>
+        </div>
+      </div>
+
+      {/* ── Controls: window + pair selectors ── */}
+      <div style={{display:"flex",alignItems:"center",gap:8,padding:"7px 16px",borderBottom:"1px solid rgba(255,255,255,0.05)",background:"#080614",flexShrink:0,flexWrap:"wrap"}}>
+        <span style={{fontSize:9,color:"rgba(255,255,255,0.2)",letterSpacing:".08em"}}>WINDOW</span>
+        <div style={{display:"flex",gap:4}}>
+          {Object.keys(WIN_CFG).map(k=>(
+            <button key={k} onClick={()=>setLlWindow(k)} style={{padding:"3px 10px",borderRadius:10,border:`1px solid ${llWindow===k?"#7c3aed":"rgba(255,255,255,0.1)"}`,background:llWindow===k?"rgba(124,58,237,0.2)":"transparent",color:llWindow===k?"#c4b5fd":"rgba(255,255,255,0.35)",fontSize:9,fontFamily:"inherit",fontWeight:700,cursor:"pointer"}}>{k}</button>
+          ))}
+        </div>
+        <div style={{width:1,height:16,background:"rgba(255,255,255,0.08)",margin:"0 4px"}}/>
+        <span style={{fontSize:9,color:"rgba(255,255,255,0.2)",letterSpacing:".08em"}}>PAIR</span>
+        <select value={symA} onChange={e=>{setSymA(e.target.value);}} style={selStyle}>
+          {assets.map(a=><option key={a.symbol} value={a.symbol}>{a.symbol}</option>)}
+        </select>
+        <span style={{fontSize:12,color:"rgba(255,255,255,0.2)"}}>vs</span>
+        <select value={symB} onChange={e=>{setSymB(e.target.value);}} style={selStyle}>
+          {assets.map(a=><option key={a.symbol} value={a.symbol}>{a.symbol}</option>)}
+        </select>
+        {/* Inline result badge */}
+        {result&&result.lagBars>0&&(
+          <div style={{marginLeft:8,display:"flex",alignItems:"center",gap:7,padding:"4px 12px",background:"rgba(124,58,237,0.08)",border:"1px solid rgba(124,58,237,0.22)",borderRadius:20}}>
+            <span style={{fontSize:9,color:"rgba(255,255,255,0.3)"}}>leads:</span>
+            <span style={{fontSize:11,fontWeight:800,color:leaderAsset?.color||"#a78bfa"}}>{result.leader}</span>
+            <span style={{fontSize:13,color:"rgba(255,255,255,0.25)"}}>→</span>
+            <span style={{fontSize:11,fontWeight:800,color:followerAsset?.color||"#7c3aed"}}>{result.follower}</span>
+            <span style={{fontSize:9,color:"rgba(255,255,255,0.35)"}}>by</span>
+            <span style={{fontSize:12,fontWeight:800,color:"#fff",background:"rgba(255,255,255,0.07)",padding:"1px 7px",borderRadius:4}}>{fmtLag(result.lagBars,llWindow)}</span>
+            <span style={{fontSize:9,color:"rgba(255,255,255,0.3)"}}>r=</span>
+            <span style={{fontSize:10,fontWeight:700,color:corrCol(result.corrAtLag)}}>{result.corrAtLag>=0?"+":""}{result.corrAtLag.toFixed(3)}</span>
+          </div>
+        )}
+        {result&&result.lagBars===0&&(
+          <span style={{marginLeft:8,fontSize:9,color:"rgba(255,255,255,0.3)"}}>⟺ move in sync — no lead-lag detected</span>
+        )}
+      </div>
+
+      {/* ── Main content ── */}
+      <div style={{flex:1,display:"flex",minHeight:0,overflow:"hidden"}}>
+
+        {/* Left: stats strip + BIG chart */}
+        <div style={{flex:3,display:"flex",flexDirection:"column",minWidth:0,padding:"12px 14px",gap:10}}>
+
+          {/* Stats strip */}
+          {result&&result.lagBars>0&&(
+            <div style={{display:"flex",alignItems:"center",gap:0,background:"rgba(124,58,237,0.05)",border:"1px solid rgba(124,58,237,0.13)",borderRadius:8,padding:"0",flexShrink:0,overflow:"hidden"}}>
+              <div style={{padding:"10px 18px",borderRight:"1px solid rgba(124,58,237,0.12)",textAlign:"center"}}>
+                <div style={{fontSize:8,color:"rgba(255,255,255,0.25)",letterSpacing:".08em",marginBottom:3}}>LEADS FIRST</div>
+                <div style={{fontSize:18,fontWeight:800,color:leaderAsset?.color||"#a78bfa"}}>{result.leader}</div>
+              </div>
+              <div style={{padding:"10px 16px",borderRight:"1px solid rgba(124,58,237,0.12)",textAlign:"center"}}>
+                <div style={{fontSize:8,color:"rgba(255,255,255,0.25)",letterSpacing:".08em",marginBottom:3}}>LEAD BY</div>
+                <div style={{fontSize:18,fontWeight:800,color:"#fff"}}>{fmtLag(result.lagBars,llWindow)}</div>
+              </div>
+              <div style={{padding:"10px 18px",borderRight:"1px solid rgba(124,58,237,0.12)",textAlign:"center"}}>
+                <div style={{fontSize:8,color:"rgba(255,255,255,0.25)",letterSpacing:".08em",marginBottom:3}}>FOLLOWS AFTER</div>
+                <div style={{fontSize:18,fontWeight:800,color:followerAsset?.color||"#7c3aed"}}>{result.follower}</div>
+              </div>
+              <div style={{width:1,background:"rgba(124,58,237,0.12)"}}/>
+              <div style={{padding:"10px 16px",borderRight:"1px solid rgba(124,58,237,0.12)",textAlign:"center"}}>
+                <div style={{fontSize:8,color:"rgba(255,255,255,0.25)",letterSpacing:".08em",marginBottom:3}}>PEAK CORR.</div>
+                <div style={{fontSize:16,fontWeight:700,color:corrCol(result.corrAtLag)}}>{result.corrAtLag>=0?"+":""}{result.corrAtLag.toFixed(3)}</div>
+                <div style={{fontSize:7,color:"rgba(255,255,255,0.15)",marginTop:2}}>with lag</div>
+              </div>
+              <div style={{padding:"10px 16px",borderRight:"1px solid rgba(124,58,237,0.12)",textAlign:"center"}}>
+                <div style={{fontSize:8,color:"rgba(255,255,255,0.25)",letterSpacing:".08em",marginBottom:3}}>ZERO-LAG CORR.</div>
+                <div style={{fontSize:16,fontWeight:700,color:corrCol(result.corrAt0)}}>{result.corrAt0!=null?(result.corrAt0>=0?"+":"")+result.corrAt0.toFixed(3):"–"}</div>
+                <div style={{fontSize:7,color:"rgba(255,255,255,0.15)",marginTop:2}}>no shift</div>
+              </div>
+              {result.corrAt0!=null&&(
+                <div style={{padding:"10px 16px",borderRight:"1px solid rgba(124,58,237,0.12)",textAlign:"center"}}>
+                  <div style={{fontSize:8,color:"rgba(255,255,255,0.25)",letterSpacing:".08em",marginBottom:3}}>PREDICTIVE GAIN</div>
+                  <div style={{fontSize:16,fontWeight:700,color:"#a78bfa"}}>{((result.corrAtLag-result.corrAt0)>=0?"+":"")+(result.corrAtLag-result.corrAt0).toFixed(3)}</div>
+                  <div style={{fontSize:7,color:"rgba(255,255,255,0.15)",marginTop:2}}>lag vs sync</div>
+                </div>
+              )}
+              <div style={{padding:"10px 16px",textAlign:"center",marginLeft:"auto"}}>
+                <div style={{fontSize:8,color:"rgba(255,255,255,0.2)",letterSpacing:".08em",marginBottom:3}}>DATA BARS</div>
+                <div style={{fontSize:14,fontWeight:700,color:"rgba(255,255,255,0.4)"}}>{Math.min(ra.length,rb.length)}</div>
+              </div>
+            </div>
+          )}
+          {!result&&(
+            <div style={{flexShrink:0,padding:"10px 16px",background:"rgba(124,58,237,0.04)",border:"1px solid rgba(124,58,237,0.1)",borderRadius:8,fontSize:10,color:"rgba(124,58,237,0.5)",letterSpacing:".07em"}}>
+              {symA===symB?"⚠ SELECT TWO DIFFERENT ASSETS":loading?"LOADING DATA…":"ACCUMULATING DATA — NEED "+((maxLag*2)+2)+"+ BARS PER ASSET"}
+            </div>
+          )}
+
+          {/* ── BIG Cross-Correlation Chart ── */}
+          <div style={{flex:1,background:"rgba(255,255,255,0.015)",border:"1px solid rgba(255,255,255,0.06)",borderRadius:8,display:"flex",flexDirection:"column",minHeight:0,overflow:"hidden"}}>
+            <div ref={xcContRef} onMouseMove={handleChartMouseMove} onMouseLeave={handleChartMouseLeave}
+              style={{flex:1,position:"relative",minHeight:0,cursor:result?"crosshair":"default"}}>
+              <canvas ref={xcRef} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>
+              {!result&&(
+                <div style={{position:"absolute",inset:0,display:"flex",flexDirection:"column",alignItems:"center",justifyContent:"center",gap:6,pointerEvents:"none"}}>
+                  <div style={{fontSize:28,opacity:.06}}>📊</div>
+                  <div style={{fontSize:10,color:"rgba(124,58,237,0.4)",letterSpacing:".1em"}}>{symA===symB?"SELECT TWO DIFFERENT ASSETS":loading?"FETCHING DATA…":"WAITING FOR DATA…"}</div>
+                </div>
+              )}
+              {/* Hover tooltip */}
+              {hoverInfo&&(()=>{
+                const {idx,N:hN,cx,cy}=hoverInfo;
+                const chartN=hN||Math.min(cA.length,cB.length);
+                if(cA.length<2||cB.length<2) return null;
+                const slA=cA.slice(-chartN), slB=cB.slice(-chartN);
+                const nA=slA.map(v=>(v/slA[0]-1)*100);
+                const nB=slB.map(v=>(v/slB[0]-1)*100);
+                const vA=nA[idx]??0, vB=nB[idx]??0;
+                const barsAgo=chartN-1-idx;
+                const msPerBar={
+                  "1D": 60*1000,
+                  "7D": 60*60*1000,
+                  "30D": 4*60*60*1000,
+                  "90D": 24*60*60*1000
+                }[llWindow]||60*1000;
+                const barDate=new Date(Date.now()-barsAgo*msPerBar);
+                const timeLabel=barsAgo===0
+                  ? "зараз"
+                  : llWindow==="1D"
+                    ? barDate.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})
+                    : barDate.toLocaleDateString([],{day:"numeric",month:"short"})+(llWindow==="7D"?` ${barDate.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}` :"");
+                const useRight=cx>(xcContRef.current?.clientWidth||0)*0.6;
+                return (
+                  <div style={{position:"absolute",left:useRight?cx-162:cx+14,top:Math.max(4,cy-60),
+                    background:"rgba(12,8,28,0.96)",border:"1px solid rgba(124,58,237,0.4)",
+                    borderRadius:8,padding:"10px 13px",pointerEvents:"none",zIndex:20,
+                    boxShadow:"0 8px 28px rgba(0,0,0,0.7)",minWidth:150}}>
+                    <div style={{fontSize:8,color:"rgba(255,255,255,0.3)",letterSpacing:".08em",marginBottom:7}}>{timeLabel}</div>
+                    <div style={{display:"flex",flexDirection:"column",gap:5}}>
+                      <div style={{display:"flex",justifyContent:"space-between",gap:14,alignItems:"center"}}>
+                        <span style={{fontSize:10,fontWeight:700,color:aAsset.color,fontFamily:"'Space Mono',monospace"}}>{symA}</span>
+                        <span style={{fontSize:10,fontWeight:700,color:vA>=0?"#10b981":"#ef4444",fontFamily:"'Space Mono',monospace"}}>{vA>=0?"+":""}{vA.toFixed(2)}%</span>
+                      </div>
+                      <div style={{display:"flex",justifyContent:"space-between",gap:14,alignItems:"center"}}>
+                        <span style={{fontSize:10,fontWeight:700,color:bAsset.color,fontFamily:"'Space Mono',monospace"}}>{symB}</span>
+                        <span style={{fontSize:10,fontWeight:700,color:vB>=0?"#10b981":"#ef4444",fontFamily:"'Space Mono',monospace"}}>{vB>=0?"+":""}{vB.toFixed(2)}%</span>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+            <div style={{padding:"4px 14px 6px",display:"flex",justifyContent:"space-between",flexShrink:0,borderTop:"1px solid rgba(255,255,255,0.04)"}}>
+              <span style={{fontSize:8,color:"rgba(255,255,255,0.12)"}}>Cross-correlation of % returns — shows how correlated the two assets are at every possible time shift. The <span style={{color:"rgba(255,255,255,0.25)"}}>peak</span> marks the best predictive lag.</span>
+              <span style={{fontSize:8,color:"rgba(255,255,255,0.18)",fontWeight:700}}>{WIN_CFG[llWindow].label}</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Divider */}
+        <div style={{width:1,background:"rgba(255,255,255,0.05)",flexShrink:0}}/>
+
+        {/* Right: all pairs ranked list */}
+        <div style={{width:280,display:"flex",flexDirection:"column",overflowY:"auto",flexShrink:0}}>
+          <div style={{padding:"8px 14px 8px",borderBottom:"1px solid rgba(255,255,255,0.05)",flexShrink:0,position:"sticky",top:0,background:"#07050f",zIndex:1}}>
+            <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
+              <span style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:".08em"}}>ALL PAIRS RANKED</span>
+              <span style={{fontSize:8,color:"rgba(255,255,255,0.18)"}}>{allPairsRanked.length}/{totalPairs}</span>
+            </div>
+            <div style={{fontSize:8,color:"rgba(255,255,255,0.2)"}}>sorted by strongest correlation · click to inspect</div>
+          </div>
+          {allPairsRanked.length===0&&(
+            <div style={{padding:"24px 14px",textAlign:"center",fontSize:9,color:"rgba(255,255,255,0.15)"}}>
+              {loading?"Loading…":"Accumulating live data…"}
+            </div>
+          )}
+          {allPairsRanked.map(({a,b,r},i)=>{
+            const lA=assets.find(x=>x.symbol===r.leader)||{color:"#a78bfa"};
+            const fA=assets.find(x=>x.symbol===r.follower)||{color:"#6b5c8a"};
+            const isActive=(symA===a&&symB===b)||(symA===b&&symB===a);
+            const barPct=Math.abs(r.corrAtLag)*100;
+            return(
+              <div key={`${a}-${b}`} onClick={()=>{setSymA(a);setSymB(b);}}
+                style={{padding:"9px 14px",borderBottom:"1px solid rgba(255,255,255,0.04)",cursor:"pointer",
+                  background:isActive?"rgba(124,58,237,0.1)":"transparent",transition:"background .12s",
+                  borderLeft:isActive?"2px solid #7c3aed":"2px solid transparent"}}>
+                {/* Leader → Follower + lag badge */}
+                <div style={{display:"flex",alignItems:"center",gap:5,marginBottom:5}}>
+                  <span style={{fontSize:10,fontWeight:700,color:lA.color}}>{r.leader}</span>
+                  <span style={{fontSize:9,color:"rgba(255,255,255,0.25)"}}>→</span>
+                  <span style={{fontSize:10,fontWeight:700,color:fA.color}}>{r.follower}</span>
+                  <span style={{marginLeft:"auto",fontSize:9,fontWeight:700,color:"#c4b5fd",background:"rgba(124,58,237,0.18)",padding:"1px 7px",borderRadius:8}}>
+                    {r.lagBars>0?fmtLag(r.lagBars,llWindow):"sync"}
+                  </span>
+                </div>
+                {/* Correlation strength bar */}
+                <div style={{height:4,background:"rgba(255,255,255,0.05)",borderRadius:2,overflow:"hidden",marginBottom:4}}>
+                  <div style={{height:"100%",width:`${barPct}%`,background:r.corrAtLag>=0?"#10b981":"#ef4444",borderRadius:2}}/>
+                </div>
+                {/* Numbers */}
+                <div style={{display:"flex",gap:10}}>
+                  <span style={{fontSize:8,color:corrCol(r.corrAtLag)}} title="Correlation at the optimal lag">peak r: {r.corrAtLag>=0?"+":""}{r.corrAtLag.toFixed(3)}</span>
+                  {r.corrAt0!=null&&<span style={{fontSize:8,color:"rgba(255,255,255,0.2)"}} title="Correlation with no time shift">at 0-lag: {r.corrAt0>=0?"+":""}{r.corrAt0.toFixed(2)}</span>}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+    </div>
+  );
 }
 
 function CorrView({histRef, prices, assets, setActiveTab, status}) {
   const scatterRef = useRef();
   const rollingRef = useRef();
   const [activePair, setActivePair] = useState(0);
-  const [closes, setCloses] = useState({});   // {SYM: float[]}
+  const [corrWindow, setCorrWindow] = useState("7D");
+  const [bars, setBars] = useState({});        // { "7D_BTC": [{t,c}], ... }
   const [loading, setLoading] = useState(false);
+  const [playPos, setPlayPos] = useState(1.0); // 0..1
+  const [playing, setPlaying] = useState(false);
+  const [scrubbing, setScrubbing] = useState(false);
+  const playRef = useRef(null);
   const [, tick] = useState(0);
 
-  const [symA, symB] = CORR_PAIRS[activePair];
+  // Build pairs dynamically from selected assets (filter static CORR_PAIRS to only show available ones, then add any missing pairs from selected assets)
+  const dynPairs = useMemo(()=>{
+    const syms = new Set(assets.map(a=>a.symbol));
+    const valid = CORR_PAIRS.filter(([a,b])=>syms.has(a)&&syms.has(b));
+    // if fewer than 3 static pairs match, build pairs from selected assets
+    if(valid.length >= 1) return valid;
+    const out=[];
+    const arr=assets.slice(0,8);
+    for(let i=0;i<arr.length;i++) for(let j=i+1;j<arr.length;j++) out.push([arr[i].symbol,arr[j].symbol]);
+    return out.slice(0,20);
+  },[assets]);
 
-  // Fetch Binance closes for active pair
+  // Reset activePair when dynPairs changes and current index is out of range
+  useEffect(()=>{
+    if(activePair >= dynPairs.length) setActivePair(0);
+  },[dynPairs, activePair]);
+
+  const [symA, symB] = dynPairs[Math.min(activePair, dynPairs.length-1)] || [assets[0]?.symbol||"BTC", assets[1]?.symbol||"ETH"];
+
+  // Fetch historical bars for active pair + window
   useEffect(()=>{
     let dead=false;
-    const toFetch=[symA,symB].filter(s=>!closes[s]);
+    const { tf, limit } = WIN_CFG[corrWindow];
+    const toFetch=[symA,symB].filter(s=>!bars[`${corrWindow}_${s}`]);
     if(!toFetch.length) return;
     setLoading(true);
-    Promise.all(toFetch.map(s=>fetchCloses(s,"1m",300)))
+    Promise.all(toFetch.map(s=>fetchPyth(s, tf, limit)))
       .then(results=>{
         if(dead) return;
         const upd={};
-        toFetch.forEach((s,i)=>{upd[s]=results[i];});
-        setCloses(p=>({...p,...upd}));
+        toFetch.forEach((s,i)=>{ upd[`${corrWindow}_${s}`]=results[i]; });
+        setBars(p=>({...p,...upd}));
       })
       .catch(()=>{})
       .finally(()=>{if(!dead)setLoading(false);});
     return()=>{dead=true;};
-  },[symA,symB]);
+  },[symA,symB,corrWindow]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // Merge live Pyth ticks into closes
-  const getCloses = (sym) => {
-    const base = closes[sym] || [];
-    const live = histRef.current[sym] || [];
-    if (!base.length) return live;
-    // append recent live ticks not yet in base
-    return [...base, ...live].slice(-300);
+  // Merge historical bars with live ticks → {closes, times}
+  const getBarData = (sym) => {
+    const key=`${corrWindow}_${sym}`;
+    const hist=bars[key]||[];
+    const liveC=histRef.current[sym]||[];
+    const now=Math.floor(Date.now()/1000);
+    const liveBars=liveC.slice(-60).map((c,i,a)=>({t:now-(a.length-1-i)*3,c}));
+    const merged=[...hist,...liveBars];
+    return { closes:merged.map(b=>b.c), times:merged.map(b=>b.t) };
   };
+
+  // Reset playback when pair or window changes
+  useEffect(()=>{ setPlayPos(1.0); setPlaying(false); },[activePair,corrWindow]);
+
+  // Play animation loop
+  useEffect(()=>{
+    if(!playing){ cancelAnimationFrame(playRef.current); return; }
+    const step=()=>{
+      setPlayPos(p=>{
+        if(p>=1.0){ setPlaying(false); return 1.0; }
+        return Math.min(1.0, p+0.0015);
+      });
+      playRef.current=requestAnimationFrame(step);
+    };
+    playRef.current=requestAnimationFrame(step);
+    return()=>cancelAnimationFrame(playRef.current);
+  },[playing]);
 
   // Redraw every 2s
   useEffect(()=>{
@@ -3165,34 +4086,50 @@ function CorrView({histRef, prices, assets, setActiveTab, status}) {
 
   // Draw
   useEffect(()=>{
-    const cA=getCloses(symA), cB=getCloses(symB);
+    const {closes:cA,times:tA}=getBarData(symA);
+    const {closes:cB}=getBarData(symB);
     const ra=pctReturns(cA), rb=pctReturns(cB);
     const aAsset=assets.find(a=>a.symbol===symA)||assets[0];
     drawScatter(scatterRef.current, ra, rb, symA, symB, aAsset.color, "#a78bfa");
-    const WIN=20;
-    const rpts=rollingPearson(ra,rb,WIN);
-    drawRolling(rollingRef.current, rpts);
+    const winSize=WIN_CFG[corrWindow].win;
+    const rpts=rollingPearson(ra,rb,winSize);
+    const rptsTimes=tA.slice(winSize+1, winSize+1+rpts.length);
+    drawRolling(rollingRef.current, rpts, rptsTimes, playPos, corrWindow);
   });
 
   // Resize observers
   useEffect(()=>{
     const redraw=()=>{
-      const cA=getCloses(symA),cB=getCloses(symB);
+      const {closes:cA,times:tA}=getBarData(symA);
+      const {closes:cB}=getBarData(symB);
       const ra=pctReturns(cA),rb=pctReturns(cB);
       const aAsset=assets.find(a=>a.symbol===symA)||assets[0];
       drawScatter(scatterRef.current,ra,rb,symA,symB,aAsset.color,"#a78bfa");
-      drawRolling(rollingRef.current,rollingPearson(ra,rb,20));
+      const winSize=WIN_CFG[corrWindow].win;
+      const rpts=rollingPearson(ra,rb,winSize);
+      const rptsTimes=tA.slice(winSize+1,winSize+1+rpts.length);
+      drawRolling(rollingRef.current,rpts,rptsTimes,playPos,corrWindow);
     };
     const ro1=new ResizeObserver(redraw),ro2=new ResizeObserver(redraw);
     if(scatterRef.current?.parentElement) ro1.observe(scatterRef.current.parentElement);
     if(rollingRef.current?.parentElement) ro2.observe(rollingRef.current.parentElement);
     return()=>{ro1.disconnect();ro2.disconnect();};
-  },[activePair,closes]);
+  },[activePair,bars,corrWindow]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  const cA=getCloses(symA),cB=getCloses(symB);
+  const {closes:cA,times:tA}=getBarData(symA);
+  const {closes:cB}=getBarData(symB);
   const ra=pctReturns(cA),rb=pctReturns(cB);
   const n=Math.min(ra.length,rb.length);
-  const corrVal=n>=4?pearson(ra.slice(-Math.min(n,60)),rb.slice(-Math.min(n,60))):null;
+  const winSize=WIN_CFG[corrWindow].win;
+  const rpts=rollingPearson(ra,rb,winSize);
+  // corrVal at current playPos
+  const visIdx=Math.max(0,Math.round(playPos*rpts.length)-1);
+  const corrVal=rpts.length>0?rpts[visIdx]:n>=4?pearson(ra.slice(-Math.min(n,60)),rb.slice(-Math.min(n,60))):null;
+  // Date range for visible bars
+  const dateStart=tA.length>0?new Date(tA[0]*1000):null;
+  const dateCutIdx=Math.round(playPos*(tA.length-1));
+  const dateEnd=tA.length>0?new Date(tA[dateCutIdx]*1000):null;
+  const fmtDate=d=>d?d.toLocaleDateString([],{day:"2-digit",month:"short",year:"numeric"}):"";
   const aAsset=assets.find(a=>a.symbol===symA)||assets[0];
   const bAsset=assets.find(a=>a.symbol===symB)||assets[0];
   const fmtP=v=>!v?"–":v>=10000?"$"+v.toLocaleString(undefined,{maximumFractionDigits:0}):v>=100?"$"+v.toFixed(2):v>=1?"$"+v.toFixed(4):"$"+v.toFixed(6);
@@ -3223,7 +4160,7 @@ function CorrView({histRef, prices, assets, setActiveTab, status}) {
 
       {/* Pair selector */}
       <div style={{display:"flex",alignItems:"center",height:38,padding:"0 12px",borderBottom:"1px solid rgba(255,255,255,0.05)",background:"#080614",flexShrink:0,gap:2,overflowX:"auto",scrollbarWidth:"none"}}>
-        {CORR_PAIRS.map(([a,b],i)=>{
+        {dynPairs.map(([a,b],i)=>{
           const sel=i===activePair;
           const aA=assets.find(x=>x.symbol===a)||assets[0];
           return (
@@ -3276,9 +4213,66 @@ function CorrView({histRef, prices, assets, setActiveTab, status}) {
         </div>
         <div style={{width:1,background:"rgba(255,255,255,0.05)",flexShrink:0}}/>
         <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
-          <div style={{padding:"8px 16px 4px",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <span style={{fontSize:9,color:"rgba(255,255,255,0.25)",letterSpacing:".08em"}}>ROLLING CORRELATION (win=20)</span>
-            <span style={{fontSize:8,color:"rgba(255,255,255,0.15)"}}>{rollingPearson(pctReturns(cA),pctReturns(cB),20).length} pts</span>
+          {/* Rolling chart header */}
+          <div style={{padding:"6px 12px 4px",flexShrink:0,display:"flex",alignItems:"center",gap:6,flexWrap:"wrap"}}>
+            <span style={{fontSize:9,color:"rgba(255,255,255,0.25)",letterSpacing:".08em",marginRight:4}}>ROLLING</span>
+            {Object.entries(WIN_CFG).map(([k,cfg])=>(
+              <button key={k} onClick={()=>setCorrWindow(k)} style={{
+                padding:"2px 8px",borderRadius:10,border:`1px solid ${corrWindow===k?"#7c3aed":"rgba(255,255,255,0.1)"}`,
+                background:corrWindow===k?"rgba(124,58,237,0.2)":"transparent",
+                color:corrWindow===k?"#c4b5fd":"rgba(255,255,255,0.35)",
+                fontSize:9,fontFamily:"inherit",fontWeight:700,cursor:"pointer",letterSpacing:".04em",
+                transition:"all .15s"
+              }}>{k}</button>
+            ))}
+            <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:6}}>
+              {/* Date range badge */}
+              {dateStart&&<span style={{fontSize:8,color:"rgba(255,255,255,0.2)",whiteSpace:"nowrap"}}>
+                {fmtDate(dateStart)} → {fmtDate(dateEnd)}
+              </span>}
+              {/* Play / Pause */}
+              <button onClick={()=>{
+                if(playing){setPlaying(false);}
+                else{if(playPos>=0.98)setPlayPos(0.05);setPlaying(true);}
+              }} style={{
+                padding:"3px 10px",borderRadius:10,border:"1px solid rgba(124,58,237,0.4)",
+                background:playing?"rgba(239,68,68,0.15)":"rgba(124,58,237,0.15)",
+                color:playing?"#f87171":"#a78bfa",
+                fontSize:10,fontFamily:"inherit",fontWeight:700,cursor:"pointer",letterSpacing:".04em",
+                transition:"all .15s"
+              }}>{playing?"⏸ Pause":"▶ Play"}</button>
+            </div>
+          </div>
+          {/* Scrubber */}
+          <div style={{padding:"0 12px 2px",flexShrink:0}}>
+            <input type="range" min={0} max={100} step={0.5}
+              value={Math.round(playPos*100)}
+              onChange={e=>{setPlaying(false);setPlayPos(Number(e.target.value)/100);}}
+              onMouseDown={()=>setScrubbing(true)}
+              onMouseUp={()=>setScrubbing(false)}
+              onTouchStart={()=>setScrubbing(true)}
+              onTouchEnd={()=>setScrubbing(false)}
+              style={{width:"100%",accentColor:"#7c3aed",cursor:"pointer",height:3}}
+            />
+            {/* Date/time label shown while scrubbing or when not at end */}
+            <div style={{
+              height:14,
+              display:"flex",alignItems:"center",justifyContent:"center",
+              transition:"opacity .15s",
+              opacity:(scrubbing||playing||playPos<0.99)?1:0,
+            }}>
+              {dateEnd&&<span style={{
+                fontSize:10,fontFamily:"'Space Mono',monospace",fontWeight:700,
+                color:"#c4b5fd",letterSpacing:".04em",
+                padding:"1px 10px",borderRadius:8,
+                background:"rgba(124,58,237,0.15)",
+                border:"1px solid rgba(124,58,237,0.3)",
+              }}>
+                {dateEnd.toLocaleDateString([],{day:"2-digit",month:"short",year:"numeric"})}
+                {" · "}
+                {dateEnd.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"})}
+              </span>}
+            </div>
           </div>
           <div style={{flex:1,position:"relative",minHeight:0}}>
             <canvas ref={rollingRef} style={{position:"absolute",inset:0,width:"100%",height:"100%"}}/>

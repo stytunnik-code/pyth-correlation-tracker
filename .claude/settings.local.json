@@ -18,7 +18,8 @@
       "Bash(curl -s \"https://hermes.pyth.network/v2/updates/price/latest?ids[]=19e09bb805456ada3979a7d1cbb4b6d63babc3a0f8e8a9509f68afa5c4c11cd5&ids[]=9695e2b96ea7b3859da9ed25b7a46a920a776e2fdae19a7bcfdf2b219230452d&ids[]=eff690a187797aa225723345d4612abec0bf0cec1ae62347c0e7b1905d730879&ids[]=57cff3a9a4d4c87b595a2d1bd1bac0240400a84677366d632ab838bbbe56f763&parsed=true\")",
       "Bash(curl -s \"https://hermes.pyth.network/v2/updates/price/latest?ids[]=19e09bb805456ada3979a7d1cbb4b6d63babc3a0f8e8a9509f68afa5c4c11cd5&ids[]=9695e2b96ea7b3859da9ed25b7a46a920a776e2fdae19a7bcfdf2b219230452d&parsed=true\")",
       "Bash(curl -s \"http://localhost:3000/api/pyth?ids=19e09bb805456ada3979a7d1cbb4b6d63babc3a0f8e8a9509f68afa5c4c11cd5&ids=9695e2b96ea7b3859da9ed25b7a46a920a776e2fdae19a7bcfdf2b219230452d&ids=57cff3a9a4d4c87b595a2d1bd1bac0240400a84677366d632ab838bbbe56f763&ids=eff690a187797aa225723345d4612abec0bf0cec1ae62347c0e7b1905d730879\")",
-      "Bash(curl -s http://localhost:3000 -o /dev/null -w \"%{http_code}\")"
+      "Bash(curl -s http://localhost:3000 -o /dev/null -w \"%{http_code}\")",
+      "Bash(npm install)"
     ]
   }
 }
