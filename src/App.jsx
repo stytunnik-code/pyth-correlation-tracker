@@ -1244,6 +1244,7 @@ export default function App(){
   const visCat=filter==="all"?ASSETS:ASSETS.filter(a=>a.category===filter);
   // If selectedCoins is null → all enabled; if empty Set → fallback to all (avoid empty grid)
   const vis=(!selectedCoins||selectedCoins.size===0)?visCat:visCat.filter(a=>selectedCoins.has(a.symbol));
+<<<<<<< HEAD
 
   const sortedVis=useMemo(()=>{
     const arr=[...vis];
@@ -1265,6 +1266,8 @@ export default function App(){
     }
     return arr;
   },[vis,sortBy,prices,corr]);
+=======
+>>>>>>> 5d7089bef553103543c058cc285389b3b8cfc8db
   // visAll = selectedCoins filtered without category (for Charts / Entropy / Correlation tabs)
   const visAll=(!selectedCoins||selectedCoins.size===0)?ASSETS:ASSETS.filter(a=>selectedCoins.has(a.symbol));
   // If current chart asset was deselected, fallback to first available
@@ -1431,7 +1434,11 @@ export default function App(){
       </header>
 
       {/* ══ FILTER BAR ══════════════════════════════════════════════════ */}
+<<<<<<< HEAD
       <div className="fbar" style={{display:activeTab==="charts"||activeTab==="corr"||activeTab==="leadlag"||activeTab==="entropy"||activeTab==="docs"?"none":"flex"}}>
+=======
+      <div className="fbar" style={{display:activeTab==="charts"||activeTab==="corr"||activeTab==="entropy"||activeTab==="docs"?"none":"flex"}}>
+>>>>>>> 5d7089bef553103543c058cc285389b3b8cfc8db
         {["all","crypto","fx","commodity","equity","index"].map(c=>{
           const base=c==="all"?ASSETS:ASSETS.filter(a=>a.category===c);
           const cnt=(!selectedCoins||selectedCoins.size===0)?base.length:base.filter(a=>selectedCoins.has(a.symbol)).length;
@@ -1442,6 +1449,7 @@ export default function App(){
             </button>
           );
         })}
+<<<<<<< HEAD
         <div className="fbar-right">
           <div className="sort-wrap">
             <span className="sort-label">Sort:</span>
@@ -1457,6 +1465,9 @@ export default function App(){
           </div>
           <div className="window-badge">⏱ 200-tick · 3s</div>
         </div>
+=======
+        <div className="fbar-right"><div className="window-badge">⏱ 200-tick · 3s</div></div>
+>>>>>>> 5d7089bef553103543c058cc285389b3b8cfc8db
       </div>
 
       <main className="main" style={{display:activeTab==="charts"||activeTab==="corr"||activeTab==="entropy"||activeTab==="docs"?"none":"block"}}>
@@ -1756,9 +1767,12 @@ export default function App(){
 
       {activeTab==="corr"&&<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#07050f",zIndex:200,display:"flex",flexDirection:"column",animation:"fadein .22s ease"}}>
         <CorrView histRef={histRef} prices={prices} assets={visAll} setActiveTab={setActiveTab} status={status}/>
+<<<<<<< HEAD
       </div>}
       {activeTab==="leadlag"&&<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#07050f",zIndex:200,display:"flex",flexDirection:"column",animation:"fadein .22s ease"}}>
         <LeadLagView histRef={histRef} prices={prices} assets={visAll} setActiveTab={setActiveTab} status={status}/>
+=======
+>>>>>>> 5d7089bef553103543c058cc285389b3b8cfc8db
       </div>}
 
       <div className={activeTab==="entropy"?"tab-overlay-enter":""} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#07050f",zIndex:200,display:activeTab==="entropy"?"flex":"none",flexDirection:"column"}}>
@@ -4023,6 +4037,16 @@ function CorrView({histRef, prices, assets, setActiveTab, status}) {
     for(let i=0;i<arr.length;i++) for(let j=i+1;j<arr.length;j++) out.push([arr[i].symbol,arr[j].symbol]);
     return out.slice(0,20);
   },[assets]);
+<<<<<<< HEAD
+=======
+
+  // Reset activePair when dynPairs changes and current index is out of range
+  useEffect(()=>{
+    if(activePair >= dynPairs.length) setActivePair(0);
+  },[dynPairs, activePair]);
+
+  const [symA, symB] = dynPairs[Math.min(activePair, dynPairs.length-1)] || [assets[0]?.symbol||"BTC", assets[1]?.symbol||"ETH"];
+>>>>>>> 5d7089bef553103543c058cc285389b3b8cfc8db
 
   // Reset activePair when dynPairs changes and current index is out of range
   useEffect(()=>{
