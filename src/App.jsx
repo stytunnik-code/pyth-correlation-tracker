@@ -1018,6 +1018,96 @@ Twitter: https://x.com/xzolmoney`}
 
 
 
+// ── Module-level constants (computed once, never recreated) ──────────────────
+const ASSET_BY_ID = new Map(ASSETS.map(a => [a.id, a]));
+const DEFAULT_COINS = new Set(["BTC","ETH","SOL","DOGE","AVAX","ADA","LINK","SUI","NEAR","HYPE"]);
+const CORR_ALERT_OPTIONS = (()=>{
+  const opts=[];
+  for(let i=0;i<ASSETS.length;i++) for(let j=i+1;j<ASSETS.length;j++)
+    opts.push({key:`${ASSETS[i].symbol}-${ASSETS[j].symbol}`,label:`${ASSETS[i].symbol} / ${ASSETS[j].symbol}`});
+  return opts;
+})();
+
+const TAB_OPTIONS = [["matrix","Matrix"],["charts","Charts"],["corr","Correlation"],["leadlag","Lead-Lag"],["entropy","Entropy"],["docs","Docs"]];
+const SORT_OPTIONS = [{k:"default",t:"Default"},{k:"price_desc",t:"Price ↓"},{k:"price_asc",t:"Price ↑"},{k:"corr_desc",t:"Corr ↓"},{k:"corr_asc",t:"Corr ↑"}];
+
+/* ── COIN PICKER ─────────────────────────────────────────────────────────────
+   Reusable dropdown to select which coins are visible in any view.
+   Manages its own open/close state internally.
+─────────────────────────────────────────────────────────────────────────────── */
+function CoinPicker({ selectedCoins, setSelectedCoins }) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef(null);
+  useEffect(()=>{
+    if(!open) return;
+    const h=(e)=>{ if(ref.current&&!ref.current.contains(e.target)) setOpen(false); };
+    document.addEventListener("mousedown",h);
+    return()=>document.removeEventListener("mousedown",h);
+  },[open]);
+  const filtered=selectedCoins&&selectedCoins.size>0&&selectedCoins.size<ASSETS.length;
+  return(
+    <div ref={ref} style={{position:"relative"}}>
+      <button onClick={()=>setOpen(o=>!o)} style={{display:"flex",alignItems:"center",gap:5,background:filtered?"rgba(124,58,237,0.22)":"rgba(255,255,255,0.05)",border:`1px solid ${filtered?"rgba(124,58,237,0.5)":"rgba(255,255,255,0.1)"}`,borderRadius:6,padding:"4px 10px",cursor:"pointer",color:filtered?"#c4b5fd":"rgba(255,255,255,0.5)",fontFamily:"inherit",fontSize:11,fontWeight:600,letterSpacing:".04em",transition:"all .15s"}}>
+        <span style={{fontSize:13}}>⊞</span>
+        {filtered?`${selectedCoins.size} / ${ASSETS.length}`:`All ${ASSETS.length}`}
+        <span style={{fontSize:9,opacity:.7,marginLeft:1}}>{open?"▲":"▼"}</span>
+      </button>
+      {open&&(
+        <div className="dropdown-anim" style={{position:"absolute",top:"calc(100% + 6px)",right:0,zIndex:9999,background:"#0f0b1e",border:"1px solid rgba(124,58,237,0.35)",borderRadius:10,padding:"14px",minWidth:300,maxHeight:"70vh",overflowY:"auto",boxShadow:"0 12px 48px rgba(0,0,0,0.85)",backdropFilter:"blur(16px)"}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,paddingBottom:10,borderBottom:"1px solid rgba(124,58,237,0.2)"}}>
+            <span style={{color:"#e2d9f3",fontSize:12,fontWeight:700,letterSpacing:".08em"}}>SELECT COINS</span>
+            <div style={{display:"flex",gap:5}}>
+              <button onClick={()=>setSelectedCoins(new Set(DEFAULT_COINS))} style={{background:"rgba(124,58,237,0.18)",border:"1px solid rgba(124,58,237,0.3)",borderRadius:4,padding:"3px 9px",cursor:"pointer",color:"#c4b5fd",fontSize:10,fontFamily:"inherit",fontWeight:600}}>Default</button>
+              <button onClick={()=>setSelectedCoins(new Set(ASSETS.map(a=>a.symbol)))} style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:4,padding:"3px 9px",cursor:"pointer",color:"rgba(255,255,255,0.55)",fontSize:10,fontFamily:"inherit",fontWeight:600}}>All</button>
+              <button onClick={()=>setSelectedCoins(new Set())} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:4,padding:"3px 9px",cursor:"pointer",color:"rgba(255,255,255,0.35)",fontSize:10,fontFamily:"inherit",fontWeight:600}}>None</button>
+            </div>
+          </div>
+          {["crypto","fx","commodity","equity","index"].map(cat=>{
+            const catAssets=ASSETS.filter(a=>a.category===cat);
+            if(!catAssets.length) return null;
+            const allOn=catAssets.every(a=>!selectedCoins||selectedCoins.size===0||selectedCoins.has(a.symbol));
+            return(
+              <div key={cat} style={{marginBottom:10}}>
+                <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:5,paddingBottom:4,borderBottom:"1px solid rgba(124,58,237,0.15)"}}>
+                  <span style={{color:"rgba(124,58,237,0.7)",fontSize:9,fontWeight:700,letterSpacing:".1em",textTransform:"uppercase"}}>
+                    {cat==="fx"?"FX Pairs":cat==="commodity"?"Commodities":cat==="equity"?"Equities":cat==="index"?"Indices":"Crypto"}
+                  </span>
+                  <button onClick={()=>{
+                    const syms=catAssets.map(a=>a.symbol);
+                    const cur=selectedCoins&&selectedCoins.size>0?new Set(selectedCoins):new Set(ASSETS.map(a=>a.symbol));
+                    const allSel=syms.every(s=>cur.has(s));
+                    const next=new Set(cur);
+                    if(allSel) syms.forEach(s=>next.delete(s)); else syms.forEach(s=>next.add(s));
+                    setSelectedCoins(next.size>=ASSETS.length?new Set(ASSETS.map(a=>a.symbol)):next);
+                  }} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(124,58,237,0.6)",fontSize:9,fontFamily:"inherit",textDecoration:"underline",padding:0}}>
+                    {allOn?"deselect all":"select all"}
+                  </button>
+                </div>
+                <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
+                  {catAssets.map(a=>{
+                    const on=!selectedCoins||selectedCoins.size===0||selectedCoins.has(a.symbol);
+                    return(
+                      <button key={a.symbol} onClick={()=>{
+                        const cur=selectedCoins&&selectedCoins.size>0?new Set(selectedCoins):new Set(ASSETS.map(a=>a.symbol));
+                        const next=new Set(cur);
+                        if(on) next.delete(a.symbol); else next.add(a.symbol);
+                        setSelectedCoins(next);
+                      }} style={{display:"flex",alignItems:"center",gap:4,background:on?"rgba(124,58,237,0.2)":"rgba(255,255,255,0.04)",border:`1px solid ${on?"rgba(124,58,237,0.4)":"rgba(255,255,255,0.08)"}`,borderRadius:5,padding:"3px 8px",cursor:"pointer",color:on?a.color:"rgba(255,255,255,0.3)",fontFamily:"inherit",fontSize:11,fontWeight:700,transition:"all .12s"}}>
+                        {on&&<span style={{color:"rgba(124,58,237,0.8)",fontSize:9}}>✓</span>}
+                        {a.symbol}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function App(){
   const [prices,setPrices]=useState({});
   const [history,setHistory]=useState({});
@@ -1076,9 +1166,20 @@ export default function App(){
   const [corrAlertPair,setCorrAlertPair]=useState("BTC-ETH");
   const [corrAlertThreshold,setCorrAlertThreshold]=useState(0.8);
   const [corrAlertHit,setCorrAlertHit]=useState(false);
-  const DEFAULT_COINS=new Set(["BTC","ETH","SOL","DOGE","AVAX","ADA","LINK","SUI","NEAR","HYPE"]);
-  const [selectedCoins,setSelectedCoins]=useState(()=>{
-    try{const s=localStorage.getItem("sc");return s?new Set(JSON.parse(s)):new Set(DEFAULT_COINS);}catch{return new Set(DEFAULT_COINS);}
+  const [matrixCoins,setMatrixCoins]=useState(()=>{
+    try{const s=localStorage.getItem("sc_matrix");return s?new Set(JSON.parse(s)):new Set(DEFAULT_COINS);}catch{return new Set(DEFAULT_COINS);}
+  });
+  const [chartCoins,setChartCoins]=useState(()=>{
+    try{const s=localStorage.getItem("sc_charts");return s?new Set(JSON.parse(s)):new Set(DEFAULT_COINS);}catch{return new Set(DEFAULT_COINS);}
+  });
+  const [corrCoins,setCorrCoins]=useState(()=>{
+    try{const s=localStorage.getItem("sc_corr");return s?new Set(JSON.parse(s)):new Set(DEFAULT_COINS);}catch{return new Set(DEFAULT_COINS);}
+  });
+  const [leadlagCoins,setLeadlagCoins]=useState(()=>{
+    try{const s=localStorage.getItem("sc_leadlag");return s?new Set(JSON.parse(s)):new Set(DEFAULT_COINS);}catch{return new Set(DEFAULT_COINS);}
+  });
+  const [entropyCoins,setEntropyCoins]=useState(()=>{
+    try{const s=localStorage.getItem("sc_entropy");return s?new Set(JSON.parse(s)):new Set(DEFAULT_COINS);}catch{return new Set(DEFAULT_COINS);}
   });
   const [pickerOpen,setPickerOpen]=useState(false);
   const pickerRef=useRef(null);
@@ -1087,11 +1188,12 @@ export default function App(){
 
   useEffect(()=>{setTimeout(()=>setMounted(true),80);},[]);
 
-  // Save coin selection to localStorage
-  useEffect(()=>{
-    if(selectedCoins===null) localStorage.removeItem("sc");
-    else localStorage.setItem("sc",JSON.stringify([...selectedCoins]));
-  },[selectedCoins]);
+  // Save coin selections to localStorage (per-tab)
+  useEffect(()=>{localStorage.setItem("sc_matrix",JSON.stringify([...matrixCoins]));},[matrixCoins]);
+  useEffect(()=>{localStorage.setItem("sc_charts",JSON.stringify([...chartCoins]));},[chartCoins]);
+  useEffect(()=>{localStorage.setItem("sc_corr",JSON.stringify([...corrCoins]));},[corrCoins]);
+  useEffect(()=>{localStorage.setItem("sc_leadlag",JSON.stringify([...leadlagCoins]));},[leadlagCoins]);
+  useEffect(()=>{localStorage.setItem("sc_entropy",JSON.stringify([...entropyCoins]));},[entropyCoins]);
 
   // Close picker on outside click
   useEffect(()=>{
@@ -1153,7 +1255,7 @@ export default function App(){
       const np={};
       items.forEach(item=>{
         const cleanId=item.id?.replace(/^0x/,"");
-        const asset=ASSETS.find(a=>a.id.replace(/^0x/,"")===cleanId);
+        const asset=ASSET_BY_ID.get(cleanId);
         if(!asset)return;
         const po=item.price;if(!po)return;
         const p=parseFloat(po.price)*Math.pow(10,po.expo??-8);
@@ -1182,7 +1284,7 @@ export default function App(){
         const np2={};
         results.flat().forEach(item=>{
           const cleanId=item.id?.replace(/^0x/,"");
-          const asset=ASSETS.find(a=>a.id.replace(/^0x/,"")===cleanId);
+          const asset=ASSET_BY_ID.get(cleanId);
           if(!asset)return;
           const po=item.price;if(!po)return;
           const p=parseFloat(po.price)*Math.pow(10,po.expo??-8);
@@ -1243,62 +1345,63 @@ export default function App(){
 
   const visCat=filter==="all"?ASSETS:ASSETS.filter(a=>a.category===filter);
   // If selectedCoins is null → all enabled; if empty Set → fallback to all (avoid empty grid)
-  const vis=(!selectedCoins||selectedCoins.size===0)?visCat:visCat.filter(a=>selectedCoins.has(a.symbol));
+  const vis=(!matrixCoins||matrixCoins.size===0)?visCat:visCat.filter(a=>matrixCoins.has(a.symbol));
 
   const sortedVis=useMemo(()=>{
     const arr=[...vis];
     if(sortBy==="price_desc") return arr.sort((a,b)=>(prices[b.symbol]||0)-(prices[a.symbol]||0));
     if(sortBy==="price_asc")  return arr.sort((a,b)=>(prices[a.symbol]||0)-(prices[b.symbol]||0));
     if(sortBy==="corr_desc"||sortBy==="corr_asc"){
-      const avgCorr=a=>{
-        const vals=vis.filter(b=>b.symbol!==a.symbol).map(b=>{
+      // Pre-compute avg|corr| for each asset once (O(N²)) instead of inside comparator (O(N³))
+      const avgMap=new Map();
+      arr.forEach(a=>{
+        let sum=0,cnt=0;
+        vis.forEach(b=>{
+          if(b.symbol===a.symbol)return;
           const v=corr[`${a.symbol}-${b.symbol}`]??corr[`${b.symbol}-${a.symbol}`]??null;
-          return v;
-        }).filter(v=>v!==null&&isFinite(v));
-        return vals.length?vals.reduce((s,v)=>s+Math.abs(v),0)/vals.length:null;
-      };
+          if(v!==null&&isFinite(v)){sum+=Math.abs(v);cnt++;}
+        });
+        avgMap.set(a.symbol,cnt?sum/cnt:null);
+      });
       return arr.sort((a,b)=>{
-        const pa=avgCorr(a),pb=avgCorr(b);
+        const pa=avgMap.get(a.symbol),pb=avgMap.get(b.symbol);
         if(pa===null&&pb===null)return 0;if(pa===null)return 1;if(pb===null)return -1;
         return sortBy==="corr_desc"?pb-pa:pa-pb;
       });
     }
     return arr;
   },[vis,sortBy,prices,corr]);
-  // visAll = selectedCoins filtered without category (for Charts / Entropy / Correlation tabs)
-  const visAll=(!selectedCoins||selectedCoins.size===0)?ASSETS:ASSETS.filter(a=>selectedCoins.has(a.symbol));
+  // Per-tab filtered asset lists (independent per section)
+  const chartVisAll=(!chartCoins||chartCoins.size===0)?ASSETS:ASSETS.filter(a=>chartCoins.has(a.symbol));
+  const corrVisAll=(!corrCoins||corrCoins.size===0)?ASSETS:ASSETS.filter(a=>corrCoins.has(a.symbol));
+  const leadlagVisAll=(!leadlagCoins||leadlagCoins.size===0)?ASSETS:ASSETS.filter(a=>leadlagCoins.has(a.symbol));
+  const entropyVisAll=(!entropyCoins||entropyCoins.size===0)?ASSETS:ASSETS.filter(a=>entropyCoins.has(a.symbol));
   // If current chart asset was deselected, fallback to first available
   useEffect(()=>{
-    if(visAll.length>0&&!visAll.find(a=>a.symbol===chartAsset)){
-      setChartAsset(visAll[0].symbol);
+    if(chartVisAll.length>0&&!chartVisAll.find(a=>a.symbol===chartAsset)){
+      setChartAsset(chartVisAll[0].symbol);
     }
-  },[visAll,chartAsset,setChartAsset]);
-  const corrAlertOptions = [];
-  for(let i=0;i<ASSETS.length;i++) for(let j=i+1;j<ASSETS.length;j++) {
-    corrAlertOptions.push({
-      key:`${ASSETS[i].symbol}-${ASSETS[j].symbol}`,
-      label:`${ASSETS[i].symbol} / ${ASSETS[j].symbol}`
-    });
-  }
+  },[chartVisAll,chartAsset,setChartAsset]);
+  const corrAlertOptions = CORR_ALERT_OPTIONS;
 
-  function topPairs(dir){
+  const {topPos,topNeg}=useMemo(()=>{
     const pairs=[];
     for(let i=0;i<vis.length;i++)for(let j=i+1;j<vis.length;j++){
       const v=corr[`${vis[i].symbol}-${vis[j].symbol}`];
       if(v!=null&&isFinite(v))pairs.push({a:vis[i],b:vis[j],v});
     }
-    return dir==="pos"?pairs.sort((x,y)=>y.v-x.v).slice(0,6):pairs.sort((x,y)=>x.v-y.v).slice(0,6);
-  }
+    return{topPos:[...pairs].sort((x,y)=>y.v-x.v).slice(0,6),topNeg:[...pairs].sort((x,y)=>x.v-y.v).slice(0,6)};
+  },[vis,corr]);
 
   // Stats — based on visible (selected) assets only
-  const validCorrs=[];
-  for(let i=0;i<vis.length;i++)for(let j=i+1;j<vis.length;j++){
-    const v=corr[`${vis[i].symbol}-${vis[j].symbol}`];
-    if(v!==null&&v!==undefined&&isFinite(v)&&vis[i].symbol!==vis[j].symbol)validCorrs.push(v);
-  }
-  const avgCorr=validCorrs.length?validCorrs.reduce((a,b)=>a+b,0)/validCorrs.length:0;
-  const strongPos=validCorrs.filter(v=>v>0.7).length;
-  const strongNeg=validCorrs.filter(v=>v<-0.7).length;
+  const {validCorrs,avgCorr,strongPos,strongNeg}=useMemo(()=>{
+    const vc=[];
+    for(let i=0;i<vis.length;i++)for(let j=i+1;j<vis.length;j++){
+      const v=corr[`${vis[i].symbol}-${vis[j].symbol}`];
+      if(v!==null&&v!==undefined&&isFinite(v)&&vis[i].symbol!==vis[j].symbol)vc.push(v);
+    }
+    return{validCorrs:vc,avgCorr:vc.length?vc.reduce((a,b)=>a+b,0)/vc.length:0,strongPos:vc.filter(v=>v>0.7).length,strongNeg:vc.filter(v=>v<-0.7).length};
+  },[vis,corr]);
 
   const selCorr=selected?corr[`${selected.a}-${selected.b}`]??null:null;
   const selA=selected?ASSETS.find(a=>a.symbol===selected.a):null;
@@ -1361,31 +1464,31 @@ export default function App(){
         <div className="hdr-r">
           <div className="hdr-upd">{lastUpdate?`UPD ${lastUpdate.toLocaleTimeString()}`:""}</div>
           <div style={{display:"flex",gap:2,background:"rgba(0,0,0,0.4)",borderRadius:6,padding:3,marginRight:6}}>
-            {[["matrix","Matrix"],["charts","Charts"],["corr","Correlation"],["leadlag","Lead-Lag"],["entropy","Entropy"],["docs","Docs"]].map(([k,l])=>(
-              <button key={k} onClick={()=>setActiveTab(k)} style={{background:activeTab===k?"rgba(139,92,246,0.35)":"transparent",border:"none",borderRadius:4,padding:"4px 12px",fontFamily:"inherit",fontSize:11,fontWeight:600,color:activeTab===k?"#e2d9f3":"rgba(139,92,246,0.5)",cursor:"pointer"}}>{l}</button>
+            {TAB_OPTIONS.map(([k,l])=>(
+              <button key={k} onClick={()=>setActiveTab(k)} style={{background:activeTab===k?"rgba(139,92,246,0.35)":"transparent",border:"none",borderRadius:4,padding:"4px 12px",fontFamily:"inherit",fontSize:11,fontWeight:600,color:activeTab===k?"#e2d9f3":"rgba(139,92,246,0.5)",cursor:"pointer",transition:"background .18s,color .18s"}}>{l}</button>
             ))}
           </div>
           {/* Coin picker — always visible in header */}
           <div ref={pickerRef} style={{position:"relative",marginRight:6}}>
-            <button onClick={()=>setPickerOpen(o=>!o)} style={{display:"flex",alignItems:"center",gap:5,background:(selectedCoins&&selectedCoins.size<ASSETS.length)?"rgba(124,58,237,0.22)":"rgba(255,255,255,0.05)",border:`1px solid ${(selectedCoins&&selectedCoins.size<ASSETS.length)?"rgba(124,58,237,0.5)":"rgba(255,255,255,0.1)"}`,borderRadius:6,padding:"4px 10px",cursor:"pointer",color:(selectedCoins&&selectedCoins.size<ASSETS.length)?"#c4b5fd":"rgba(255,255,255,0.5)",fontFamily:"inherit",fontSize:11,fontWeight:600,letterSpacing:".04em",transition:"all .15s"}}>
+            <button onClick={()=>setPickerOpen(o=>!o)} style={{display:"flex",alignItems:"center",gap:5,background:(matrixCoins&&matrixCoins.size<ASSETS.length)?"rgba(124,58,237,0.22)":"rgba(255,255,255,0.05)",border:`1px solid ${(matrixCoins&&matrixCoins.size<ASSETS.length)?"rgba(124,58,237,0.5)":"rgba(255,255,255,0.1)"}`,borderRadius:6,padding:"4px 10px",cursor:"pointer",color:(matrixCoins&&matrixCoins.size<ASSETS.length)?"#c4b5fd":"rgba(255,255,255,0.5)",fontFamily:"inherit",fontSize:11,fontWeight:600,letterSpacing:".04em",transition:"all .15s"}}>
               <span style={{fontSize:13}}>⊞</span>
-              {(!selectedCoins||selectedCoins.size===0||selectedCoins.size>=ASSETS.length)?`All ${ASSETS.length}`:`${selectedCoins.size} / ${ASSETS.length}`}
+              {(!matrixCoins||matrixCoins.size===0||matrixCoins.size>=ASSETS.length)?`All ${ASSETS.length}`:`${matrixCoins.size} / ${ASSETS.length}`}
               <span style={{fontSize:9,opacity:.7,marginLeft:1}}>{pickerOpen?"▲":"▼"}</span>
             </button>
             {pickerOpen&&(
-              <div style={{position:"absolute",top:"calc(100% + 6px)",right:0,zIndex:9999,background:"#0f0b1e",border:"1px solid rgba(124,58,237,0.35)",borderRadius:10,padding:"14px",minWidth:320,maxHeight:"70vh",overflowY:"auto",boxShadow:"0 12px 48px rgba(0,0,0,0.85)",backdropFilter:"blur(16px)"}}>
+              <div className="dropdown-anim" style={{position:"absolute",top:"calc(100% + 6px)",right:0,zIndex:9999,background:"#0f0b1e",border:"1px solid rgba(124,58,237,0.35)",borderRadius:10,padding:"14px",minWidth:320,maxHeight:"70vh",overflowY:"auto",boxShadow:"0 12px 48px rgba(0,0,0,0.85)",backdropFilter:"blur(16px)"}}>
                 <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:12,paddingBottom:10,borderBottom:"1px solid rgba(124,58,237,0.2)"}}>
                   <span style={{color:"#e2d9f3",fontSize:12,fontWeight:700,letterSpacing:".08em"}}>SELECT COINS</span>
                   <div style={{display:"flex",gap:5}}>
-                    <button onClick={()=>setSelectedCoins(new Set(DEFAULT_COINS))} style={{background:"rgba(124,58,237,0.18)",border:"1px solid rgba(124,58,237,0.3)",borderRadius:4,padding:"3px 9px",cursor:"pointer",color:"#c4b5fd",fontSize:10,fontFamily:"inherit",fontWeight:600}}>Default</button>
-                    <button onClick={()=>setSelectedCoins(new Set(ASSETS.map(a=>a.symbol)))} style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:4,padding:"3px 9px",cursor:"pointer",color:"rgba(255,255,255,0.55)",fontSize:10,fontFamily:"inherit",fontWeight:600}}>All</button>
-                    <button onClick={()=>setSelectedCoins(new Set())} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:4,padding:"3px 9px",cursor:"pointer",color:"rgba(255,255,255,0.35)",fontSize:10,fontFamily:"inherit",fontWeight:600}}>None</button>
+                    <button onClick={()=>setMatrixCoins(new Set(DEFAULT_COINS))} style={{background:"rgba(124,58,237,0.18)",border:"1px solid rgba(124,58,237,0.3)",borderRadius:4,padding:"3px 9px",cursor:"pointer",color:"#c4b5fd",fontSize:10,fontFamily:"inherit",fontWeight:600}}>Default</button>
+                    <button onClick={()=>setMatrixCoins(new Set(ASSETS.map(a=>a.symbol)))} style={{background:"rgba(255,255,255,0.07)",border:"1px solid rgba(255,255,255,0.1)",borderRadius:4,padding:"3px 9px",cursor:"pointer",color:"rgba(255,255,255,0.55)",fontSize:10,fontFamily:"inherit",fontWeight:600}}>All</button>
+                    <button onClick={()=>setMatrixCoins(new Set())} style={{background:"rgba(255,255,255,0.05)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:4,padding:"3px 9px",cursor:"pointer",color:"rgba(255,255,255,0.35)",fontSize:10,fontFamily:"inherit",fontWeight:600}}>None</button>
                   </div>
                 </div>
                 {["crypto","fx","commodity","equity","index"].map(cat=>{
                   const catAssets=ASSETS.filter(a=>a.category===cat);
                   if(!catAssets.length)return null;
-                  const allOn=catAssets.every(a=>!selectedCoins||selectedCoins.size===0||selectedCoins.has(a.symbol));
+                  const allOn=catAssets.every(a=>!matrixCoins||matrixCoins.size===0||matrixCoins.has(a.symbol));
                   return(
                     <div key={cat} style={{marginBottom:10}}>
                       <div style={{display:"flex",alignItems:"center",gap:6,marginBottom:5,paddingBottom:4,borderBottom:"1px solid rgba(124,58,237,0.15)"}}>
@@ -1394,24 +1497,24 @@ export default function App(){
                         </span>
                         <button onClick={()=>{
                           const syms=catAssets.map(a=>a.symbol);
-                          const cur=selectedCoins&&selectedCoins.size>0?new Set(selectedCoins):new Set(ASSETS.map(a=>a.symbol));
+                          const cur=matrixCoins&&matrixCoins.size>0?new Set(matrixCoins):new Set(ASSETS.map(a=>a.symbol));
                           const allSel=syms.every(s=>cur.has(s));
                           const next=new Set(cur);
                           if(allSel) syms.forEach(s=>next.delete(s)); else syms.forEach(s=>next.add(s));
-                          setSelectedCoins(next.size>=ASSETS.length?new Set(ASSETS.map(a=>a.symbol)):next);
+                          setMatrixCoins(next.size>=ASSETS.length?new Set(ASSETS.map(a=>a.symbol)):next);
                         }} style={{background:"transparent",border:"none",cursor:"pointer",color:"rgba(124,58,237,0.6)",fontSize:9,fontFamily:"inherit",textDecoration:"underline",padding:0}}>
                           {allOn?"deselect all":"select all"}
                         </button>
                       </div>
                       <div style={{display:"flex",flexWrap:"wrap",gap:4}}>
                         {catAssets.map(a=>{
-                          const on=!selectedCoins||selectedCoins.size===0||selectedCoins.has(a.symbol);
+                          const on=!matrixCoins||matrixCoins.size===0||matrixCoins.has(a.symbol);
                           return(
                             <button key={a.symbol} onClick={()=>{
-                              const cur=selectedCoins&&selectedCoins.size>0?new Set(selectedCoins):new Set(ASSETS.map(a=>a.symbol));
+                              const cur=matrixCoins&&matrixCoins.size>0?new Set(matrixCoins):new Set(ASSETS.map(a=>a.symbol));
                               const next=new Set(cur);
                               if(on) next.delete(a.symbol); else next.add(a.symbol);
-                              setSelectedCoins(next);
+                              setMatrixCoins(next);
                             }} style={{display:"flex",alignItems:"center",gap:4,background:on?"rgba(124,58,237,0.2)":"rgba(255,255,255,0.04)",border:`1px solid ${on?"rgba(124,58,237,0.4)":"rgba(255,255,255,0.08)"}`,borderRadius:5,padding:"3px 8px",cursor:"pointer",color:on?a.color:"rgba(255,255,255,0.3)",fontFamily:"inherit",fontSize:11,fontWeight:700,transition:"all .12s"}}>
                               {on&&<span style={{color:"rgba(124,58,237,0.8)",fontSize:9}}>✓</span>}
                               {a.symbol}
@@ -1434,7 +1537,7 @@ export default function App(){
       <div className="fbar" style={{display:activeTab==="charts"||activeTab==="corr"||activeTab==="leadlag"||activeTab==="entropy"||activeTab==="docs"?"none":"flex"}}>
         {["all","crypto","fx","commodity","equity","index"].map(c=>{
           const base=c==="all"?ASSETS:ASSETS.filter(a=>a.category===c);
-          const cnt=(!selectedCoins||selectedCoins.size===0)?base.length:base.filter(a=>selectedCoins.has(a.symbol)).length;
+          const cnt=(!matrixCoins||matrixCoins.size===0)?base.length:base.filter(a=>matrixCoins.has(a.symbol)).length;
           return(
             <button key={c} className={`fbtn${filter===c?" a":""}`} onClick={()=>setFilter(c)}>
               {c==="all"?"All Assets":c==="fx"?"FX Pairs":c==="commodity"?"Commodities":c==="index"?"Indices":c==="equity"?"Equity":"Crypto"}
@@ -1445,13 +1548,7 @@ export default function App(){
         <div className="fbar-right">
           <div className="sort-wrap">
             <span className="sort-label">Sort:</span>
-            {[
-              {k:"default",    t:"Default"},
-              {k:"price_desc", t:"Price ↓"},
-              {k:"price_asc",  t:"Price ↑"},
-              {k:"corr_desc",  t:"Corr ↓"},
-              {k:"corr_asc",   t:"Corr ↑"},
-            ].map(({k,t})=>(
+            {SORT_OPTIONS.map(({k,t})=>(
               <button key={k} className={`sbtn${sortBy===k?" a":""}`} onClick={()=>setSortBy(k)}>{t}</button>
             ))}
           </div>
@@ -1715,7 +1812,7 @@ export default function App(){
         {/* ══ RANKINGS ════════════════════════════════════════════════════ */}
         <section className={`sec${mobileTab!=="top"?" mh":""}`} id="sec-rankings">
           <div className="rgrid">
-            {["pos","neg"].map(dir=>(
+            {[{dir:"pos",pairs:topPos},{dir:"neg",pairs:topNeg}].map(({dir,pairs})=>(
               <div key={dir} className="card">
                 <div className="card-hdr">
                   <div className="card-hdr-l">
@@ -1725,7 +1822,7 @@ export default function App(){
                     <span className="cm">Top 6 pairs · {filter==="all"?"all assets":filter}</span>
                   </div>
                 </div>
-                {topPairs(dir).map(({a,b,v},i)=>{
+                {pairs.map(({a,b,v},i)=>{
                   const bar=Math.abs(v)*100;
                   return(
                     <div key={`${a.symbol}${b.symbol}`} className="rr" onClick={()=>setSelected({a:a.symbol,b:b.symbol})} style={{"--i":i}}>
@@ -1751,18 +1848,18 @@ export default function App(){
       </main>
 
       {activeTab==="charts"&&<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#070512",zIndex:200,display:"flex",flexDirection:"column",fontFamily:"'Space Mono',monospace",animation:"fadein .22s ease"}}>
-        <ChartView assets={visAll} prices={prices} chartAsset={chartAsset} setChartAsset={setChartAsset} chartTf={chartTf} setChartTf={setChartTf} chartType={chartType} setChartType={setChartType} chartHist={chartHist} setChartHist={setChartHist} setActiveTab={setActiveTab} status={status} histRef={histRef}/>
+        <ChartView assets={chartVisAll} prices={prices} chartAsset={chartAsset} setChartAsset={setChartAsset} chartTf={chartTf} setChartTf={setChartTf} chartType={chartType} setChartType={setChartType} chartHist={chartHist} setChartHist={setChartHist} setActiveTab={setActiveTab} status={status} histRef={histRef} selectedCoins={chartCoins} setSelectedCoins={setChartCoins}/>
       </div>}
 
       {activeTab==="corr"&&<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#07050f",zIndex:200,display:"flex",flexDirection:"column",animation:"fadein .22s ease"}}>
-        <CorrView histRef={histRef} prices={prices} assets={visAll} setActiveTab={setActiveTab} status={status}/>
+        <CorrView histRef={histRef} prices={prices} assets={corrVisAll} setActiveTab={setActiveTab} status={status} selectedCoins={corrCoins} setSelectedCoins={setCorrCoins}/>
       </div>}
       {activeTab==="leadlag"&&<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#07050f",zIndex:200,display:"flex",flexDirection:"column",animation:"fadein .22s ease"}}>
-        <LeadLagView histRef={histRef} prices={prices} assets={visAll} setActiveTab={setActiveTab} status={status}/>
+        <LeadLagView histRef={histRef} prices={prices} assets={leadlagVisAll} setActiveTab={setActiveTab} status={status} selectedCoins={leadlagCoins} setSelectedCoins={setLeadlagCoins}/>
       </div>}
 
       <div className={activeTab==="entropy"?"tab-overlay-enter":""} style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#07050f",zIndex:200,display:activeTab==="entropy"?"flex":"none",flexDirection:"column"}}>
-        <EntropyView histRef={histRef} prices={prices} assets={visAll} setActiveTab={setActiveTab} status={status} liveRun={entropyLiveRun} setLiveRun={setEntropyLiveRun} corrAlertEnabled={corrAlertEnabled} setCorrAlertEnabled={setCorrAlertEnabled} corrAlertPair={corrAlertPair} setCorrAlertPair={setCorrAlertPair} corrAlertThreshold={corrAlertThreshold} setCorrAlertThreshold={setCorrAlertThreshold} corrAlertHit={corrAlertHit} corrAlertOptions={corrAlertOptions}/>
+        <EntropyView histRef={histRef} prices={prices} assets={entropyVisAll} setActiveTab={setActiveTab} status={status} liveRun={entropyLiveRun} setLiveRun={setEntropyLiveRun} corrAlertEnabled={corrAlertEnabled} setCorrAlertEnabled={setCorrAlertEnabled} corrAlertPair={corrAlertPair} setCorrAlertPair={setCorrAlertPair} corrAlertThreshold={corrAlertThreshold} setCorrAlertThreshold={setCorrAlertThreshold} corrAlertHit={corrAlertHit} corrAlertOptions={corrAlertOptions} selectedCoins={entropyCoins} setSelectedCoins={setEntropyCoins}/>
       </div>
 
       {activeTab==="docs" && <div style={{position:"fixed",inset:0,zIndex:200,display:"flex",flexDirection:"column",animation:"fadein .22s ease"}}>
@@ -1836,8 +1933,6 @@ export default function App(){
       )}
 
       <style>{`
-        @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600;700;800&display=swap');
-
         :root {
           --bg: #060410;
           --bg2: #0a0718;
@@ -1867,7 +1962,7 @@ export default function App(){
         .hdr-sub { font-size: 9px; color: var(--td); letter-spacing: .2em; text-transform: uppercase; }
         .hdr-stats { display: flex; align-items: center; gap: 0; margin-left: 20px; background: rgba(0,0,0,0.3); border: 1px solid var(--cb2); border-radius: var(--rs); overflow: hidden; }
         .hstat { padding: 6px 14px; text-align: center; }
-        .hstat-val { font-family: var(--fd); font-size: 16px; font-weight: 700; color: var(--txx); }
+        .hstat-val { font-family: var(--fd); font-size: 16px; font-weight: 700; color: var(--txx); transition: color 0.4s ease; font-variant-numeric: tabular-nums; }
         .hstat-val.pos { color: var(--gn); } .hstat-val.neg { color: var(--rd); }
         .hstat-key { font-size: 8px; color: var(--td); letter-spacing: .1em; text-transform: uppercase; margin-top: 1px; }
         .hstat-sep { width: 1px; height: 32px; background: var(--cb); }
@@ -2000,7 +2095,7 @@ export default function App(){
         .hm-rl { padding-right: 6px; white-space: nowrap; }
         .hm-rl-inner { display: flex; align-items: center; gap: 5px; }
         .hm-rl-dot { width: 5px; height: 5px; border-radius: 50%; flex-shrink: 0; }
-        .hm-cell { min-width: 44px; height: 40px; text-align: center; vertical-align: middle; font-size: 8px; font-weight: 700; border-radius: 5px; cursor: pointer; transition: filter .18s, transform .18s, background 0.55s ease, color 0.35s ease; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+        .hm-cell { min-width: 44px; height: 40px; text-align: center; vertical-align: middle; font-size: 8px; font-weight: 700; border-radius: 5px; cursor: pointer; transition: filter .18s, transform .18s, background 0.55s ease, color 0.35s ease; font-variant-numeric: tabular-nums; letter-spacing: .02em; will-change: transform; }
         .hm-cell:not(.diag):hover { filter: brightness(1.35); transform: scale(1.10); z-index: 3; position: relative; box-shadow: 0 4px 16px rgba(0,0,0,0.5); }
         .hm-cell.diag { cursor: default; background: rgba(139,92,246,.04) !important; border: 1px solid rgba(139,92,246,.15); }
         .hm-cell.sel { outline: 2px solid rgba(255,255,255,.8); outline-offset: -1px; }
@@ -2009,7 +2104,7 @@ export default function App(){
         .hm-cell:not(.diag):hover .hm-share-btn { opacity: 1; }
         .hm-share-btn:hover { background: rgba(124,58,237,0.7) !important; opacity: 1 !important; }
         /* HEATMAP TOOLTIP */
-        .hm-tooltip { position: fixed; pointer-events: none; z-index: 999; background: rgba(7,5,15,0.97); border: 1px solid rgba(124,58,237,0.35); border-radius: 10px; padding: 11px 14px; min-width: 170px; box-shadow: 0 8px 36px rgba(0,0,0,0.65); backdrop-filter: blur(16px); animation: fadein .1s ease; }
+        .hm-tooltip { position: fixed; pointer-events: none; z-index: 999; background: rgba(7,5,15,0.97); border: 1px solid rgba(124,58,237,0.35); border-radius: 10px; padding: 11px 14px; min-width: 170px; box-shadow: 0 8px 36px rgba(0,0,0,0.65); backdrop-filter: blur(16px); animation: dropIn .13s cubic-bezier(.22,1,.36,1) both; }
         .hm-tt-pair { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.75); margin-bottom: 6px; letter-spacing: -.01em; }
         .hm-tt-val { font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.03em; line-height: 1; margin-bottom: 5px; }
         .hm-tt-lbl { font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
@@ -2098,7 +2193,9 @@ export default function App(){
         .overlay { position: fixed; inset: 0; background: rgba(0,0,0,.65); z-index: 200; display: flex; align-items: center; justify-content: center; backdrop-filter: blur(8px); animation: fadein .2s ease; }
         @keyframes fadein { from{opacity:0} to{opacity:1} }
         @keyframes tabIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+        @keyframes dropIn { from{opacity:0;transform:translateY(-6px) scale(0.98)} to{opacity:1;transform:translateY(0) scale(1)} }
         .tab-overlay-enter { animation: tabIn .22s ease both; }
+        .dropdown-anim { animation: dropIn .16s cubic-bezier(.22,1,.36,1) both; transform-origin: top right; }
         .modal { background: #0c0917; border: 1px solid var(--cb); border-radius: var(--r); width: min(500px, 94vw); overflow: hidden; animation: fup .22s ease; }
         .modal-body { padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; }
         .fta { width: 100%; padding: 10px 12px; background: rgba(0,0,0,.4); border: 1px solid var(--cb); border-radius: var(--rs); color: var(--tx); font-family: var(--fm); font-size: 12px; resize: vertical; outline: none; transition: border-color .2s; }
@@ -2109,9 +2206,11 @@ export default function App(){
         .sent { padding: 28px; text-align: center; font-size: 16px; color: var(--gn); }
 
         /* SCROLLBAR */
-        ::-webkit-scrollbar { width: 4px; height: 4px; }
+        ::-webkit-scrollbar { width: 5px; height: 5px; }
         ::-webkit-scrollbar-track { background: transparent; }
-        ::-webkit-scrollbar-thumb { background: var(--pud); border-radius: 2px; }
+        ::-webkit-scrollbar-thumb { background: rgba(124,58,237,0.35); border-radius: 3px; transition: background .2s; }
+        ::-webkit-scrollbar-thumb:hover { background: rgba(139,92,246,0.6); }
+        * { scrollbar-width: thin; scrollbar-color: rgba(124,58,237,0.35) transparent; }
 
         /* RESPONSIVE */
         @media(max-width:1024px) {
@@ -2398,7 +2497,7 @@ function drawCandles(canvas, bars, chartType, view = {}) {
 }
 
 
-function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChartTf, chartType, setChartType, chartHist, setChartHist, setActiveTab, status, histRef}) {
+function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChartTf, chartType, setChartType, chartHist, setChartHist, setActiveTab, status, histRef, selectedCoins, setSelectedCoins}) {
   const canvasRef = useRef();
   const corrCanvasRef = useRef();
   const barsRef   = useRef([]);
@@ -2599,6 +2698,7 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
           {pct!=null&&<span style={{fontSize:12,fontWeight:600,color:pct>=0?"#10b981":"#ef4444"}}>{pct>=0?"+":""}{pct.toFixed(2)}%</span>}
         </div>
         <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>
+          <CoinPicker selectedCoins={selectedCoins} setSelectedCoins={setSelectedCoins}/>
           <div style={{display:"flex",alignItems:"center",gap:5,padding:"3px 8px",borderRadius:3,background:status==="live"?"rgba(16,185,129,0.1)":"rgba(239,68,68,0.1)",border:`1px solid ${status==="live"?"rgba(16,185,129,0.25)":"rgba(239,68,68,0.25)"}`}}>
             <span style={{width:5,height:5,borderRadius:"50%",background:status==="live"?"#10b981":"#ef4444",display:"inline-block"}}/>
             <span style={{fontSize:10,fontWeight:700,letterSpacing:".08em",color:status==="live"?"#10b981":"#ef4444"}}>{status==="live"?"LIVE":"DEMO"}</span>
@@ -3629,7 +3729,7 @@ function drawRolling(canvas, allPts, times, cutoff, windowKey) {
 /* ══════════════════════════════════════════════════════════════════════════
    LEAD-LAG VIEW
    ══════════════════════════════════════════════════════════════════════════ */
-function LeadLagView({histRef, prices, assets, setActiveTab, status}) {
+function LeadLagView({histRef, prices, assets, setActiveTab, status, selectedCoins, setSelectedCoins}) {
   const xcRef = useRef();
   const [llWindow, setLlWindow] = useState("7D");
   const [llBars, setLlBars]     = useState({});
@@ -3785,6 +3885,7 @@ function LeadLagView({histRef, prices, assets, setActiveTab, status}) {
           )}
         </div>
         <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>
+          <CoinPicker selectedCoins={selectedCoins} setSelectedCoins={setSelectedCoins}/>
           {loading&&<span style={{fontSize:9,color:"rgba(124,58,237,0.6)",letterSpacing:".06em"}}>LOADING…</span>}
           <div style={{display:"flex",alignItems:"center",gap:5,padding:"3px 8px",borderRadius:3,background:status==="live"?"rgba(16,185,129,0.1)":"rgba(239,68,68,0.1)",border:`1px solid ${status==="live"?"rgba(16,185,129,0.25)":"rgba(239,68,68,0.25)"}`}}>
             <span style={{width:5,height:5,borderRadius:"50%",background:status==="live"?"#10b981":"#ef4444",display:"inline-block"}}/>
@@ -3999,7 +4100,7 @@ function LeadLagView({histRef, prices, assets, setActiveTab, status}) {
   );
 }
 
-function CorrView({histRef, prices, assets, setActiveTab, status}) {
+function CorrView({histRef, prices, assets, setActiveTab, status, selectedCoins, setSelectedCoins}) {
   const scatterRef = useRef();
   const rollingRef = useRef();
   const [activePair, setActivePair] = useState(0);
@@ -4147,6 +4248,7 @@ function CorrView({histRef, prices, assets, setActiveTab, status}) {
         <span style={{fontSize:13,fontWeight:700,color:"#7c3aed",letterSpacing:".06em"}}>PYTH</span>
         <span style={{fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.25)"}}>CORRELATION</span>
         <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>
+          <CoinPicker selectedCoins={selectedCoins} setSelectedCoins={setSelectedCoins}/>
           {loading&&<span style={{fontSize:9,color:"rgba(124,58,237,0.6)",letterSpacing:".06em"}}>LOADING…</span>}
           <div style={{display:"flex",alignItems:"center",gap:5,padding:"3px 8px",borderRadius:3,background:status==="live"?"rgba(16,185,129,0.1)":"rgba(239,68,68,0.1)",border:`1px solid ${status==="live"?"rgba(16,185,129,0.25)":"rgba(239,68,68,0.25)"}`}}>
             <span style={{width:5,height:5,borderRadius:"50%",background:status==="live"?"#10b981":"#ef4444",display:"inline-block"}}/>
@@ -4711,7 +4813,7 @@ function drawHiddenConnections(canvas, assets, nmiMatrix, pearsonMatrix) {
 }
 
 /* ── EntropyView component ────────────────────────────────────────────────── */
-function EntropyView({ histRef, prices, assets, setActiveTab, status, liveRun, setLiveRun, corrAlertEnabled, setCorrAlertEnabled, corrAlertPair, setCorrAlertPair, corrAlertThreshold, setCorrAlertThreshold, corrAlertHit, corrAlertOptions }) {
+function EntropyView({ histRef, prices, assets, setActiveTab, status, liveRun, setLiveRun, corrAlertEnabled, setCorrAlertEnabled, corrAlertPair, setCorrAlertPair, corrAlertThreshold, setCorrAlertThreshold, corrAlertHit, corrAlertOptions, selectedCoins, setSelectedCoins }) {
   const barRef     = useRef();
   const heatRef    = useRef();
   const hiddenRef  = useRef();
@@ -4917,6 +5019,7 @@ function EntropyView({ histRef, prices, assets, setActiveTab, status, liveRun, s
           </div>
         )}
         <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>
+          <CoinPicker selectedCoins={selectedCoins} setSelectedCoins={setSelectedCoins}/>
           {loading && <span style={{fontSize:9,color:"rgba(124,58,237,0.6)",letterSpacing:".06em",animation:"pulse 1s infinite"}}>LOADING DATA…</span>}
           {liveRun && <span style={{fontSize:9,color:"#10b981",letterSpacing:".08em",animation:"pulse 1s infinite"}}>LIVE MEASURING</span>}
           {lastRun && <span style={{fontSize:8,color:"rgba(255,255,255,0.2)"}}>ran {lastRun.toLocaleTimeString()}</span>}

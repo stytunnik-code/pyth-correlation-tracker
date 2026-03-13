@@ -13,9 +13,15 @@ export default defineConfig({
     }
   },
   build: {
-    // Prevent source maps from leaking code in production
     sourcemap: false,
-    // Minify for production to reduce attack surface via code inspection
-    minify: 'esbuild'
+    minify: 'esbuild',
+    target: 'es2020',
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+        },
+      },
+    },
   }
 })

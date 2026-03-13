@@ -84,27 +84,44 @@ export default function SmokeBackground() {
 
     const particles = Array.from({ length: 48 }, () => new Particle());
 
+    // Vignette gradient — recreated only on resize
+    let vigGrad = null;
+    const buildVig = () => {
+      vigGrad = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, Math.max(W, H) * 0.7);
+      vigGrad.addColorStop(0, "transparent");
+      vigGrad.addColorStop(1, "rgba(6,4,16,0.12)");
+    };
+    buildVig();
+    const origResize = resize;
+    const resizeWithVig = () => { origResize(); buildVig(); };
+    window.removeEventListener("resize", resize);
+    window.addEventListener("resize", resizeWithVig);
+
     let animId;
     function loop() {
       time += 1;
       ctx.clearRect(0, 0, W, H);
-
-      // Subtle vignette gradient for depth
-      const vig = ctx.createRadialGradient(W/2, H/2, 0, W/2, H/2, Math.max(W, H) * 0.7);
-      vig.addColorStop(0, "transparent");
-      vig.addColorStop(1, "rgba(6,4,16,0.12)");
-      ctx.fillStyle = vig;
+      ctx.fillStyle = vigGrad;
       ctx.fillRect(0, 0, W, H);
-
       particles.forEach(p => { p.update(); p.draw(); });
-
       animId = requestAnimationFrame(loop);
     }
     loop();
 
+    // Pause animation when tab is hidden to save CPU
+    const onVisibility = () => {
+      if (document.hidden) {
+        if (animId) { cancelAnimationFrame(animId); animId = null; }
+      } else {
+        if (!animId) loop();
+      }
+    };
+    document.addEventListener("visibilitychange", onVisibility);
+
     return () => {
-      cancelAnimationFrame(animId);
-      window.removeEventListener("resize", resize);
+      if (animId) cancelAnimationFrame(animId);
+      window.removeEventListener("resize", resizeWithVig);
+      document.removeEventListener("visibilitychange", onVisibility);
     };
   }, []);
 
