@@ -1343,9 +1343,12 @@ export default function App(){
     setCorrAlertHit(max - min <= 0.04 && avgAbs >= corrAlertThreshold);
   },[corr, corrAlertEnabled, corrAlertPair, corrAlertThreshold]);
 
-  const visCat=filter==="all"?ASSETS:ASSETS.filter(a=>a.category===filter);
-  // If selectedCoins is null → all enabled; if empty Set → fallback to all (avoid empty grid)
-  const vis=(!matrixCoins||matrixCoins.size===0)?visCat:visCat.filter(a=>matrixCoins.has(a.symbol));
+  // Category tab takes precedence; coin picker only applies on "All Assets"
+  const vis = filter !== "all"
+    ? ASSETS.filter(a => a.category === filter)
+    : (!matrixCoins || matrixCoins.size === 0)
+      ? ASSETS
+      : ASSETS.filter(a => matrixCoins.has(a.symbol));
 
   const sortedVis=useMemo(()=>{
     const arr=[...vis];
@@ -1537,7 +1540,10 @@ export default function App(){
       <div className="fbar" style={{display:activeTab==="charts"||activeTab==="corr"||activeTab==="leadlag"||activeTab==="entropy"||activeTab==="docs"?"none":"flex"}}>
         {["all","crypto","fx","commodity","equity","index"].map(c=>{
           const base=c==="all"?ASSETS:ASSETS.filter(a=>a.category===c);
-          const cnt=(!matrixCoins||matrixCoins.size===0)?base.length:base.filter(a=>matrixCoins.has(a.symbol)).length;
+          // coin picker only narrows "All Assets"; category tabs always show full category count
+          const cnt=c==="all"
+            ?((!matrixCoins||matrixCoins.size===0)?base.length:base.filter(a=>matrixCoins.has(a.symbol)).length)
+            :base.length;
           return(
             <button key={c} className={`fbtn${filter===c?" a":""}`} onClick={()=>setFilter(c)}>
               {c==="all"?"All Assets":c==="fx"?"FX Pairs":c==="commodity"?"Commodities":c==="index"?"Indices":c==="equity"?"Equity":"Crypto"}
