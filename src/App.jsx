@@ -656,7 +656,7 @@ Interpretation:
         <div style={S.code}>{`For each bootstrap iteration i = 1..60:
   - Draw resampleSize = min(150, n×0.7) indices with replacement
   - Compute H_i = ½ · ln(2πe · σ²_i)
-  
+
 CI₉₅ = [percentile(H, 2.5%), percentile(H, 97.5%)]
 Seed: mulberry32 PRNG seeded from live Pyth prices XOR asset index`}</div>
 
@@ -1031,8 +1031,30 @@ export default function App(){
   const [mounted,setMounted]=useState(false);
   const [mobileTab,setMobileTab]=useState("heatmap");
   const [activeTab,setActiveTab]=useState("matrix");
-  const [showLanding,setShowLanding]=useState(true);
+  const [showLanding,setShowLanding]=useState(false);
   const [landingExiting,setLandingExiting]=useState(false);
+  const [showLoading,setShowLoading]=useState(true);
+  const [loadingPhase,setLoadingPhase]=useState(0);
+  const LOADING_PHRASES=[
+    "PARSING WHALE WALLETS...",
+    "INITIALIZING AI SENTIMENT MODEL...",
+    "LOADING PYTH ORACLE FEEDS...",
+    "COMPUTING CORRELATION MATRIX...",
+    "CALIBRATING ENTROPY ENGINE...",
+  ];
+  useEffect(()=>{
+    let phase=0;
+    const iv=setInterval(()=>{
+      phase++;
+      if(phase<LOADING_PHRASES.length){ setLoadingPhase(phase); }
+      else {
+        clearInterval(iv);
+        setShowLanding(true);
+        requestAnimationFrame(()=>requestAnimationFrame(()=>setShowLoading(false)));
+      }
+    }, 520);
+    return ()=>clearInterval(iv);
+  },[]);
   const goFromLanding=(tab="matrix")=>{
     setLandingExiting(true);
     setTimeout(()=>{ setShowLanding(false); if(tab!=="matrix") setActiveTab(tab); }, 420);
@@ -1332,7 +1354,8 @@ export default function App(){
   }
 
   return(
-    <div className={`app${mounted?" on":""}`}>
+    <>
+    <div className={`app${mounted?" on":""}`} style={{visibility:showLoading?"hidden":"visible"}}>
       <SmokeBackground/>
 
       {/* ══ HEADER ══════════════════════════════════════════════════════ */}
@@ -1803,6 +1826,8 @@ export default function App(){
         </div>
       )}
 
+
+
       {/* ══ FOOTER ═════════════════════════════════════════════════════ */}
       <footer className="foot">
         <div className="foot-l">
@@ -1848,6 +1873,87 @@ export default function App(){
 
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Outfit:wght@300;400;500;600;700;800&display=swap');
+
+        /* ── LOADING SCREEN ─────────────────────────────────────────── */
+        /* ── LOADING SCREEN ─────────────────────────────────────────── */
+        .loading-ov {
+          position: fixed; inset: 0; z-index: 9999;
+          background: #06030f;
+          animation: loading-fade-in .3s ease forwards;
+          overflow: hidden;
+        }
+        .loading-canvas {
+          position: absolute; inset: 0;
+          width: 100%; height: 100%;
+        }
+        .loading-content {
+          position: relative; z-index: 2;
+          display: flex; flex-direction: column;
+          align-items: center; justify-content: center;
+          height: 100%; gap: 20px;
+        }
+        .loading-logo {
+          width: 64px; height: 64px;
+          border-radius: 16px;
+          object-fit: contain;
+          filter: drop-shadow(0 0 18px rgba(124,58,237,0.7));
+          animation: logo-pulse 2s ease-in-out infinite;
+        }
+        @keyframes logo-pulse {
+          0%,100% { filter: drop-shadow(0 0 14px rgba(124,58,237,0.6)); transform: scale(1); }
+          50%      { filter: drop-shadow(0 0 28px rgba(167,139,250,0.9)); transform: scale(1.04); }
+        }
+        .loading-brand {
+          font-family: 'Space Mono', monospace;
+          font-size: 13px; font-weight: 700;
+          letter-spacing: .18em;
+          margin-top: -6px;
+        }
+        .loading-brand-pyth { color: #a78bfa; }
+        .loading-brand-sep  { color: rgba(255,255,255,0.2); }
+        .loading-brand-rs   { color: rgba(255,255,255,0.45); }
+        @keyframes loading-fade-in {
+          from { opacity: 0; }
+          to   { opacity: 1; }
+        }
+        .loading-spinner {
+          width: 36px; height: 36px;
+          border: 2px solid rgba(167,139,250,0.1);
+          border-top-color: #a78bfa;
+          border-right-color: rgba(167,139,250,0.35);
+          border-radius: 50%;
+          animation: spin .85s cubic-bezier(.4,0,.6,1) infinite;
+          filter: drop-shadow(0 0 6px rgba(167,139,250,0.5));
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .loading-text {
+          font-family: 'Space Mono', monospace;
+          font-size: 10px;
+          letter-spacing: .2em;
+          color: rgba(196,181,253,0.5);
+          text-transform: uppercase;
+          animation: text-appear .4s cubic-bezier(.4,0,.2,1) forwards;
+        }
+        @keyframes text-appear {
+          from { opacity: 0; transform: translateY(5px); }
+          to   { opacity: 1; transform: translateY(0); }
+        }
+        .loading-bar-wrap {
+          position: relative;
+          width: 200px; height: 2px;
+          border-radius: 2px; overflow: hidden;
+        }
+        .loading-bar-bg {
+          position: absolute; inset: 0;
+          background: rgba(139,92,246,0.08);
+        }
+        .loading-bar-fill {
+          position: absolute; left: 0; top: 0; bottom: 0;
+          background: linear-gradient(90deg, #7c3aed, #a78bfa, #c4b5fd);
+          border-radius: 2px;
+          transition: width .5s cubic-bezier(.4,0,.2,1);
+          box-shadow: 0 0 10px rgba(167,139,250,0.7);
+        }
 
         :root {
           --bg: #060410;
@@ -2148,6 +2254,111 @@ export default function App(){
         }
       `}</style>
     </div>
+
+      {showLoading&&(
+        <div className="loading-ov">
+          <canvas className="loading-canvas" ref={el=>{
+            if(!el) return;
+            const W=el.width=el.offsetWidth||window.innerWidth;
+            const H=el.height=el.offsetHeight||window.innerHeight;
+            const ctx=el.getContext("2d");
+            // symbols
+            const SYMS=["₿","Ξ","◎","$","€","Au","Ð","⊕","◆","▲"];
+            const COLORS=["rgba(124,58,237,","rgba(167,139,250,","rgba(99,102,241,","rgba(52,211,153,","rgba(196,181,253,"];
+            // floating particles
+            const particles=Array.from({length:28},(_,i)=>({
+              x:Math.random()*W, y:Math.random()*H,
+              vx:(Math.random()-.5)*.35, vy:(Math.random()-.5)*.35,
+              sym:SYMS[i%SYMS.length],
+              color:COLORS[i%COLORS.length],
+              alpha:0.04+Math.random()*0.13,
+              size:11+Math.random()*22,
+              phase:Math.random()*Math.PI*2
+            }));
+            // chart lines — fake price curves
+            const lines=Array.from({length:6},(_,i)=>({
+              pts: Array.from({length:60},(_,j)=>{
+                const base=H*(0.2+i*0.13);
+                return base + Math.sin(j*0.18+i*1.1)*30 + Math.sin(j*0.07+i*0.5)*18 + (Math.random()-0.5)*8;
+              }),
+              color: ["rgba(124,58,237,","rgba(167,139,250,","rgba(99,102,241,","rgba(52,211,153,","rgba(248,113,113,","rgba(251,191,36,"][i],
+              alpha: 0.06+i*0.025,
+              speed: 0.4+i*0.15,
+              offset: 0
+            }));
+            // correlation dots — scattered grid
+            const dots=Array.from({length:55},()=>({
+              x:Math.random()*W, y:Math.random()*H,
+              r:1+Math.random()*2.5,
+              alpha:0.04+Math.random()*0.12,
+              color:COLORS[Math.floor(Math.random()*COLORS.length)],
+              pulse:Math.random()*Math.PI*2
+            }));
+            let t=0, raf;
+            function draw(){
+              ctx.clearRect(0,0,W,H);
+              // bg gradient
+              const bg=ctx.createRadialGradient(W/2,H/2,0,W/2,H/2,Math.max(W,H)*0.7);
+              bg.addColorStop(0,"rgba(20,8,45,1)");
+              bg.addColorStop(0.5,"rgba(10,4,25,1)");
+              bg.addColorStop(1,"rgba(6,3,15,1)");
+              ctx.fillStyle=bg; ctx.fillRect(0,0,W,H);
+              // grid lines
+              ctx.strokeStyle="rgba(124,58,237,0.04)"; ctx.lineWidth=1;
+              for(let x=0;x<W;x+=60){ctx.beginPath();ctx.moveTo(x,0);ctx.lineTo(x,H);ctx.stroke();}
+              for(let y=0;y<H;y+=60){ctx.beginPath();ctx.moveTo(0,y);ctx.lineTo(W,y);ctx.stroke();}
+              // chart lines scrolling
+              lines.forEach(ln=>{
+                ln.offset=(ln.offset+ln.speed)%(W/59);
+                ctx.beginPath();
+                ln.pts.forEach((y,i)=>{
+                  const x=(i/(ln.pts.length-1))*W - ln.offset;
+                  i===0?ctx.moveTo(x,y):ctx.lineTo(x,y);
+                });
+                ctx.strokeStyle=ln.color+ln.alpha+")";
+                ctx.lineWidth=1.5; ctx.lineJoin="round"; ctx.stroke();
+              });
+              // correlation dots pulsing
+              dots.forEach(d=>{
+                d.pulse+=0.022;
+                const a=d.alpha*(0.7+0.3*Math.sin(d.pulse));
+                ctx.beginPath(); ctx.arc(d.x,d.y,d.r,0,Math.PI*2);
+                ctx.fillStyle=d.color+a+")"; ctx.fill();
+              });
+              // floating crypto symbols
+              particles.forEach((p,i)=>{
+                p.x+=p.vx; p.y+=p.vy;
+                if(p.x<-40)p.x=W+10; if(p.x>W+40)p.x=-10;
+                if(p.y<-40)p.y=H+10; if(p.y>H+40)p.y=-10;
+                p.phase+=0.008;
+                const a=p.alpha*(0.8+0.2*Math.sin(p.phase+i));
+                ctx.font=`${p.size}px 'Space Mono',monospace`;
+                ctx.fillStyle=p.color+a+")";
+                ctx.textAlign="center"; ctx.textBaseline="middle";
+                ctx.fillText(p.sym,p.x,p.y);
+              });
+              t++; raf=requestAnimationFrame(draw);
+            }
+            if(el._raf) cancelAnimationFrame(el._raf);
+            draw(); el._raf=raf;
+          }}/>
+          <div className="loading-content">
+            <img src="/pyth-logo.png" alt="Pyth" className="loading-logo"/>
+            <div className="loading-brand">
+              <span className="loading-brand-pyth">PYTH</span>
+              <span className="loading-brand-sep"> × </span>
+              <span className="loading-brand-rs">rustrell</span>
+            </div>
+            <div className="loading-spinner"/>
+            <div key={loadingPhase} className="loading-text">{LOADING_PHRASES[loadingPhase]}</div>
+            <div className="loading-bar-wrap">
+              <div className="loading-bar-bg"/>
+              <div className="loading-bar-fill" style={{width:`${((loadingPhase+1)/LOADING_PHRASES.length)*100}%`}}/>
+            </div>
+          </div>
+        </div>
+      )}
+    </>
   );
 }
 
@@ -5133,5 +5344,6 @@ function EntropyView({ histRef, prices, assets, setActiveTab, status, liveRun, s
 
       </div>
     </div>
+
   );
 }
