@@ -1,0 +1,17 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "Vercel Dev",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["C:/Users/neobo/AppData/Roaming/npm/node_modules/vercel/dist/vc.js", "dev", "--listen", "3000", "--yes"],
+      "port": 3000
+    },
+    {
+      "name": "Vite Dev Server",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["node_modules/vite/bin/vite.js"],
+      "port": 5173
+    }
+  ]
+}
