@@ -17,7 +17,7 @@ export default async function handler(req, res) {
   if (process.env.PYTH_API_KEY) headers["Authorization"] = `Bearer ${process.env.PYTH_API_KEY}`;
 
   try {
-    const r = await fetch(url, { headers, signal: AbortSignal.timeout(10000) });
+    const r = await fetch(url, { headers, signal: AbortSignal.timeout(30000) });
     if (!r.ok) throw new Error(`Benchmarks ${r.status}`);
     const data = await r.json();
     return res.status(200).json(data);

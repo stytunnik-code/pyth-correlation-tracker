@@ -1209,7 +1209,7 @@ export default function App(){
     // Start live prices immediately — don't wait for history
     fetchPrices();
     const iv=setInterval(fetchPrices,3000);
-    prefetchHistory(); // load history in background
+    prefetchHistory().then(()=>setHistory({...histRef.current})); // load history in background
 
     // Prefetch BTC + ETH on all timeframes at startup (12 requests)
     // These are the most viewed assets and used as benchmarks for all crypto
@@ -1284,12 +1284,6 @@ export default function App(){
   },[vis,sortBy,prices,corr]);
   // visAll = selectedCoins filtered without category (for Charts / Entropy / Correlation tabs)
   const visAll=(!selectedCoins||selectedCoins.size===0)?ASSETS:ASSETS.filter(a=>selectedCoins.has(a.symbol));
-  // If current chart asset was deselected, fallback to first available
-  useEffect(()=>{
-    if(visAll.length>0&&!visAll.find(a=>a.symbol===chartAsset)){
-      setChartAsset(visAll[0].symbol);
-    }
-  },[visAll,chartAsset,setChartAsset]);
   const corrAlertOptions = [];
   for(let i=0;i<ASSETS.length;i++) for(let j=i+1;j<ASSETS.length;j++) {
     corrAlertOptions.push({
@@ -2295,7 +2289,7 @@ function drawCandles(canvas, bars, chartType, view = {}) {
   const visibleCount = Math.max(20, Math.min(view.visibleCount || CHART_VISIBLE_BARS, bars.length));
   const maxOffset = Math.max(0, bars.length - visibleCount);
   const overscrollBars = Math.max(0, view.overscrollBars ?? CHART_OVERSCROLL_BARS);
-  const panBars = Math.max(-overscrollBars, Math.min(view.offset || 0, maxOffset + overscrollBars));
+  const panBars = Math.max(0, Math.min(view.offset || 0, maxOffset + overscrollBars));
   const historyOffset = Math.max(0, Math.min(maxOffset, panBars));
   const end = Math.max(visibleCount, bars.length - historyOffset);
   const start = Math.max(0, end - visibleCount);
@@ -2525,7 +2519,7 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
     }
     barsRef.current = copy;
     const maxOffset = Math.max(0, copy.length - visibleBars);
-    const minOffset = -CHART_OVERSCROLL_BARS;
+    const minOffset = 0;
     const maxPanOffset = maxOffset + CHART_OVERSCROLL_BARS;
     if (viewOffset < minOffset || viewOffset > maxPanOffset) {
       setViewOffset(Math.max(minOffset, Math.min(viewOffset, maxPanOffset)));
@@ -2594,9 +2588,9 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
     if (!dragRef.current.active) return;
     const bars = barsRef.current;
     const maxOffset = Math.max(0, bars.length - visibleBars);
-    const minOffset = -CHART_OVERSCROLL_BARS;
+    const minOffset = 0;
     const maxPanOffset = maxOffset + CHART_OVERSCROLL_BARS;
-    if (maxOffset <= 0 && minOffset === 0) return;
+    if (maxOffset <= 0) return;
     const plotWidth = Math.max(120, (canvasRef.current?.parentElement?.clientWidth || 0) - 88);
     const pxPerBar = plotWidth / visibleBars;
     const deltaBars = Math.round((e.clientX - dragRef.current.startX) / Math.max(pxPerBar, 1));
@@ -2617,7 +2611,7 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
     if (nextVisible === visibleBars) return;
     setZoomBars(nextVisible);
     const nextMaxOffset = Math.max(0, bars.length - nextVisible);
-    setViewOffset(prev => Math.max(-CHART_OVERSCROLL_BARS, Math.min(prev, nextMaxOffset + CHART_OVERSCROLL_BARS)));
+    setViewOffset(prev => Math.max(0, Math.min(prev, nextMaxOffset + CHART_OVERSCROLL_BARS)));
   }, [visibleBars]);
 
   const cur = prices[chartAsset];
@@ -3046,7 +3040,7 @@ function drawRollingCorrTimeline(canvas, primaryBars, secondaryBars, view = {}) 
   const visibleCount = Math.max(20, Math.min(view.visibleCount || CHART_VISIBLE_BARS, primaryBars.length));
   const maxOffset = Math.max(0, primaryBars.length - visibleCount);
   const overscrollBars = Math.max(0, view.overscrollBars ?? CHART_OVERSCROLL_BARS);
-  const panBars = Math.max(-overscrollBars, Math.min(view.offset || 0, maxOffset + overscrollBars));
+  const panBars = Math.max(0, Math.min(view.offset || 0, maxOffset + overscrollBars));
   const historyOffset = Math.max(0, Math.min(maxOffset, panBars));
   const end = Math.max(visibleCount, primaryBars.length - historyOffset);
   const start = Math.max(0, end - visibleCount);
