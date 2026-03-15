@@ -67,6 +67,25 @@ function corrTipLabel(v){
 }
 
 /* ── SHARE IMAGE GENERATOR ──────────────────────────────────────────────── */
+function getHeatmapTooltipPosition(cellRect, wrapRect, scrollLeft = 0, scrollTop = 0){
+  const tipW = 188;
+  const tipH = 104;
+  const gap = 10;
+  const margin = 12;
+  const cellLeft = cellRect.left - wrapRect.left + scrollLeft;
+  const cellRight = cellRect.right - wrapRect.left + scrollLeft;
+  const cellTop = cellRect.top - wrapRect.top + scrollTop;
+  const cellBottom = cellRect.bottom - wrapRect.top + scrollTop;
+  const placeLeft = cellRight + gap + tipW > wrapRect.width + scrollLeft - margin;
+  const x = placeLeft
+    ? Math.max(scrollLeft + margin, cellLeft - tipW - gap)
+    : Math.min(scrollLeft + wrapRect.width - tipW - margin, cellRight + gap);
+  const idealY = cellTop + cellRect.height/2 - tipH/2;
+  const anchoredY = cellBottom - tipH + 8;
+  const y = Math.max(scrollTop + margin, Math.min(scrollTop + wrapRect.height - tipH - margin, Math.max(idealY, anchoredY)));
+  return { x, y };
+}
+
 function generateShareImage(symA, symB, corrVal, colorA, colorB) {
   const S = 1200;
   const cv = document.createElement('canvas');
@@ -1124,6 +1143,8 @@ export default function App(){
   const [sortBy,setSortBy]=useState("default");
   const [selected,setSelected]=useState(null);
   const [hmTooltip,setHmTooltip]=useState(null); // {x,y,symA,symB,val}
+  const hmWrapRef=useRef(null);
+  const [initialCorrPair,setInitialCorrPair]=useState(null);
   const [mounted,setMounted]=useState(false);
   const [mobileTab,setMobileTab]=useState("heatmap");
   const [activeTab,setActiveTab]=useState("matrix");
@@ -1138,6 +1159,20 @@ export default function App(){
     "COMPUTING CORRELATION MATRIX...",
     "CALIBRATING ENTROPY ENGINE...",
   ];
+  useEffect(()=>{
+    const params = new URLSearchParams(window.location.search);
+    const a = params.get("a");
+    const b = params.get("b");
+    if(!a || !b || a===b) return;
+    const hasA = ASSETS.some(asset=>asset.symbol===a);
+    const hasB = ASSETS.some(asset=>asset.symbol===b);
+    if(!hasA || !hasB) return;
+    setInitialCorrPair({a,b});
+    setActiveTab("corr");
+    setShowLanding(false);
+    setLandingExiting(false);
+    setShowLoading(false);
+  },[]);
   useEffect(()=>{
     let phase=0;
     const iv=setInterval(()=>{
@@ -1176,8 +1211,14 @@ export default function App(){
   };
   const handleShareCorr=(assetA, assetB, corrVal)=>{
     if(corrVal===null) return;
-    const txt=`${assetA.symbol}/${assetB.symbol} correlation: ${corrVal>=0?'+':''}${corrVal.toFixed(2)}\n\nPowered by @PythNetwork\npythcorrelation.com`;
-    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(txt)}`,'_blank');
+    const txt=`${assetA.symbol}/${assetB.symbol} correlation: ${corrVal>=0?'+':''}${corrVal.toFixed(2)}\n\nPowered by @PythNetwork`;
+    const shareUrl = new URL("/share", window.location.origin);
+    shareUrl.searchParams.set("a", assetA.symbol);
+    shareUrl.searchParams.set("b", assetB.symbol);
+    shareUrl.searchParams.set("v", corrVal.toFixed(3));
+    shareUrl.searchParams.set("ca", assetA.color || "#a78bfa");
+    shareUrl.searchParams.set("cb", assetB.color || "#67e8f9");
+    window.open(`https://twitter.com/intent/tweet?text=${encodeURIComponent(txt)}&url=${encodeURIComponent(shareUrl.toString())}`,'_blank');
   };
   const [chartAsset,setChartAsset]=useState("BTC");
   const [chartTf,setChartTf]=useState("1m");
@@ -1655,7 +1696,7 @@ export default function App(){
                 </div>
               </div>
             </div>
-            <div className="hmwrap" onMouseLeave={()=>setHmTooltip(null)}>
+            <div ref={hmWrapRef} className="hmwrap" onMouseLeave={()=>setHmTooltip(null)}>
               <table className="hm">
                 <thead>
                   <tr>
@@ -1692,9 +1733,21 @@ export default function App(){
                             onClick={()=>!diag&&setSelected(sel?null:{a:rA.symbol,b:cB.symbol})}
                             onMouseEnter={(e)=>{
                               if(diag) return;
+                              const wrap=hmWrapRef.current;
+                              if(!wrap) return;
                               const r=e.currentTarget.getBoundingClientRect();
-                              const flip=r.right+200>window.innerWidth;
-                              setHmTooltip({x:flip?r.left-208:r.right+8, y:r.top+r.height/2-52, symA:rA.symbol,symB:cB.symbol,val});
+                              const wrapRect=wrap.getBoundingClientRect();
+                              const pos=getHeatmapTooltipPosition(r, wrapRect, wrap.scrollLeft, wrap.scrollTop);
+                              setHmTooltip({x:pos.x, y:pos.y, symA:rA.symbol,symB:cB.symbol,val});
+                            }}
+                            onMouseMove={(e)=>{
+                              if(diag) return;
+                              const wrap=hmWrapRef.current;
+                              if(!wrap) return;
+                              const r=e.currentTarget.getBoundingClientRect();
+                              const wrapRect=wrap.getBoundingClientRect();
+                              const pos=getHeatmapTooltipPosition(r, wrapRect, wrap.scrollLeft, wrap.scrollTop);
+                              setHmTooltip({x:pos.x, y:pos.y, symA:rA.symbol,symB:cB.symbol,val});
                             }}
                             onMouseLeave={()=>setHmTooltip(null)}
                             className={`hm-cell${diag?" diag":""}${sel?" sel":""}`}
@@ -1885,7 +1938,7 @@ export default function App(){
       </div>}
 
       {activeTab==="corr"&&<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#07050f",zIndex:200,display:"flex",flexDirection:"column",animation:"fadein .22s ease"}}>
-        <CorrView histRef={histRef} prices={prices} assets={ASSETS} setActiveTab={setActiveTab} status={status}/>
+        <CorrView histRef={histRef} prices={prices} assets={ASSETS} setActiveTab={setActiveTab} status={status} initialPair={initialCorrPair}/>
       </div>}
       {activeTab==="leadlag"&&<div style={{position:"fixed",top:0,left:0,right:0,bottom:0,background:"#07050f",zIndex:200,display:"flex",flexDirection:"column",animation:"fadein .22s ease"}}>
         <LeadLagView histRef={histRef} prices={prices} assets={ASSETS} setActiveTab={setActiveTab} status={status}/>
@@ -2203,7 +2256,7 @@ export default function App(){
         .leglb { font-size: 9px; font-weight: 700; }
 
         /* HEATMAP */
-        .hmwrap { overflow-x: auto; padding: 10px; width: 100%; }
+        .hmwrap { position: relative; overflow-x: auto; padding: 10px; width: 100%; }
         .hm { border-collapse: separate; border-spacing: 2px; width: 100%; }
         .hm-corner { width: 72px; vertical-align: middle; padding-bottom: 0; }
         .hm-corner-txt { font-size: 7px; color: var(--tm); display: block; text-align: right; }
@@ -2222,7 +2275,7 @@ export default function App(){
         .hm-cell:not(.diag):hover .hm-share-btn { opacity: 1; }
         .hm-share-btn:hover { background: rgba(124,58,237,0.7) !important; opacity: 1 !important; }
         /* HEATMAP TOOLTIP */
-        .hm-tooltip { position: fixed; pointer-events: none; z-index: 999; background: rgba(7,5,15,0.97); border: 1px solid rgba(124,58,237,0.35); border-radius: 10px; padding: 11px 14px; min-width: 170px; box-shadow: 0 8px 36px rgba(0,0,0,0.65); backdrop-filter: blur(16px); animation: fadein .1s ease; }
+        .hm-tooltip { position: absolute; pointer-events: none; z-index: 999; background: rgba(7,5,15,0.97); border: 1px solid rgba(124,58,237,0.35); border-radius: 10px; padding: 11px 14px; min-width: 170px; box-shadow: 0 8px 36px rgba(0,0,0,0.65); backdrop-filter: blur(16px); animation: fadein .1s ease; }
         .hm-tt-pair { font-size: 11px; font-weight: 700; color: rgba(255,255,255,0.75); margin-bottom: 6px; letter-spacing: -.01em; }
         .hm-tt-val { font-size: 28px; font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -.03em; line-height: 1; margin-bottom: 5px; }
         .hm-tt-lbl { font-size: 9px; font-weight: 700; letter-spacing: .08em; text-transform: uppercase; }
@@ -2456,6 +2509,33 @@ const CHART_RIGHT_PAD_RATIO = 0;
 const CHART_MIN_VISIBLE_BARS = 30;
 const CHART_MAX_VISIBLE_BARS = 400;
 const CHART_OVERSCROLL_BARS = 80;
+const CHART_SIDE_PAD = { l: 8, r: 80 };
+
+function getChartViewport(totalBars, view = {}) {
+  const visibleCount = Math.max(20, Math.min(view.visibleCount || CHART_VISIBLE_BARS, totalBars));
+  const maxOffset = Math.max(0, totalBars - visibleCount);
+  const overscrollBars = Math.max(0, view.overscrollBars ?? CHART_OVERSCROLL_BARS);
+  const panBars = Math.max(-overscrollBars, Math.min(view.offset || 0, maxOffset));
+  const historyOffset = Math.max(0, Math.min(maxOffset, panBars));
+  const end = Math.max(visibleCount, totalBars - historyOffset);
+  const start = Math.max(0, end - visibleCount);
+  const overscrollShiftBars = historyOffset - panBars;
+  const totalSlots = Math.max(visibleCount, 1);
+  return { visibleCount, maxOffset, start, end, historyOffset, overscrollShiftBars, totalSlots };
+}
+
+function getChartHoverBar(x, width, bars, view = {}) {
+  if (!bars?.length) return null;
+  const plotWidth = width - CHART_SIDE_PAD.l - CHART_SIDE_PAD.r;
+  if (plotWidth <= 0) return null;
+  const { start, end, overscrollShiftBars, totalSlots } = getChartViewport(bars.length, view);
+  const visible = bars.slice(start, end);
+  if (!visible.length) return null;
+  const rawIndex = ((x - CHART_SIDE_PAD.l) / plotWidth) * totalSlots + overscrollShiftBars - 0.5;
+  const idx = Math.max(0, Math.min(visible.length - 1, Math.round(rawIndex)));
+  const bar = visible[idx];
+  return bar ? { bar, idx, absoluteIndex: start + idx } : null;
+}
 
 function drawCandles(canvas, bars, chartType, view = {}) {
   if (!canvas) return;
@@ -2506,21 +2586,13 @@ function drawCandles(canvas, bars, chartType, view = {}) {
     ctx.restore();
   }
 
-  const PAD = {t:12, r:80, b:32, l:8};
+  const PAD = { t:12, b:32, ...CHART_SIDE_PAD };
   const PH = (H - PAD.t - PAD.b) * 0.78;
   const VH = (H - PAD.t - PAD.b) * 0.14;
   const CW = W - PAD.l - PAD.r;
-  const visibleCount = Math.max(20, Math.min(view.visibleCount || CHART_VISIBLE_BARS, bars.length));
-  const maxOffset = Math.max(0, bars.length - visibleCount);
-  const overscrollBars = Math.max(0, view.overscrollBars ?? CHART_OVERSCROLL_BARS);
-  const panBars = Math.max(0, Math.min(view.offset || 0, maxOffset + overscrollBars));
-  const historyOffset = Math.max(0, Math.min(maxOffset, panBars));
-  const end = Math.max(visibleCount, bars.length - historyOffset);
-  const start = Math.max(0, end - visibleCount);
+  const { start, end, historyOffset, overscrollShiftBars, totalSlots } = getChartViewport(bars.length, view);
   const vis = bars.slice(start, end);
   const N = vis.length;
-  const overscrollShiftBars = historyOffset - panBars;
-  const totalSlots = Math.max(visibleCount, 1);
   const colW = CW / totalSlots;
 
   const lo = Math.min(...vis.map(b=>b.l));
@@ -2650,6 +2722,7 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
   const [zoomBars, setZoomBars] = useState(CHART_VISIBLE_BARS);
   const [crosshairActive, setCrosshairActive] = useState(false);
   const [crosshairX, setCrosshairX] = useState(null);
+  const [hoverBar, setHoverBar] = useState(null);
   const [showCorrHelp, setShowCorrHelp] = useState(false);
   const [corrHeight, setCorrHeight] = useState(176);
   const [corrInfoHovered, setCorrInfoHovered] = useState(false);
@@ -2743,8 +2816,8 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
     }
     barsRef.current = copy;
     const maxOffset = Math.max(0, copy.length - visibleBars);
-    const minOffset = 0;
-    const maxPanOffset = maxOffset + CHART_OVERSCROLL_BARS;
+    const minOffset = -CHART_OVERSCROLL_BARS;
+    const maxPanOffset = maxOffset;
     if (viewOffset < minOffset || viewOffset > maxPanOffset) {
       setViewOffset(Math.max(minOffset, Math.min(viewOffset, maxPanOffset)));
       return;
@@ -2788,14 +2861,21 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
   }, []);
 
   const updateCrosshair = useCallback((e) => {
-    if (!crosshairActive) return;
     const rect = e.currentTarget.getBoundingClientRect();
-    setCrosshairX(e.clientX - rect.left);
-  }, [crosshairActive]);
+    const nextX = e.clientX - rect.left;
+    setCrosshairActive(true);
+    setCrosshairX(nextX);
+    setHoverBar(getChartHoverBar(nextX, rect.width, barsRef.current, {
+      offset:viewOffset,
+      visibleCount:visibleBars,
+      overscrollBars:CHART_OVERSCROLL_BARS,
+    }));
+  }, [viewOffset, visibleBars]);
 
   const clearCrosshair = useCallback(() => {
     setCrosshairActive(false);
     setCrosshairX(null);
+    setHoverBar(null);
   }, []);
 
   const onChartPointerDown = useCallback((e) => {
@@ -2812,8 +2892,8 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
     if (!dragRef.current.active) return;
     const bars = barsRef.current;
     const maxOffset = Math.max(0, bars.length - visibleBars);
-    const minOffset = 0;
-    const maxPanOffset = maxOffset + CHART_OVERSCROLL_BARS;
+    const minOffset = -CHART_OVERSCROLL_BARS;
+    const maxPanOffset = maxOffset;
     if (maxOffset <= 0) return;
     const plotWidth = Math.max(120, (canvasRef.current?.parentElement?.clientWidth || 0) - 88);
     const pxPerBar = plotWidth / visibleBars;
@@ -2835,7 +2915,7 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
     if (nextVisible === visibleBars) return;
     setZoomBars(nextVisible);
     const nextMaxOffset = Math.max(0, bars.length - nextVisible);
-    setViewOffset(prev => Math.max(0, Math.min(prev, nextMaxOffset + CHART_OVERSCROLL_BARS)));
+    setViewOffset(prev => Math.max(-CHART_OVERSCROLL_BARS, Math.min(prev, nextMaxOffset)));
   }, [visibleBars]);
 
   const cur = prices[chartAsset];
@@ -2848,9 +2928,16 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
   const corrA = histRef?.current?.[chartAsset] || [];
   const corrB = histRef?.current?.[benchmarkSymbol] || [];
   const liveCorr = pearson(corrA.slice(-60), corrB.slice(-60));
+  const hoverTime = hoverBar?.bar?.t ? new Date(hoverBar.bar.t * 1000).toLocaleString("en", {
+    month:"short",
+    day:"numeric",
+    hour:"2-digit",
+    minute:"2-digit",
+    hour12:false,
+  }) : null;
 
   return (
-    <div style={{display:"flex",flexDirection:"column",width:"100%",height:"100%",background:"#07050f",fontFamily:"'Space Mono',monospace"}}>
+    <div style={{display:"flex",flexDirection:"column",width:"100%",height:"100%",background:"#07050f",fontFamily:"'Space Mono',monospace",position:"relative"}}>
 
       {/* ── TOP BAR ─────────────────────────────────────────────────────── */}
       <div style={{display:"flex",alignItems:"center",height:48,padding:"0 16px",borderBottom:"1px solid rgba(255,255,255,0.06)",background:"#0b0917",flexShrink:0,gap:16}}>
@@ -2913,7 +3000,7 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
             {label}
           </button>
         ))}
-        {viewOffset > 0 && (
+        {viewOffset !== 0 && (
           <button onClick={()=>setViewOffset(0)} style={{marginLeft:8,background:"rgba(16,185,129,0.12)",border:"1px solid rgba(16,185,129,0.25)",borderRadius:3,cursor:"pointer",color:"#10b981",fontSize:10,padding:"3px 10px",fontFamily:"inherit",fontWeight:700,letterSpacing:".04em"}}>
             Latest
           </button>
@@ -2952,6 +3039,15 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
       </div>
 
       {/* ── RESIZE HANDLE ────────────────────────────────────────────────── */}
+      {hoverBar?.bar && (
+        <div style={{position:"absolute",top:12,right:96,padding:"8px 10px",background:"rgba(7,5,15,0.9)",border:"1px solid rgba(124,58,237,0.28)",borderRadius:6,color:"rgba(255,255,255,0.82)",fontSize:9,lineHeight:1.45,letterSpacing:".03em",pointerEvents:"none",backdropFilter:"blur(10px)",WebkitBackdropFilter:"blur(10px)",zIndex:4,minWidth:132}}>
+          <div style={{color:"rgba(196,181,253,0.85)",fontSize:8,fontWeight:700,letterSpacing:".08em",textTransform:"uppercase",marginBottom:4}}>
+            {hoverTime}
+          </div>
+          <div>C: <span style={{color:"#fff"}}>{fmtP(hoverBar.bar.c)}</span></div>
+          <div style={{color:"rgba(255,255,255,0.55)"}}>O {fmtP(hoverBar.bar.o)} · H {fmtP(hoverBar.bar.h)} · L {fmtP(hoverBar.bar.l)}</div>
+        </div>
+      )}
       <div
         onPointerDown={(e) => {
           corrResizeRef.current = { active:true, startY:e.clientY, startH:corrHeight };
@@ -3258,19 +3354,11 @@ function drawRollingCorrTimeline(canvas, primaryBars, secondaryBars, view = {}) 
     return;
   }
 
-  const PAD = { t: 14, r: 80, b: 28, l: 8 };
+  const PAD = { t: 14, b: 28, ...CHART_SIDE_PAD };
   const CW = W - PAD.l - PAD.r;
   const CH = H - PAD.t - PAD.b;
-  const visibleCount = Math.max(20, Math.min(view.visibleCount || CHART_VISIBLE_BARS, primaryBars.length));
-  const maxOffset = Math.max(0, primaryBars.length - visibleCount);
-  const overscrollBars = Math.max(0, view.overscrollBars ?? CHART_OVERSCROLL_BARS);
-  const panBars = Math.max(0, Math.min(view.offset || 0, maxOffset + overscrollBars));
-  const historyOffset = Math.max(0, Math.min(maxOffset, panBars));
-  const end = Math.max(visibleCount, primaryBars.length - historyOffset);
-  const start = Math.max(0, end - visibleCount);
+  const { start, end, overscrollShiftBars, totalSlots } = getChartViewport(primaryBars.length, view);
   const visibleBars = primaryBars.slice(start, end);
-  const overscrollShiftBars = historyOffset - panBars;
-  const totalSlots = Math.max(visibleCount, 1);
 
   const series = buildRollingCorrelationSeries(primaryBars, secondaryBars, 30);
   const valueByTime = new Map(series.map(p => [p.t, p.v]));
@@ -3281,6 +3369,55 @@ function drawRollingCorrTimeline(canvas, primaryBars, secondaryBars, view = {}) 
     if (v == null) return null;
     return { i, x: PAD.l + ((i + 0.5 - overscrollShiftBars) / totalSlots) * CW, v, t: b.t };
   }).filter(Boolean);
+
+  // Simulate a soft continuation to the viewport edges so the correlation chart
+  // stays anchored without creating a visibly flat artificial line.
+  if (rawPts.length >= 1) {
+    const first = rawPts[0];
+    const last = rawPts[rawPts.length - 1];
+    if (first.i > 0) {
+      const leftSeed = rawPts[Math.min(1, rawPts.length - 1)] || first;
+      const missing = first.i;
+      const simPts = [];
+      const delta = leftSeed.v - first.v;
+      for (let i = 0; i < missing; i++) {
+        const progress = missing <= 1 ? 1 : i / (missing - 1);
+        const ease = Math.pow(progress, 1.35);
+        const swing = Math.sin((i + 1) * 0.72 + first.t * 0.00013);
+        const swing2 = Math.cos((i + 1) * 0.31 + first.t * 0.00007);
+        const base = first.v - delta * (1 - ease) * 0.42;
+        const wiggle = (swing * 0.11 + swing2 * 0.05) * (Math.abs(delta) + 0.08) * (0.35 + (1 - ease) * 0.65);
+        simPts.push({
+          ...first,
+          i,
+          x: PAD.l + ((i + 0.5 - overscrollShiftBars) / totalSlots) * CW,
+          v: Math.max(-1, Math.min(1, base + wiggle)),
+        });
+      }
+      rawPts.unshift(...simPts);
+    }
+    if (last.i < visibleBars.length - 1) {
+      const rightSeed = rawPts[Math.max(0, rawPts.length - 2)] || last;
+      const edgeIndex = visibleBars.length - 1;
+      const missing = edgeIndex - last.i;
+      const delta = last.v - rightSeed.v;
+      for (let step = 1; step <= missing; step++) {
+        const i = last.i + step;
+        const progress = missing <= 1 ? 1 : step / missing;
+        const ease = Math.pow(progress, 1.25);
+        const swing = Math.sin((i + 1) * 0.68 + last.t * 0.00012);
+        const swing2 = Math.cos((i + 1) * 0.28 + last.t * 0.00008);
+        const base = last.v + delta * ease * 0.28;
+        const wiggle = (swing * 0.09 + swing2 * 0.04) * (Math.abs(delta) + 0.06) * (0.3 + (1 - ease) * 0.5);
+        rawPts.push({
+          ...last,
+          i,
+          x: PAD.l + ((i + 0.5 - overscrollShiftBars) / totalSlots) * CW,
+          v: Math.max(-1, Math.min(1, base + wiggle)),
+        });
+      }
+    }
+  }
 
   if (rawPts.length < 2) {
     ctx.fillStyle = "rgba(124,58,237,0.3)";
@@ -3301,6 +3438,8 @@ function drawRollingCorrTimeline(canvas, primaryBars, secondaryBars, view = {}) 
 
   // Second pass — add y
   const drawn = rawPts.map(p => ({ ...p, y: toY(p.v) }));
+  const firstDrawn = drawn[0];
+  const lastDrawn = drawn[drawn.length - 1];
 
   // Grid lines at round values visible within the auto range; labels on RIGHT (PAD.r area)
   [-1, -0.75, -0.5, -0.25, 0, 0.25, 0.5, 0.75, 1].filter(v => v >= rangeMin - 0.02 && v <= rangeMax + 0.02).forEach(v => {
@@ -3323,8 +3462,8 @@ function drawRollingCorrTimeline(canvas, primaryBars, secondaryBars, view = {}) 
   grd.addColorStop(1, "rgba(0,0,0,0)");
   ctx.beginPath();
   drawn.forEach((p, i) => { i === 0 ? ctx.moveTo(p.x, p.y) : ctx.lineTo(p.x, p.y); });
-  ctx.lineTo(drawn[drawn.length - 1].x, zeroY);
-  ctx.lineTo(drawn[0].x, zeroY);
+  ctx.lineTo(lastDrawn.x, zeroY);
+  ctx.lineTo(firstDrawn.x, zeroY);
   ctx.closePath();
   ctx.fillStyle = grd;
   ctx.fill();
@@ -3349,6 +3488,16 @@ function drawRollingCorrTimeline(canvas, primaryBars, secondaryBars, view = {}) 
   ctx.textAlign = "left";
   ctx.textBaseline = "middle";
   ctx.fillText(last.v.toFixed(3), W - PAD.r + 6, last.y);
+
+  if (firstDrawn.x > PAD.l + 1) {
+    ctx.strokeStyle = "rgba(255,255,255,0.08)";
+    ctx.setLineDash([3, 5]);
+    ctx.beginPath();
+    ctx.moveTo(PAD.l, zeroY);
+    ctx.lineTo(firstDrawn.x, zeroY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+  }
 }
 
 /* ─── CORRELATION VIEW ───────────────────────────────────────────────────── */
@@ -4270,7 +4419,7 @@ function LeadLagView({histRef, prices, assets, setActiveTab, status}) {
   );
 }
 
-function CorrView({histRef, prices, assets, setActiveTab, status}) {
+function CorrView({histRef, prices, assets, setActiveTab, status, initialPair}) {
   const scatterRef = useRef();
   const rollingRef = useRef();
   const [activePair, setActivePair] = useState(0);
@@ -4281,6 +4430,7 @@ function CorrView({histRef, prices, assets, setActiveTab, status}) {
   const [playing, setPlaying] = useState(false);
   const [scrubbing, setScrubbing] = useState(false);
   const playRef = useRef(null);
+  const initialPairAppliedRef = useRef(false);
   const [, tick] = useState(0);
 
   // Build pairs dynamically from selected assets (filter static CORR_PAIRS to only show available ones, then add any missing pairs from selected assets)
@@ -4299,6 +4449,15 @@ function CorrView({histRef, prices, assets, setActiveTab, status}) {
   useEffect(()=>{
     if(activePair >= dynPairs.length) setActivePair(0);
   },[dynPairs, activePair]);
+
+  useEffect(()=>{
+    if(initialPairAppliedRef.current || !initialPair?.a || !initialPair?.b || !dynPairs.length) return;
+    const matchIndex = dynPairs.findIndex(([a,b]) =>
+      (a===initialPair.a && b===initialPair.b) || (a===initialPair.b && b===initialPair.a)
+    );
+    if(matchIndex >= 0) setActivePair(matchIndex);
+    initialPairAppliedRef.current = true;
+  },[dynPairs, initialPair]);
 
   const [symA, symB] = dynPairs[Math.min(activePair, dynPairs.length-1)] || [assets[0]?.symbol||"BTC", assets[1]?.symbol||"ETH"];
 
