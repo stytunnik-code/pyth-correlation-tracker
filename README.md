@@ -68,7 +68,7 @@ r(X,Y) = Σ[(xi - x̄)(yi - ȳ)] / √[Σ(xi-x̄)² · Σ(yi-ȳ)²]
 ```
 
 - `r = +1.0` → perfect positive correlation
-- `r = 0.0` → no linear relationship  
+- `r = 0.0` → no linear relationship
 - `r = -1.0` → perfect negative (inverse) correlation
 
 ---
@@ -112,4 +112,3 @@ Apache 2.0 — matching Pyth's license.
 ---
 
 *Built with ❤️ using [Pyth Network](https://pyth.network) oracle data.*
- 
