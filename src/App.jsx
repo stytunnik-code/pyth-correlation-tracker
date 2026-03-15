@@ -2466,6 +2466,7 @@ const PYTH_SYM = {
 
 // Pyth Benchmarks resolution map (TradingView-compatible)
 const PYTH_RES = {"1m":"1","5m":"5","15m":"15","1h":"60","4h":"240","1d":"D"};
+const PYTH_LOOKBACK_MULTIPLIERS = [1, 4, 12, 30];
 
 // Fetch OHLCV from Pyth Benchmarks API
 // Returns [{t,o,h,l,c,v,tfs}] same shape as Binance klines
@@ -2476,27 +2477,35 @@ async function fetchPyth(symbol, tf = "1m", countback = 300) {
   // Pyth Benchmarks caps daily resolution at 365 bars
   const cap  = res === "D" ? Math.min(countback, 365) : countback;
   const now  = Math.floor(Date.now() / 1000);
-  const from = now - TF_SECS[tf] * cap;
-  const qs = `?symbol=${encodeURIComponent(pythSym)}&resolution=${res}&from=${from}&to=${now}&countback=${cap}`;
   const tryFetch = async (url) => {
     const r = await fetch(url);
     if (!r.ok) throw new Error(`HTTP ${r.status}`);
     return r.json();
   };
   try {
-    let d;
-    try {
-      d = await tryFetch(`/api/benchmarks${qs}`);
-    } catch {
-      d = await tryFetch(`https://benchmarks.pyth.network/v1/shims/tradingview/history${qs}`);
-    }
-    if (d.s !== "ok" || !d.t?.length) return [];
     const tfs = TF_SECS[tf] || 60;
-    return d.t.map((t, i) => ({
-      t, tfs,
-      o: d.o[i], h: d.h[i], l: d.l[i], c: d.c[i],
-      v: d.v?.[i] ?? 0,
-    }));
+    const targetBars = Math.min(cap, CHART_VISIBLE_BARS);
+    let best = [];
+
+    for (const mult of PYTH_LOOKBACK_MULTIPLIERS) {
+      const from = now - tfs * cap * mult;
+      const qs = `?symbol=${encodeURIComponent(pythSym)}&resolution=${res}&from=${from}&to=${now}&countback=${cap}`;
+      let d;
+      try {
+        d = await tryFetch(`/api/benchmarks${qs}`);
+      } catch {
+        d = await tryFetch(`https://benchmarks.pyth.network/v1/shims/tradingview/history${qs}`);
+      }
+      if (d.s !== "ok" || !d.t?.length) continue;
+      const bars = d.t.map((t, i) => ({
+        t, tfs,
+        o: d.o[i], h: d.h[i], l: d.l[i], c: d.c[i],
+        v: d.v?.[i] ?? 0,
+      }));
+      if (bars.length > best.length) best = bars;
+      if (bars.length >= targetBars) return bars.slice(-cap);
+    }
+    return best.slice(-cap);
   } catch(e) {
     console.warn("fetchPyth error:", symbol, e.message);
     return [];

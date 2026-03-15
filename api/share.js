@@ -34,7 +34,7 @@ export default function handler(req, res) {
   const valueText = v === null ? "Live snapshot" : `${v >= 0 ? "+" : ""}${v.toFixed(3)}`;
   const description = `${strengthLabel(v)}. ${a}/${b} ${valueText}. Powered by Pyth Network.`;
   const imageUrl = `${origin}/api/share-image?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}${v === null ? "" : `&v=${encodeURIComponent(v.toFixed(3))}`}&ca=${encodeURIComponent(ca)}&cb=${encodeURIComponent(cb)}`;
-  const appUrl = `${origin}/?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`;
+  const appUrl = `${origin}/`;
   const canonicalUrl = `${origin}/share?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}${v === null ? "" : `&v=${encodeURIComponent(v.toFixed(3))}`}&ca=${encodeURIComponent(ca)}&cb=${encodeURIComponent(cb)}`;
 
   const html = `<!DOCTYPE html>
