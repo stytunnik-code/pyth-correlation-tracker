@@ -34,7 +34,7 @@ export default function handler(req, res) {
   const valueText = v === null ? "Live snapshot" : `${v >= 0 ? "+" : ""}${v.toFixed(3)}`;
   const description = `${strengthLabel(v)}. ${a}/${b} ${valueText}. Powered by Pyth Network.`;
   const imageUrl = `${origin}/api/share-image?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}${v === null ? "" : `&v=${encodeURIComponent(v.toFixed(3))}`}&ca=${encodeURIComponent(ca)}&cb=${encodeURIComponent(cb)}`;
-  const appUrl = `${origin}/`;
+  const appUrl = `${origin}/?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}`;
   const canonicalUrl = `${origin}/share?a=${encodeURIComponent(a)}&b=${encodeURIComponent(b)}${v === null ? "" : `&v=${encodeURIComponent(v.toFixed(3))}`}&ca=${encodeURIComponent(ca)}&cb=${encodeURIComponent(cb)}`;
 
   const html = `<!DOCTYPE html>
@@ -46,18 +46,24 @@ export default function handler(req, res) {
     <meta name="description" content="${esc(description)}" />
     <meta name="robots" content="index,follow" />
     <link rel="canonical" href="${esc(canonicalUrl)}" />
+    <meta http-equiv="refresh" content="0;url=${esc(appUrl)}" />
     <meta property="og:type" content="website" />
     <meta property="og:site_name" content="Pyth Correlation Tracker" />
     <meta property="og:url" content="${esc(canonicalUrl)}" />
     <meta property="og:title" content="${esc(title)}" />
     <meta property="og:description" content="${esc(description)}" />
     <meta property="og:image" content="${esc(imageUrl)}" />
+    <meta property="og:image:secure_url" content="${esc(imageUrl)}" />
     <meta property="og:image:width" content="1200" />
     <meta property="og:image:height" content="630" />
+    <meta property="og:image:alt" content="${esc(`${title} ${valueText}`)}" />
     <meta name="twitter:card" content="summary_large_image" />
+    <meta name="twitter:url" content="${esc(canonicalUrl)}" />
     <meta name="twitter:title" content="${esc(title)}" />
     <meta name="twitter:description" content="${esc(description)}" />
     <meta name="twitter:image" content="${esc(imageUrl)}" />
+    <meta name="twitter:image:src" content="${esc(imageUrl)}" />
+    <meta name="twitter:image:alt" content="${esc(`${title} ${valueText}`)}" />
     <style>
       body { margin: 0; background: #07050f; color: rgba(255,255,255,0.86); font-family: ui-monospace, SFMono-Regular, Menlo, monospace; display: grid; place-items: center; min-height: 100vh; }
       .card { width: min(560px, calc(100vw - 32px)); border: 1px solid rgba(124,58,237,0.28); border-radius: 16px; padding: 24px; background: radial-gradient(circle at top, rgba(124,58,237,0.18), transparent 48%), rgba(7,5,15,0.96); box-shadow: 0 18px 60px rgba(0,0,0,0.45); }
@@ -67,7 +73,7 @@ export default function handler(req, res) {
       a { color: #c4b5fd; }
     </style>
     <script>
-      setTimeout(function () { window.location.replace(${JSON.stringify(appUrl)}); }, 250);
+      window.location.replace(${JSON.stringify(appUrl)});
     </script>
   </head>
   <body>
@@ -75,11 +81,13 @@ export default function handler(req, res) {
       <div class="eyebrow">Pyth Correlation Share</div>
       <h1>${esc(title)}</h1>
       <p>${esc(description)}</p>
-      <p>Redirecting to <a href="${esc(appUrl)}">pythcorrelation.com</a>...</p>
+      <p>Redirecting to <a href="${esc(appUrl)}">pythcorrelation.com</a>.</p>
+      <noscript><p>JavaScript is disabled. Open <a href="${esc(appUrl)}">the app</a>.</p></noscript>
     </div>
   </body>
 </html>`;
 
   res.setHeader("Content-Type", "text/html; charset=utf-8");
+  res.setHeader("Cache-Control", "public, max-age=0, s-maxage=600, stale-while-revalidate=86400");
   res.status(200).send(html);
 }
