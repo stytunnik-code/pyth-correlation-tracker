@@ -1491,7 +1491,7 @@ export default function App(){
           <div className="hdr-upd">{lastUpdate?`UPD ${lastUpdate.toLocaleTimeString()}`:""}</div>
           <div style={{display:"flex",gap:2,background:"rgba(0,0,0,0.4)",borderRadius:6,padding:3,marginRight:6}}>
             {[["matrix","Matrix"],["charts","Charts"],["corr","Correlation"],["leadlag","Lead-Lag"],["entropy","Entropy"],["docs","Docs ↗"]].map(([k,l])=>(
-              <button key={k} onClick={()=>k==="docs"?window.open("https://app.gitbook.com/o/Sozo6WG3VxpWKHVm2BhT/s/GZGmnhvJUeE0k1ao2WLq/","_blank"):setActiveTab(k)} style={{background:activeTab===k?"rgba(139,92,246,0.35)":"transparent",border:"none",borderRadius:4,padding:"4px 12px",fontFamily:"inherit",fontSize:11,fontWeight:600,color:activeTab===k?"#e2d9f3":"rgba(139,92,246,0.5)",cursor:"pointer"}}>{l}</button>
+              <button key={k} onClick={()=>k==="docs"?window.open("https://pythcorrelation.gitbook.io/pythcorrelation-docs/","_blank"):setActiveTab(k)} style={{background:activeTab===k?"rgba(139,92,246,0.35)":"transparent",border:"none",borderRadius:4,padding:"4px 12px",fontFamily:"inherit",fontSize:11,fontWeight:600,color:activeTab===k?"#e2d9f3":"rgba(139,92,246,0.5)",cursor:"pointer"}}>{l}</button>
             ))}
           </div>
           {/* Coin picker — always visible in header */}
@@ -1935,7 +1935,7 @@ export default function App(){
           <span className="foot-sep">·</span>
           <a href="https://x.com/xzolmoney" target="_blank" rel="noreferrer" style={{color:"rgba(255,255,255,0.3)",textDecoration:"none",fontSize:11}} onMouseEnter={e=>e.target.style.color="#a78bfa"} onMouseLeave={e=>e.target.style.color="rgba(255,255,255,0.3)"}>𝕏 @xzolmoney</a>
           <span className="foot-sep">·</span>
-          <button onClick={()=>window.open("https://app.gitbook.com/o/Sozo6WG3VxpWKHVm2BhT/s/GZGmnhvJUeE0k1ao2WLq/","_blank")} style={{background:"none",border:"none",color:"rgba(255,255,255,0.25)",cursor:"pointer",fontSize:11,fontFamily:"inherit",padding:0}} onMouseEnter={e=>e.target.style.color="#a78bfa"} onMouseLeave={e=>e.target.style.color="rgba(255,255,255,0.25)"}>Docs & Legal ↗</button>
+          <button onClick={()=>window.open("https://pythcorrelation.gitbook.io/pythcorrelation-docs/","_blank")} style={{background:"none",border:"none",color:"rgba(255,255,255,0.25)",cursor:"pointer",fontSize:11,fontFamily:"inherit",padding:0}} onMouseEnter={e=>e.target.style.color="#a78bfa"} onMouseLeave={e=>e.target.style.color="rgba(255,255,255,0.25)"}>Docs & Legal ↗</button>
         </div>
         <div className="foot-r">
           <span className="foot-info">Data updates every 3s · 400ms Pyth oracle</span>
