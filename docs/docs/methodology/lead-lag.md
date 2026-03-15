@@ -10,7 +10,7 @@ Standard correlation asks: *"Do A and B move together?"*
 
 Lead-lag asks: *"Does A at time T predict B at time T+k?"*
 
-The answer is found by computing the Pearson correlation between the two return series at every possible **time shift** (lag).
+The answer is found by computing Pearson correlation between the two return series at every possible **time shift** (lag).
 
 ---
 
@@ -36,17 +36,17 @@ function crossCorrAtLag(ra, rb, k) {
 }
 ```
 
-| Lag `k` | What it measures |
-|---------|-----------------|
-| `k = 0` | Simultaneous correlation (same as Pearson) |
-| `k > 0` | Does **A** at time `t` predict **B** at time `t+k`? → A leads |
-| `k < 0` | Does **B** at time `t` predict **A** at time `t+\|k\|`? → B leads |
+| Lag k | What it measures |
+|-------|-----------------|
+| k = 0 | Simultaneous correlation (same as Pearson) |
+| k > 0 | Does A at time t predict B at time t+k? → A leads |
+| k < 0 | Does B at time t predict A at time t+k? → B leads |
 
 ---
 
 ## Full Cross-Correlation Function
 
-The platform sweeps lags from `-maxLag` to `+maxLag` and collects the correlation at each step:
+The platform sweeps lags from `-maxLag` to `+maxLag` and collects correlation at each step:
 
 ```javascript
 function crossCorrFull(ra, rb, maxLag) {
@@ -59,7 +59,7 @@ function crossCorrFull(ra, rb, maxLag) {
 }
 ```
 
-The result is an array of `{ lag, corr }` points — the **Cross-Correlation Function (CCF)** chart.
+The result is the **Cross-Correlation Function (CCF)** chart.
 
 ---
 
@@ -84,17 +84,15 @@ function findLeadLag(symA, symB, ra, rb, maxLag) {
 
 ### Reading the Result
 
-| `best.lag` | Interpretation |
-|-----------|---------------|
-| `+5` | **A leads B** by 5 ticks |
-| `-3` | **B leads A** by 3 ticks |
-| `0` | Simultaneous — neither leads |
+| best.lag | Interpretation |
+|----------|---------------|
+| +5 | A leads B by 5 ticks |
+| -3 | B leads A by 3 ticks |
+| 0 | Simultaneous — neither leads |
 
 ---
 
 ## Lag Windows
-
-The user can select different time windows which determine `maxLag` and how lags are labeled:
 
 | Window | Tick range | 1 tick ≈ |
 |--------|-----------|----------|
@@ -107,36 +105,21 @@ The user can select different time windows which determine `maxLag` and how lags
 
 ## Reading the CCF Chart
 
-```
-CCF(k)
-  │
-+1┤         ╭──╮
-  │        ╱    ╲
-  │────────       ╲────
-  │                 ╲
--1┤                  ───
-  └────────────────────── k
-   -20    -10   0   +10  +20
-                ↑
-          peak at k = +6
-          → symA leads symB by 6 ticks
-```
+The chart plots correlation at every lag from -20 to +20:
 
 - **Peak position** → direction and magnitude of lead-lag
-- **Peak height** → strength of the predictive relationship
+- **Peak height** → strength of the predictive relationship  
 - **Flat curve** → no lead-lag, assets react independently
-- **Multiple peaks** → noisy / unstable relationship
+- **Multiple peaks** → noisy or unstable relationship
 
 ---
 
-## Comparison: corrAt0 vs corrAtLag
-
-The module shows both values:
+## corrAt0 vs corrAtLag
 
 | Metric | Description |
 |--------|-------------|
-| `corrAt0` | Standard Pearson at zero lag — same as Matrix |
-| `corrAtLag` | Correlation at the optimal lag — the "predictive" signal |
+| corrAt0 | Standard Pearson at zero lag — same as Matrix |
+| corrAtLag | Correlation at the optimal lag — the predictive signal |
 
 If `corrAtLag >> corrAt0`, the relationship is primarily predictive (one leads the other) rather than simultaneous.
 
@@ -144,4 +127,4 @@ If `corrAtLag >> corrAt0`, the relationship is primarily predictive (one leads t
 
 ## Oracle Timing Note
 
-Pyth Hermes pushes updates per asset independently. A lag of **1–2 ticks** between two assets may reflect oracle update timing rather than true price discovery. Lags of **3+ ticks** are more likely to reflect genuine market microstructure.
+Pyth Hermes pushes updates per asset independently. A lag of **1–2 ticks** may reflect oracle update timing rather than true price discovery. Lags of **3+ ticks** are more likely to reflect genuine market microstructure.

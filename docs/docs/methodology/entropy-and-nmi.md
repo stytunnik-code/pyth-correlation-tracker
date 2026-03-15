@@ -28,7 +28,9 @@ This removes price-level bias and makes assets comparable regardless of their ab
 
 For each asset's return series, the platform computes **Gaussian differential entropy**:
 
-$$H(X) = \frac{1}{2} \ln(2\pi e \cdot \sigma^2)$$
+```
+H(X) = 0.5 * ln(2π·e·σ²)
+```
 
 where `σ²` is the variance of percent returns.
 
@@ -44,10 +46,10 @@ function gaussianEntropy(arr) {
 ### Interpretation
 
 | Asset | Typical σ | Entropy | Meaning |
-|-------|----------|---------|---------|
+|-------|-----------|---------|---------|
 | USDC | ~0.001% | Very low | Near-zero volatility → highly predictable |
 | Gold | ~0.3% | Medium | Moderate spread → some predictability |
-| BTC | ~2–3% | High | Wide spread → chaotic, hard to predict |
+| BTC | ~2–3% | High | Wide spread → chaotic |
 | DOGE | ~3–5% | Very high | Extreme volatility → most chaotic |
 
 **Lower entropy = more predictable. Higher entropy = more chaotic.**
@@ -58,11 +60,11 @@ function gaussianEntropy(arr) {
 
 To measure the **reliability** of each entropy estimate, the platform uses bootstrap resampling:
 
-1. From the full returns series, draw `N` random samples with replacement
+1. From the full returns series, draw N random samples with replacement
 2. Compute `gaussianEntropy` for each resample (60 iterations)
 3. Report the **mean** and **±1σ confidence band**
 
-This tells you: is the entropy estimate stable, or is it noisy due to small sample size?
+This tells you: is the entropy estimate stable, or noisy due to small sample size?
 
 ```
 BTC  → H = 2.34 ± 0.12  (stable — large sample)
@@ -71,9 +73,9 @@ HYPE → H = 2.81 ± 0.44  (wider CI — newer asset, less history)
 
 ---
 
-## Step 4 — Mutual Information & NMI
+## Step 4 — Mutual Information and NMI
 
-To detect nonlinear dependencies between pairs, the platform computes **Normalized Mutual Information (NMI)**:
+To detect nonlinear dependencies between pairs, the platform computes **Normalized Mutual Information (NMI)**.
 
 ### Discretization
 
@@ -93,19 +95,27 @@ Quantile binning ensures each bin has equal occupancy — avoiding the sparse-bi
 
 ### Shannon Entropy of Bins
 
-$$H(X) = -\sum_{i} p_i \log_2 p_i$$
+```
+H(X) = -Σ p_i · log₂(p_i)
+```
 
 ### Joint Entropy
 
-$$H(X,Y) = -\sum_{i,j} p_{ij} \log_2 p_{ij}$$
+```
+H(X,Y) = -Σ p_ij · log₂(p_ij)
+```
 
 ### Mutual Information
 
-$$I(X;Y) = H(X) + H(Y) - H(X,Y)$$
+```
+I(X;Y) = H(X) + H(Y) - H(X,Y)
+```
 
 ### Normalization
 
-$$\text{NMI}(X,Y) = \frac{I(X;Y)}{\sqrt{H(X) \cdot H(Y)}} \in [0, 1]$$
+```
+NMI(X,Y) = I(X;Y) / sqrt(H(X) · H(Y))   ∈ [0, 1]
+```
 
 ```javascript
 const nmi = Math.sqrt(hA * hB) > 0 ? mi / Math.sqrt(hA * hB) : 0;
@@ -128,6 +138,16 @@ These pairs appear linearly uncorrelated but share significant nonlinear depende
 - **Volatility coupling** — similar variance patterns, opposite directions
 - **Regime-conditional** correlation — related only during stress events
 - **Lagged nonlinear** relationships outside Pearson's detection range
+
+---
+
+## NMI Heatmap Color Scale
+
+| Color | NMI Value | Meaning |
+|-------|-----------|---------|
+| Dark purple | 0.0 | Completely independent |
+| Violet | 0.5 | Moderate dependence |
+| Green | 1.0 | Perfectly dependent |
 
 ---
 
