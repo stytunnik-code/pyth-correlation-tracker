@@ -2498,6 +2498,27 @@ export default function App(){
           .foot   { flex-direction: column; align-items: flex-start; padding: 12px 14px; gap: 10px; }
           .foot-r { width: 100%; justify-content: space-between; }
 
+          /* CORRELATION STATS BAR */
+          .corr-stats-bar {
+            height: auto !important;
+            flex-wrap: wrap !important;
+            padding: 8px 12px !important;
+            gap: 6px !important;
+            row-gap: 4px !important;
+          }
+          .corr-stats-bar > div { flex-shrink: 0; }
+
+          /* CORRELATION CHARTS — stack vertically on mobile */
+          .corr-charts-wrap {
+            flex-direction: column !important;
+            overflow-y: auto;
+          }
+          .corr-charts-wrap > div {
+            flex: 0 0 auto !important;
+            min-height: 200px;
+            width: 100% !important;
+          }
+
           /* DOCS VIEW */
           .docs-body    { flex-direction: column !important; }
           .docs-sidebar { width: 100% !important; max-height: 160px !important; border-right: none !important; border-bottom: 1px solid rgba(255,255,255,0.07) !important; flex-shrink: 0 !important; }
@@ -3166,7 +3187,29 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
         <div style={{position:"absolute",left:16,bottom:12,padding:"4px 8px",background:"rgba(7,5,15,0.72)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:4,color:"rgba(255,255,255,0.38)",fontSize:9,letterSpacing:".04em",pointerEvents:"none"}}>
           Drag to pan · Wheel to zoom
         </div>
-
+        {/* ── Zoom buttons (mobile-friendly) ─────────────────────────── */}
+        <div style={{position:"absolute",top:10,right:10,display:"flex",flexDirection:"column",gap:5,zIndex:5}}>
+          <button
+            onPointerDown={e=>e.stopPropagation()}
+            onClick={()=>{
+              const b=barsRef.current; if(!b.length) return;
+              const step=Math.max(8,Math.round(visibleBars*0.15));
+              const next=Math.max(CHART_MIN_VISIBLE_BARS,visibleBars-step);
+              setZoomBars(next);
+              setViewOffset(prev=>Math.max(-CHART_OVERSCROLL_BARS,Math.min(prev,Math.max(0,b.length-next))));
+            }}
+            style={{width:34,height:34,borderRadius:6,border:"1px solid rgba(124,58,237,0.3)",background:"rgba(6,4,16,0.82)",color:"#a78bfa",fontSize:20,lineHeight:1,cursor:"pointer",fontFamily:"inherit",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)"}}>+</button>
+          <button
+            onPointerDown={e=>e.stopPropagation()}
+            onClick={()=>{
+              const b=barsRef.current; if(!b.length) return;
+              const step=Math.max(8,Math.round(visibleBars*0.15));
+              const next=Math.min(CHART_MAX_VISIBLE_BARS,b.length,visibleBars+step);
+              setZoomBars(next);
+              setViewOffset(prev=>Math.max(-CHART_OVERSCROLL_BARS,Math.min(prev,Math.max(0,b.length-next))));
+            }}
+            style={{width:34,height:34,borderRadius:6,border:"1px solid rgba(124,58,237,0.3)",background:"rgba(6,4,16,0.82)",color:"#a78bfa",fontSize:20,lineHeight:1,cursor:"pointer",fontFamily:"inherit",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)"}}>−</button>
+        </div>
       </div>
 
       {/* ── RESIZE HANDLE ────────────────────────────────────────────────── */}
@@ -4768,7 +4811,7 @@ function CorrView({histRef, prices, assets, setActiveTab, status, initialPair}) 
       </div>
 
       {/* Stats bar */}
-      <div style={{display:"flex",alignItems:"center",gap:0,padding:"0 16px",height:56,borderBottom:"1px solid rgba(255,255,255,0.04)",flexShrink:0}}>
+      <div className="corr-stats-bar" style={{display:"flex",alignItems:"center",gap:0,padding:"0 16px",height:56,borderBottom:"1px solid rgba(255,255,255,0.04)",flexShrink:0}}>
         <div style={{display:"flex",alignItems:"baseline",gap:6,marginRight:20}}>
           <span style={{fontSize:11,fontWeight:700,color:aAsset.color,letterSpacing:".04em"}}>{symA}</span>
           <span style={{fontSize:18,fontWeight:700,color:"#fff"}}>{fmtP(prices[symA])}</span>
@@ -4797,7 +4840,7 @@ function CorrView({histRef, prices, assets, setActiveTab, status, initialPair}) 
       </div>
 
       {/* Charts side by side */}
-      <div style={{flex:1,display:"flex",gap:1,minHeight:0}}>
+      <div className="corr-charts-wrap" style={{flex:1,display:"flex",gap:1,minHeight:0}}>
         <div style={{flex:1,display:"flex",flexDirection:"column",minWidth:0}}>
           <div style={{padding:"8px 16px 4px",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
             <span style={{fontSize:9,color:"rgba(255,255,255,0.25)",letterSpacing:".08em"}}>SCATTER — RETURNS ({n} pts)</span>
