@@ -2848,6 +2848,13 @@ function drawCandles(canvas, bars, chartType, view = {}, scaleOut = null) {
   const volTop = PAD.t + PH + (H-PAD.t-PAD.b)*0.05;
   const volBase = volTop + VH;
   const maxV = Math.max(...vis.map(b=>b.v||0), 1);
+
+  // Clip chart content to prevent artifacts outside the chart area when Y-zoomed
+  ctx.save();
+  ctx.beginPath();
+  ctx.rect(PAD.l, PAD.t, CW, volBase - PAD.t);
+  ctx.clip();
+
   vis.forEach((b,i)=>{
     const vh = ((b.v||0)/maxV) * VH;
     if (vh < 0.5) return;
@@ -2877,18 +2884,26 @@ function drawCandles(canvas, bars, chartType, view = {}, scaleOut = null) {
       const upCol = "#10b981", dnCol = "#ef4444";
       const col = up ? upCol : dnCol;
       // Wick
-      ctx.strokeStyle = col; ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(x, Math.max(PAD.t, toY(b.h)));
-      ctx.lineTo(x, Math.min(PAD.t+PH, toY(b.l)));
-      ctx.stroke();
-      // Body
-      const by = Math.max(PAD.t, Math.min(toY(b.o), toY(b.c)));
-      const bh = Math.max(1, Math.min(Math.abs(toY(b.o)-toY(b.c)), PAD.t+PH-by));
-      ctx.fillStyle = up ? "rgba(16,185,129,0.85)" : "rgba(239,68,68,0.85)";
-      ctx.fillRect(x-bw/2, by, bw, bh);
+      const wickTop = Math.max(PAD.t, toY(b.h));
+      const wickBot = Math.min(PAD.t+PH, toY(b.l));
+      if (wickBot > wickTop) {
+        ctx.strokeStyle = col; ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x, wickTop);
+        ctx.lineTo(x, wickBot);
+        ctx.stroke();
+      }
+      // Body — clamp both top and bottom edges
+      const bodyTop = Math.max(PAD.t, Math.min(toY(b.o), toY(b.c)));
+      const bodyBot = Math.min(PAD.t+PH, Math.max(toY(b.o), toY(b.c)));
+      if (bodyBot > bodyTop) {
+        ctx.fillStyle = up ? "rgba(16,185,129,0.85)" : "rgba(239,68,68,0.85)";
+        ctx.fillRect(x-bw/2, bodyTop, bw, Math.max(1, bodyBot-bodyTop));
+      }
     });
   }
+
+  ctx.restore(); // end chart-area clip
 
   // Time axis
   const step = Math.max(1, Math.floor(N/8));
