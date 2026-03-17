@@ -2759,8 +2759,11 @@ function drawCandles(canvas, bars, chartType, view = {}) {
   if (!par) return;
   const W = par.clientWidth, H = par.clientHeight;
   if (W < 10 || H < 10) return;
-  canvas.width = W; canvas.height = H;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + "px"; canvas.style.height = H + "px";
   const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
 
   // Background
   ctx.fillStyle = "#07050f"; ctx.fillRect(0,0,W,H);
@@ -2802,7 +2805,7 @@ function drawCandles(canvas, bars, chartType, view = {}) {
     ctx.restore();
   }
 
-  const PAD = { t:12, b:32, ...CHART_SIDE_PAD };
+  const PAD = { t:12, b:32, l:8, r: W < 500 ? 54 : 80 };
   const PH = (H - PAD.t - PAD.b) * 0.78;
   const VH = (H - PAD.t - PAD.b) * 0.14;
   const CW = W - PAD.l - PAD.r;
@@ -2935,7 +2938,7 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
   const dragRef   = useRef({ active:false, pointerId:null, startX:0, startOffset:0 });
   const [viewOffset, setViewOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
-  const [zoomBars, setZoomBars] = useState(CHART_VISIBLE_BARS);
+  const [zoomBars, setZoomBars] = useState(()=>window.innerWidth<=768?90:CHART_VISIBLE_BARS);
   const [crosshairActive, setCrosshairActive] = useState(false);
   const [crosshairX, setCrosshairX] = useState(null);
   const [crosshairY, setCrosshairY] = useState(null);
@@ -3393,8 +3396,11 @@ function drawCorrChart(canvas, ha, hb, symA, symB, colorA, colorB) {
   if (!par) return;
   const W = par.clientWidth, H = par.clientHeight;
   if (W < 10 || H < 10) return;
-  canvas.width = W; canvas.height = H;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + "px"; canvas.style.height = H + "px";
   const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
   ctx.fillStyle = "#07050f"; ctx.fillRect(0,0,W,H);
 
   const n = Math.min(ha.length, hb.length);
@@ -3506,8 +3512,11 @@ function drawRollingCorr(canvas, ha, hb, window=30) {
   if (!par) return;
   const W = par.clientWidth, H = par.clientHeight;
   if (W < 10 || H < 10) return;
-  canvas.width = W; canvas.height = H;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + "px"; canvas.style.height = H + "px";
   const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
   ctx.fillStyle = "#07050f"; ctx.fillRect(0,0,W,H);
 
   const n = Math.min(ha.length, hb.length);
@@ -3595,8 +3604,11 @@ function drawRollingCorrTimeline(canvas, primaryBars, secondaryBars, view = {}) 
   if (!par) return;
   const W = par.clientWidth, H = par.clientHeight;
   if (W < 10 || H < 10) return;
-  canvas.width = W; canvas.height = H;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + "px"; canvas.style.height = H + "px";
   const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
   ctx.fillStyle = "#07050f";
   ctx.fillRect(0, 0, W, H);
 
@@ -3859,8 +3871,11 @@ function drawXCorr(canvas, pts, symA, symB, windowKey, hoverIdx=null) {
   const par=canvas.parentElement; if(!par) return;
   const W=par.clientWidth||canvas.offsetWidth, H=par.clientHeight||canvas.offsetHeight;
   if(W<10||H<10) return;
-  canvas.width=W; canvas.height=H;
+  const dpr=window.devicePixelRatio||1;
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  canvas.style.width=W+"px"; canvas.style.height=H+"px";
   const ctx=canvas.getContext("2d");
+  ctx.scale(dpr,dpr);
   ctx.fillStyle="#07050f"; ctx.fillRect(0,0,W,H);
 
   const PAD={t:32,r:22,b:50,l:46};
@@ -4020,8 +4035,11 @@ function drawPriceLines(canvas, cA, cB, symA, symB, colA, colB, result, windowKe
   const par=canvas.parentElement; if(!par) return;
   const W=par.clientWidth||canvas.offsetWidth, H=par.clientHeight||canvas.offsetHeight;
   if(W<10||H<10) return;
-  canvas.width=W; canvas.height=H;
+  const dpr=window.devicePixelRatio||1;
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  canvas.style.width=W+"px"; canvas.style.height=H+"px";
   const ctx=canvas.getContext("2d");
+  ctx.scale(dpr,dpr);
   ctx.fillStyle="#07050f"; ctx.fillRect(0,0,W,H);
 
   const N=Math.min(cA.length,cB.length);
@@ -4211,8 +4229,11 @@ function drawRolling(canvas, allPts, times, cutoff, windowKey) {
   const par=canvas.parentElement; if(!par) return;
   const W=par.clientWidth, H=par.clientHeight;
   if(W<10||H<10) return;
-  canvas.width=W; canvas.height=H;
+  const dpr=window.devicePixelRatio||1;
+  canvas.width=W*dpr; canvas.height=H*dpr;
+  canvas.style.width=W+"px"; canvas.style.height=H+"px";
   const ctx=canvas.getContext("2d");
+  ctx.scale(dpr,dpr);
   ctx.fillStyle="#07050f"; ctx.fillRect(0,0,W,H);
 
   if(!allPts||allPts.length<2){
@@ -5156,8 +5177,11 @@ function drawEntropyBars(canvas, ranking, assets, minH, maxH) {
   const par = canvas.parentElement; if (!par) return;
   const W = par.clientWidth, H = par.clientHeight;
   if (W < 10 || H < 10) return;
-  canvas.width = W; canvas.height = H;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + "px"; canvas.style.height = H + "px";
   const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
   ctx.fillStyle = "#07050f"; ctx.fillRect(0, 0, W, H);
 
   if (!ranking.length) {
@@ -5249,8 +5273,11 @@ function drawNMIHeatmap(canvas, assets, nmiMatrix) {
   const par = canvas.parentElement; if (!par) return;
   const W = par.clientWidth, H = par.clientHeight;
   if (W < 10 || H < 10) return;
-  canvas.width = W; canvas.height = H;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + "px"; canvas.style.height = H + "px";
   const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
   ctx.fillStyle = "#07050f"; ctx.fillRect(0, 0, W, H);
 
   const n = assets.length;
@@ -5323,8 +5350,11 @@ function drawHiddenConnections(canvas, assets, nmiMatrix, pearsonMatrix) {
   const par = canvas.parentElement; if (!par) return;
   const W = par.clientWidth, H = par.clientHeight;
   if (W < 10 || H < 10) return;
-  canvas.width = W; canvas.height = H;
+  const dpr = window.devicePixelRatio || 1;
+  canvas.width = W * dpr; canvas.height = H * dpr;
+  canvas.style.width = W + "px"; canvas.style.height = H + "px";
   const ctx = canvas.getContext("2d");
+  ctx.scale(dpr, dpr);
   ctx.fillStyle = "#07050f"; ctx.fillRect(0, 0, W, H);
 
   // Find pairs where |pearson| < 0.3 but NMI > 0.35
