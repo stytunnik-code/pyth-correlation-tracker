@@ -2855,12 +2855,6 @@ function drawCandles(canvas, bars, chartType, view = {}, scaleOut = null) {
     ctx.fillRect(toX(i)-colW*0.38, volBase-vh, colW*0.76, vh);
   });
 
-  // Clip drawing area so bars outside Y-range don't produce artifacts
-  ctx.save();
-  ctx.beginPath();
-  ctx.rect(PAD.l, PAD.t, CW, PH);
-  ctx.clip();
-
   // Candles or Line
   if (chartType === "line") {
     const up = vis[vis.length-1].c >= vis[0].o;
@@ -2895,8 +2889,6 @@ function drawCandles(canvas, bars, chartType, view = {}, scaleOut = null) {
       ctx.fillRect(x-bw/2, by, bw, bh);
     });
   }
-
-  ctx.restore(); // end clip
 
   // Time axis
   const step = Math.max(1, Math.floor(N/8));
