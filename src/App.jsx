@@ -2498,6 +2498,58 @@ export default function App(){
           .foot   { flex-direction: column; align-items: flex-start; padding: 12px 14px; gap: 10px; }
           .foot-r { width: 100%; justify-content: space-between; }
 
+          /* ─── FULL-SCREEN VIEW TOP BARS ────────── */
+          .vt-label { display: none !important; }
+
+          /* ─── CHART VIEW ─────────────────────── */
+          .cv-ctrl {
+            overflow-x: auto !important;
+            scrollbar-width: none !important;
+            height: auto !important;
+            padding: 4px 8px !important;
+          }
+          .cv-ctrl::-webkit-scrollbar { display: none; }
+          .cv-ctrl button { flex-shrink: 0 !important; min-height: 30px !important; }
+          .cv-ctrl-stats { display: none !important; }
+          .chart-resize-hdl { height: 18px !important; }
+
+          /* ─── LEAD-LAG VIEW ──────────────────── */
+          .ll-main {
+            flex-direction: column !important;
+            overflow-y: auto !important;
+            overflow-x: hidden !important;
+          }
+          .ll-main > div:first-child { flex: none !important; min-height: 260px; }
+          .ll-stats-strip {
+            overflow-x: auto !important;
+            overflow-y: hidden !important;
+            scrollbar-width: none !important;
+            flex-wrap: nowrap !important;
+          }
+          .ll-stats-strip::-webkit-scrollbar { display: none; }
+          .ll-side {
+            width: 100% !important;
+            max-height: 220px !important;
+            border-left: none !important;
+            border-top: 1px solid rgba(255,255,255,0.05) !important;
+          }
+
+          /* ─── ENTROPY VIEW ───────────────────── */
+          .en-cfg {
+            flex-wrap: wrap !important;
+            gap: 6px 12px !important;
+            padding: 6px 12px !important;
+          }
+          .en-cfg > div[style*="width:1"] { display: none !important; }
+          .en-stats {
+            grid-template-columns: 1fr 1fr !important;
+          }
+          .en-grid {
+            grid-template-columns: 1fr !important;
+            grid-template-rows: 200px 200px 150px !important;
+          }
+          .en-grid > div[style*="gridColumn"] { grid-column: 1 !important; }
+
           /* CORRELATION STATS BAR */
           .corr-stats-bar {
             height: auto !important;
@@ -3095,10 +3147,10 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
       <div style={{display:"flex",alignItems:"center",height:48,padding:"0 16px",borderBottom:"1px solid rgba(255,255,255,0.06)",background:"#0b0917",flexShrink:0,gap:16}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <PythLogo size={22}/>
-          <span style={{fontSize:13,fontWeight:700,color:"#7c3aed",letterSpacing:".06em"}}>PYTH</span>
-          <span style={{fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.25)"}}>CHARTS</span>
+          <span className="vt-label" style={{fontSize:13,fontWeight:700,color:"#7c3aed",letterSpacing:".06em"}}>PYTH</span>
+          <span className="vt-label" style={{fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.25)"}}>CHARTS</span>
         </div>
-        <div style={{width:1,height:20,background:"rgba(255,255,255,0.08)"}}/>
+        <div className="vt-label" style={{width:1,height:20,background:"rgba(255,255,255,0.08)"}}/>
         {/* Asset symbol + price + pct */}
         <div style={{display:"flex",alignItems:"baseline",gap:8}}>
           <span style={{fontSize:13,fontWeight:700,color:"#fff",letterSpacing:".04em"}}>{asset.symbol}</span>
@@ -3135,7 +3187,7 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
       </div>
 
       {/* ── CONTROLS ROW ────────────────────────────────────────────────── */}
-      <div style={{display:"flex",alignItems:"center",height:34,padding:"0 12px",borderBottom:"1px solid rgba(255,255,255,0.05)",background:"#07050f",flexShrink:0,gap:2}}>
+      <div className="cv-ctrl" style={{display:"flex",alignItems:"center",height:34,padding:"0 12px",borderBottom:"1px solid rgba(255,255,255,0.05)",background:"#07050f",flexShrink:0,gap:2}}>
         {/* Timeframes */}
         {TF_LIST.filter(tf=>{
           const cat=assets.find(a=>a.symbol===chartAsset)?.category;
@@ -3161,7 +3213,7 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
           Reset Zoom
         </button>
         {/* Stats */}
-        <div style={{marginLeft:"auto",display:"flex",gap:16,fontSize:9,letterSpacing:".04em"}}>
+        <div className="cv-ctrl-stats" style={{marginLeft:"auto",display:"flex",gap:16,fontSize:9,letterSpacing:".04em"}}>
           {bars.length>0&&<span style={{color:"rgba(255,255,255,0.25)"}}>H: <span style={{color:"#10b981"}}>{fmtP(Math.max(...bars.map(b=>b.h)))}</span></span>}
           {bars.length>0&&<span style={{color:"rgba(255,255,255,0.25)"}}>L: <span style={{color:"#ef4444"}}>{fmtP(Math.min(...bars.map(b=>b.l)))}</span></span>}
           <span style={{color:"rgba(255,255,255,0.2)"}}>{visibleBars} visible · {bars.length} bars</span>
@@ -3235,6 +3287,7 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
         );
       })()}
       <div
+        className="chart-resize-hdl"
         onPointerDown={(e) => {
           corrResizeRef.current = { active:true, startY:e.clientY, startH:corrHeight };
           e.currentTarget.setPointerCapture(e.pointerId);
@@ -4364,10 +4417,10 @@ function LeadLagView({histRef, prices, assets, setActiveTab, status}) {
       {/* ── Top bar ── */}
       <div style={{display:"flex",alignItems:"center",height:48,padding:"0 16px",borderBottom:"1px solid rgba(255,255,255,0.06)",background:"#0b0917",flexShrink:0,gap:16}}>
         <PythLogo size={22}/>
-        <span style={{fontSize:13,fontWeight:700,color:"#7c3aed",letterSpacing:".06em"}}>PYTH</span>
-        <span style={{fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.25)"}}>LEAD-LAG DETECTOR</span>
+        <span className="vt-label" style={{fontSize:13,fontWeight:700,color:"#7c3aed",letterSpacing:".06em"}}>PYTH</span>
+        <span className="vt-label" style={{fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.25)"}}>LEAD-LAG DETECTOR</span>
         {/* ── ? tooltip button ── */}
-        <div style={{position:"relative",display:"inline-flex",alignItems:"center"}}>
+        <div className="vt-label" style={{position:"relative",display:"inline-flex",alignItems:"center"}}>
           <button
             onMouseEnter={()=>setShowTip(true)}
             onMouseLeave={()=>setShowTip(false)}
@@ -4440,14 +4493,14 @@ function LeadLagView({histRef, prices, assets, setActiveTab, status}) {
       </div>
 
       {/* ── Main content ── */}
-      <div style={{flex:1,display:"flex",minHeight:0,overflow:"hidden"}}>
+      <div className="ll-main" style={{flex:1,display:"flex",minHeight:0,overflow:"hidden"}}>
 
         {/* Left: stats strip + BIG chart */}
         <div style={{flex:3,display:"flex",flexDirection:"column",minWidth:0,padding:"12px 14px",gap:10}}>
 
           {/* Stats strip */}
           {result&&result.lagBars>0&&(
-            <div style={{display:"flex",alignItems:"center",gap:0,background:"rgba(124,58,237,0.05)",border:"1px solid rgba(124,58,237,0.13)",borderRadius:8,padding:"0",flexShrink:0,overflow:"hidden"}}>
+            <div className="ll-stats-strip" style={{display:"flex",alignItems:"center",gap:0,background:"rgba(124,58,237,0.05)",border:"1px solid rgba(124,58,237,0.13)",borderRadius:8,padding:"0",flexShrink:0,overflow:"hidden"}}>
               <div style={{padding:"10px 18px",borderRight:"1px solid rgba(124,58,237,0.12)",textAlign:"center"}}>
                 <div style={{fontSize:8,color:"rgba(255,255,255,0.25)",letterSpacing:".08em",marginBottom:3}}>LEADS FIRST</div>
                 <div style={{fontSize:18,fontWeight:800,color:leaderAsset?.color||"#a78bfa"}}>{result.leader}</div>
@@ -4555,7 +4608,7 @@ function LeadLagView({histRef, prices, assets, setActiveTab, status}) {
         <div style={{width:1,background:"rgba(255,255,255,0.05)",flexShrink:0}}/>
 
         {/* Right: all pairs ranked list */}
-        <div style={{width:280,display:"flex",flexDirection:"column",overflowY:"auto",flexShrink:0}}>
+        <div className="ll-side" style={{width:280,display:"flex",flexDirection:"column",overflowY:"auto",flexShrink:0}}>
           <div style={{padding:"8px 14px 8px",borderBottom:"1px solid rgba(255,255,255,0.05)",flexShrink:0,position:"sticky",top:0,background:"#07050f",zIndex:1}}>
             <div style={{display:"flex",alignItems:"center",justifyContent:"space-between",marginBottom:4}}>
               <span style={{fontSize:9,fontWeight:700,color:"rgba(255,255,255,0.4)",letterSpacing:".08em"}}>ALL PAIRS RANKED</span>
@@ -4764,8 +4817,8 @@ function CorrView({histRef, prices, assets, setActiveTab, status, initialPair}) 
       {/* Top bar */}
       <div style={{display:"flex",alignItems:"center",height:48,padding:"0 16px",borderBottom:"1px solid rgba(255,255,255,0.06)",background:"#0b0917",flexShrink:0,gap:16}}>
         <PythLogo size={22}/>
-        <span style={{fontSize:13,fontWeight:700,color:"#7c3aed",letterSpacing:".06em"}}>PYTH</span>
-        <span style={{fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.25)"}}>CORRELATION</span>
+        <span className="vt-label" style={{fontSize:13,fontWeight:700,color:"#7c3aed",letterSpacing:".06em"}}>PYTH</span>
+        <span className="vt-label" style={{fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.25)"}}>CORRELATION</span>
         <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>
           {loading&&<span style={{fontSize:9,color:"rgba(124,58,237,0.6)",letterSpacing:".06em"}}>LOADING…</span>}
           <div style={{display:"flex",alignItems:"center",gap:5,padding:"3px 8px",borderRadius:3,background:status==="live"?"rgba(16,185,129,0.1)":"rgba(239,68,68,0.1)",border:`1px solid ${status==="live"?"rgba(16,185,129,0.25)":"rgba(239,68,68,0.25)"}`}}>
@@ -5554,20 +5607,20 @@ function EntropyView({ histRef, prices, assets, setActiveTab, status, liveRun, s
       {/* ── Top bar ─────────────────────────────────────────────────── */}
       <div style={{display:"flex",alignItems:"center",height:48,padding:"0 16px",borderBottom:"1px solid rgba(255,255,255,0.06)",background:"#0b0917",flexShrink:0,gap:12}}>
         <PythLogo size={22}/>
-        <span style={{fontSize:13,fontWeight:700,color:"#7c3aed",letterSpacing:".06em"}}>PYTH</span>
-        <span style={{fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.25)"}}>ENTROPY</span>
-        <div style={{height:16,width:1,background:"rgba(255,255,255,0.08)"}}/>
+        <span className="vt-label" style={{fontSize:13,fontWeight:700,color:"#7c3aed",letterSpacing:".06em"}}>PYTH</span>
+        <span className="vt-label" style={{fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.25)"}}>ENTROPY</span>
+        <div className="vt-label" style={{height:16,width:1,background:"rgba(255,255,255,0.08)"}}/>
         {seedInfo && (
-          <div style={{display:"flex",alignItems:"center",gap:6,padding:"2px 8px",borderRadius:3,background:"rgba(124,58,237,0.1)",border:"1px solid rgba(124,58,237,0.2)"}}>
+          <div className="vt-label" style={{display:"flex",alignItems:"center",gap:6,padding:"2px 8px",borderRadius:3,background:"rgba(124,58,237,0.1)",border:"1px solid rgba(124,58,237,0.2)"}}>
             <span style={{fontSize:8,color:"rgba(167,139,250,0.6)",letterSpacing:".08em"}}>SEED</span>
             <span style={{fontSize:10,fontWeight:700,color:"#c4b5fd",letterSpacing:".04em"}}>0x{seedInfo.hex}</span>
             <span style={{fontSize:8,color:"rgba(255,255,255,0.2)"}}>Pyth live</span>
           </div>
         )}
         <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>
-          {loading && <span style={{fontSize:9,color:"rgba(124,58,237,0.6)",letterSpacing:".06em",animation:"pulse 1s infinite"}}>LOADING DATA…</span>}
-          {liveRun && <span style={{fontSize:9,color:"#10b981",letterSpacing:".08em",animation:"pulse 1s infinite"}}>LIVE MEASURING</span>}
-          {lastRun && <span style={{fontSize:8,color:"rgba(255,255,255,0.2)"}}>ran {lastRun.toLocaleTimeString()}</span>}
+          {loading && <span className="vt-label" style={{fontSize:9,color:"rgba(124,58,237,0.6)",letterSpacing:".06em",animation:"pulse 1s infinite"}}>LOADING DATA…</span>}
+          {liveRun && <span className="vt-label" style={{fontSize:9,color:"#10b981",letterSpacing:".08em",animation:"pulse 1s infinite"}}>LIVE MEASURING</span>}
+          {lastRun && <span className="vt-label" style={{fontSize:8,color:"rgba(255,255,255,0.2)"}}>ran {lastRun.toLocaleTimeString()}</span>}
           <div style={{display:"flex",alignItems:"center",gap:5,padding:"3px 8px",borderRadius:3,background:status==="live"?"rgba(16,185,129,0.1)":"rgba(239,68,68,0.1)",border:`1px solid ${status==="live"?"rgba(16,185,129,0.25)":"rgba(239,68,68,0.25)"}`}}>
             <span style={{width:5,height:5,borderRadius:"50%",background:status==="live"?"#10b981":"#ef4444",display:"inline-block"}}/>
             <span style={{fontSize:10,fontWeight:700,color:status==="live"?"#10b981":"#ef4444"}}>{status==="live"?"LIVE":"DEMO"}</span>
@@ -5586,7 +5639,7 @@ function EntropyView({ histRef, prices, assets, setActiveTab, status, liveRun, s
       </div>
 
       {/* ── Config bar ──────────────────────────────────────────────── */}
-      <div style={{display:"flex",alignItems:"center",gap:20,padding:"6px 16px",borderBottom:"1px solid rgba(255,255,255,0.04)",background:"#080614",flexShrink:0}}>
+      <div className="en-cfg" style={{display:"flex",alignItems:"center",gap:20,padding:"6px 16px",borderBottom:"1px solid rgba(255,255,255,0.04)",background:"#080614",flexShrink:0}}>
         <div style={{display:"flex",alignItems:"center",gap:6}}>
           <span style={{fontSize:8,color:"rgba(255,255,255,0.2)",letterSpacing:".08em"}}>BOOTSTRAP</span>
           <span style={{fontSize:10,fontWeight:700,color:"rgba(255,255,255,0.5)"}}>{N_ITER} iter × {SAMPLE} samples</span>
@@ -5658,7 +5711,7 @@ function EntropyView({ histRef, prices, assets, setActiveTab, status, liveRun, s
         </div>
       </div>
 
-      <div style={{display:"grid",gridTemplateColumns:"repeat(4, minmax(0, 1fr))",gap:1,background:"rgba(255,255,255,0.04)",borderBottom:"1px solid rgba(255,255,255,0.04)",flexShrink:0}}>
+      <div className="en-stats" style={{display:"grid",gridTemplateColumns:"repeat(4, minmax(0, 1fr))",gap:1,background:"rgba(255,255,255,0.04)",borderBottom:"1px solid rgba(255,255,255,0.04)",flexShrink:0}}>
         <div style={{padding:"12px 16px",background:"#080614"}}>
           <div style={{fontSize:9,color:"rgba(255,255,255,0.28)",letterSpacing:".1em",textTransform:"uppercase"}}>Most Predictable</div>
           <div style={{marginTop:6,fontSize:18,fontWeight:800,color:mostPredictable ? (activeAssets.find(a=>a.symbol===mostPredictable.sym)?.color || "#10b981") : "rgba(255,255,255,0.25)"}}>{mostPredictable?.sym || "—"}</div>
@@ -5681,7 +5734,7 @@ function EntropyView({ histRef, prices, assets, setActiveTab, status, liveRun, s
         </div>
       </div>
 
-      <div style={{flex:1,display:"grid",gridTemplateColumns:"1fr 1fr",gridTemplateRows:"1fr 200px",gap:1,minHeight:0,background:"rgba(255,255,255,0.04)"}}>
+      <div className="en-grid" style={{flex:1,display:"grid",gridTemplateColumns:"1fr 1fr",gridTemplateRows:"1fr 200px",gap:1,minHeight:0,background:"rgba(255,255,255,0.04)"}}>
 
         {/* Entropy Ranking bar chart */}
         <div style={{display:"flex",flexDirection:"column",background:"#07050f",minHeight:0}}>
