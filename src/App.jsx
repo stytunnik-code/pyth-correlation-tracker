@@ -2502,14 +2502,30 @@ export default function App(){
           .vt-label { display: none !important; }
 
           /* ─── CHART VIEW ─────────────────────── */
+          .chart-topbar {
+            height: 40px !important;
+            padding: 0 10px !important;
+            gap: 8px !important;
+          }
+          .chart-topbar .chart-back-btn {
+            padding: 5px 10px !important;
+            font-size: 10px !important;
+          }
+          .chart-sym-strip {
+            height: 28px !important;
+          }
+          .chart-sym-strip button {
+            padding: 0 9px !important;
+            font-size: 10px !important;
+          }
           .cv-ctrl {
             overflow-x: auto !important;
             scrollbar-width: none !important;
             height: auto !important;
-            padding: 4px 8px !important;
+            padding: 3px 6px !important;
           }
           .cv-ctrl::-webkit-scrollbar { display: none; }
-          .cv-ctrl button { flex-shrink: 0 !important; min-height: 30px !important; }
+          .cv-ctrl button { flex-shrink: 0 !important; min-height: 26px !important; font-size: 9px !important; padding: 2px 7px !important; }
           .cv-ctrl-stats { display: none !important; }
           .chart-resize-hdl { height: 18px !important; }
 
@@ -2925,7 +2941,7 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
   const [crosshairY, setCrosshairY] = useState(null);
   const [hoverBar, setHoverBar] = useState(null);
   const [showCorrHelp, setShowCorrHelp] = useState(false);
-  const [corrHeight, setCorrHeight] = useState(176);
+  const [corrHeight, setCorrHeight] = useState(()=>window.innerWidth<=768?80:176);
   const [corrInfoHovered, setCorrInfoHovered] = useState(false);
   const corrResizeRef = useRef({ active:false, startY:0, startH:0 });
   const visibleBars = zoomBars;
@@ -3144,7 +3160,7 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
     <div style={{display:"flex",flexDirection:"column",width:"100%",height:"100%",background:"#07050f",fontFamily:"'Space Mono',monospace",position:"relative"}}>
 
       {/* ── TOP BAR ─────────────────────────────────────────────────────── */}
-      <div style={{display:"flex",alignItems:"center",height:48,padding:"0 16px",borderBottom:"1px solid rgba(255,255,255,0.06)",background:"#0b0917",flexShrink:0,gap:16}}>
+      <div className="chart-topbar" style={{display:"flex",alignItems:"center",height:48,padding:"0 16px",borderBottom:"1px solid rgba(255,255,255,0.06)",background:"#0b0917",flexShrink:0,gap:16}}>
         <div style={{display:"flex",alignItems:"center",gap:8}}>
           <PythLogo size={22}/>
           <span className="vt-label" style={{fontSize:13,fontWeight:700,color:"#7c3aed",letterSpacing:".06em"}}>PYTH</span>
@@ -3171,7 +3187,7 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
       </div>
 
       {/* ── SYMBOL STRIP ────────────────────────────────────────────────── */}
-      <div style={{display:"flex",alignItems:"center",height:36,padding:"0 0",borderBottom:"1px solid rgba(255,255,255,0.05)",background:"#080614",flexShrink:0,overflowX:"auto",scrollbarWidth:"none"}}>
+      <div className="chart-sym-strip" style={{display:"flex",alignItems:"center",height:36,padding:"0 0",borderBottom:"1px solid rgba(255,255,255,0.05)",background:"#080614",flexShrink:0,overflowX:"auto",scrollbarWidth:"none"}}>
         {assets.map(a=>{
           const p=prices[a.symbol];
           const h=(chartHist[a.symbol]||{})[chartTf]||[];
