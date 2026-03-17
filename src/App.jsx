@@ -3310,8 +3310,11 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
           const areaW = canvasRef.current?.parentElement?.clientWidth || 0;
           return (<>
             <div style={{position:"absolute",left:0,right:0,top:crosshairY,height:1,background:"rgba(196,181,253,0.3)",pointerEvents:"none",borderTop:"1px dashed rgba(196,181,253,0.35)"}}/>
-            <div style={{position:"absolute",top:crosshairY-10,right:0,width:padR-2,height:20,background:"rgba(124,58,237,0.85)",borderRadius:"3px 0 0 3px",display:"flex",alignItems:"center",justifyContent:"center",pointerEvents:"none",border:"1px solid rgba(196,181,253,0.4)"}}>
-              <span style={{fontSize:9,fontWeight:700,color:"#fff",fontFamily:"'Space Mono',monospace",letterSpacing:".02em",whiteSpace:"nowrap"}}>{label}</span>
+            <div style={{position:"absolute",top:crosshairY-8,right:0,width:padR,height:16,display:"flex",alignItems:"center",pointerEvents:"none"}}>
+              <div style={{width:0,height:0,borderTop:"8px solid transparent",borderBottom:"8px solid transparent",borderRight:"7px solid rgba(109,40,217,0.95)",flexShrink:0}}/>
+              <div style={{flex:1,height:"100%",background:"rgba(109,40,217,0.95)",display:"flex",alignItems:"center",justifyContent:"center",borderTop:"1px solid rgba(196,181,253,0.45)",borderBottom:"1px solid rgba(196,181,253,0.45)"}}>
+                <span style={{fontSize:9,fontWeight:700,color:"#fff",fontFamily:"'Space Mono',monospace",letterSpacing:".02em",whiteSpace:"nowrap"}}>{label}</span>
+              </div>
             </div>
           </>);
         })()}
