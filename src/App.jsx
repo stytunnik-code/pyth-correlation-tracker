@@ -2949,6 +2949,8 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
   const [corrInfoHovered, setCorrInfoHovered] = useState(false);
   const corrResizeRef = useRef({ active:false, startY:0, startH:0 });
   const chartScaleRef = useRef({ yMin:0, yMax:0, padT:12, ph:0, padR:80, w:0 });
+  const pointersRef   = useRef(new Map());
+  const pinchRef      = useRef({ active:false, initDist:0, initBars:0 });
   const visibleBars = zoomBars;
   const benchmarkSymbol = ({
     "BTC":"ETH","ETH":"BTC","SOL":"BTC","DOGE":"BTC","USDC":"BTC",
@@ -3074,7 +3076,21 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
     renderCorrChart();
   },[renderChart, renderCorrChart]);
 
+  // Clear crosshair when switching assets
+  useEffect(() => {
+    setCrosshairActive(false);
+    setCrosshairX(null);
+    setCrosshairY(null);
+    setHoverBar(null);
+  }, [chartAsset]);
+
   const stopDragging = useCallback((e) => {
+    if (e?.pointerId != null) {
+      pointersRef.current.delete(e.pointerId);
+    }
+    if (pointersRef.current.size < 2) {
+      pinchRef.current = { active:false, initDist:0, initBars:0 };
+    }
     if (dragRef.current.pointerId != null && e?.currentTarget?.hasPointerCapture?.(dragRef.current.pointerId)) {
       e.currentTarget.releasePointerCapture(dragRef.current.pointerId);
     }
@@ -3104,6 +3120,20 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
   }, []);
 
   const onChartPointerDown = useCallback((e) => {
+    pointersRef.current.set(e.pointerId, { x:e.clientX, y:e.clientY });
+    if (pointersRef.current.size === 2) {
+      // Two fingers — start pinch zoom
+      const pts = [...pointersRef.current.values()];
+      const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+      pinchRef.current = { active:true, initDist:dist, initBars:zoomBars };
+      // Cancel any active drag
+      if (dragRef.current.active && dragRef.current.pointerId != null) {
+        try { e.currentTarget.releasePointerCapture(dragRef.current.pointerId); } catch(_) {}
+      }
+      dragRef.current = { active:false, pointerId:null, startX:0, startOffset:0 };
+      setIsDragging(false);
+      return;
+    }
     if ((e.pointerType === "mouse" && e.button !== 0) || barsRef.current.length <= visibleBars) return;
     setCrosshairActive(true);
     const rect = e.currentTarget.getBoundingClientRect();
@@ -3111,9 +3141,24 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
     dragRef.current = { active:true, pointerId:e.pointerId, startX:e.clientX, startOffset:viewOffset };
     e.currentTarget.setPointerCapture(e.pointerId);
     setIsDragging(true);
-  }, [viewOffset, visibleBars]);
+  }, [viewOffset, visibleBars, zoomBars]);
 
   const onChartPointerMove = useCallback((e) => {
+    if (pointersRef.current.has(e.pointerId)) {
+      pointersRef.current.set(e.pointerId, { x:e.clientX, y:e.clientY });
+    }
+    // Pinch zoom
+    if (pinchRef.current.active && pointersRef.current.size >= 2) {
+      const pts = [...pointersRef.current.values()];
+      const dist = Math.hypot(pts[1].x - pts[0].x, pts[1].y - pts[0].y);
+      if (dist < 1) return;
+      const ratio = pinchRef.current.initDist / dist;
+      const bars = barsRef.current;
+      const next = Math.max(CHART_MIN_VISIBLE_BARS, Math.min(CHART_MAX_VISIBLE_BARS, bars.length, Math.round(pinchRef.current.initBars * ratio)));
+      setZoomBars(next);
+      setViewOffset(prev => Math.max(-CHART_OVERSCROLL_BARS, Math.min(prev, Math.max(0, bars.length - next))));
+      return;
+    }
     if (!dragRef.current.active) return;
     const bars = barsRef.current;
     const maxOffset = Math.max(0, bars.length - visibleBars);
@@ -3271,30 +3316,7 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
           </>);
         })()}
         <div style={{position:"absolute",left:16,bottom:12,padding:"4px 8px",background:"rgba(7,5,15,0.72)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:4,color:"rgba(255,255,255,0.38)",fontSize:9,letterSpacing:".04em",pointerEvents:"none"}}>
-          Drag to pan · Wheel to zoom
-        </div>
-        {/* ── Zoom buttons (mobile-friendly) ─────────────────────────── */}
-        <div style={{position:"absolute",top:10,right:10,display:"flex",flexDirection:"column",gap:5,zIndex:5}}>
-          <button
-            onPointerDown={e=>e.stopPropagation()}
-            onClick={()=>{
-              const b=barsRef.current; if(!b.length) return;
-              const step=Math.max(8,Math.round(visibleBars*0.15));
-              const next=Math.max(CHART_MIN_VISIBLE_BARS,visibleBars-step);
-              setZoomBars(next);
-              setViewOffset(prev=>Math.max(-CHART_OVERSCROLL_BARS,Math.min(prev,Math.max(0,b.length-next))));
-            }}
-            style={{width:34,height:34,borderRadius:6,border:"1px solid rgba(124,58,237,0.3)",background:"rgba(6,4,16,0.82)",color:"#a78bfa",fontSize:20,lineHeight:1,cursor:"pointer",fontFamily:"inherit",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)"}}>+</button>
-          <button
-            onPointerDown={e=>e.stopPropagation()}
-            onClick={()=>{
-              const b=barsRef.current; if(!b.length) return;
-              const step=Math.max(8,Math.round(visibleBars*0.15));
-              const next=Math.min(CHART_MAX_VISIBLE_BARS,b.length,visibleBars+step);
-              setZoomBars(next);
-              setViewOffset(prev=>Math.max(-CHART_OVERSCROLL_BARS,Math.min(prev,Math.max(0,b.length-next))));
-            }}
-            style={{width:34,height:34,borderRadius:6,border:"1px solid rgba(124,58,237,0.3)",background:"rgba(6,4,16,0.82)",color:"#a78bfa",fontSize:20,lineHeight:1,cursor:"pointer",fontFamily:"inherit",backdropFilter:"blur(6px)",WebkitBackdropFilter:"blur(6px)"}}>−</button>
+          Drag to pan · Wheel / Pinch to zoom
         </div>
       </div>
 
