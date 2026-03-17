@@ -3803,9 +3803,9 @@ const WIN_CFG = {
 function fmtAxisTime(t, windowKey) {
   if (!t) return "";
   const d = new Date(t * 1000);
-  if (windowKey === "1D") return d.toLocaleTimeString([], {hour:"2-digit", minute:"2-digit"});
-  if (windowKey === "90D") return d.toLocaleDateString([], {month:"short", year:"2-digit"});
-  return d.toLocaleDateString([], {day:"2-digit", month:"short"});
+  if (windowKey === "1D") return d.toLocaleTimeString("en", {hour:"2-digit", minute:"2-digit"});
+  if (windowKey === "90D") return d.toLocaleDateString("en", {month:"short", year:"2-digit"});
+  return d.toLocaleDateString("en", {day:"2-digit", month:"short"});
 }
 
 
@@ -4116,13 +4116,13 @@ function drawPriceLines(canvas, cA, cB, symA, symB, colA, colB, result, windowKe
   ctx.textAlign="center"; ctx.textBaseline="top"; ctx.font="8px 'Space Mono',monospace"; ctx.fillStyle="rgba(255,255,255,0.2)";
   for(let i=0;i<N;i+=step){
     const barsAgo=N-1-i;
-    if(barsAgo===0){ ctx.fillText("зараз",toX(i),PAD.t+CH+5); continue; }
+    if(barsAgo===0){ ctx.fillText("now",toX(i),PAD.t+CH+5); continue; }
     const d=new Date(Date.now()-barsAgo*msPerBar2);
     const lbl=windowKey==="1D"
-      ? d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})
+      ? d.toLocaleTimeString("en",{hour:"2-digit",minute:"2-digit"})
       : windowKey==="7D"
-        ? `${d.getDate()} ${d.toLocaleString([],{month:"short"})} ${d.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}`
-        : `${d.getDate()} ${d.toLocaleString([],{month:"short"})}`;
+        ? `${d.getDate()} ${d.toLocaleString("en",{month:"short"})} ${d.toLocaleTimeString("en",{hour:"2-digit",minute:"2-digit"})}`
+        : `${d.getDate()} ${d.toLocaleString("en",{month:"short"})}`;
     ctx.fillText(lbl,toX(i),PAD.t+CH+5);
   }
 
@@ -4609,10 +4609,10 @@ function LeadLagView({histRef, prices, assets, setActiveTab, status}) {
                 }[llWindow]||60*1000;
                 const barDate=new Date(Date.now()-barsAgo*msPerBar);
                 const timeLabel=barsAgo===0
-                  ? "зараз"
+                  ? "now"
                   : llWindow==="1D"
-                    ? barDate.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})
-                    : barDate.toLocaleDateString([],{day:"numeric",month:"short"})+(llWindow==="7D"?` ${barDate.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}` :"");
+                    ? barDate.toLocaleTimeString("en",{hour:"2-digit",minute:"2-digit"})
+                    : barDate.toLocaleDateString("en",{day:"numeric",month:"short"})+(llWindow==="7D"?` ${barDate.toLocaleTimeString("en",{hour:"2-digit",minute:"2-digit"})}` :"");
                 const useRight=cx>(xcContRef.current?.clientWidth||0)*0.6;
                 return (
                   <div style={{position:"absolute",left:useRight?cx-162:cx+14,top:Math.max(4,cy-60),
@@ -4841,7 +4841,7 @@ function CorrView({histRef, prices, assets, setActiveTab, status, initialPair}) 
   const dateStart=tA.length>0?new Date(tA[0]*1000):null;
   const dateCutIdx=Math.round(playPos*(tA.length-1));
   const dateEnd=tA.length>0?new Date(tA[dateCutIdx]*1000):null;
-  const fmtDate=d=>d?d.toLocaleDateString([],{day:"2-digit",month:"short",year:"numeric"}):"";
+  const fmtDate=d=>d?d.toLocaleDateString("en",{day:"2-digit",month:"short",year:"numeric"}):"";
   const aAsset=assets.find(a=>a.symbol===symA)||assets[0];
   const bAsset=assets.find(a=>a.symbol===symB)||assets[0];
   const fmtP=v=>!v?"–":v>=10000?"$"+v.toLocaleString(undefined,{maximumFractionDigits:0}):v>=100?"$"+v.toFixed(2):v>=1?"$"+v.toFixed(4):"$"+v.toFixed(6);
@@ -4997,9 +4997,9 @@ function CorrView({histRef, prices, assets, setActiveTab, status, initialPair}) 
                 background:"rgba(124,58,237,0.15)",
                 border:"1px solid rgba(124,58,237,0.3)",
               }}>
-                {dateEnd.toLocaleDateString([],{day:"2-digit",month:"short",year:"numeric"})}
+                {dateEnd.toLocaleDateString("en",{day:"2-digit",month:"short",year:"numeric"})}
                 {" · "}
-                {dateEnd.toLocaleTimeString([],{hour:"2-digit",minute:"2-digit",second:"2-digit"})}
+                {dateEnd.toLocaleTimeString("en",{hour:"2-digit",minute:"2-digit",second:"2-digit"})}
               </span>}
             </div>
           </div>
@@ -5666,7 +5666,7 @@ function EntropyView({ histRef, prices, assets, setActiveTab, status, liveRun, s
         <div style={{marginLeft:"auto",display:"flex",alignItems:"center",gap:8}}>
           {loading && <span className="vt-label" style={{fontSize:9,color:"rgba(124,58,237,0.6)",letterSpacing:".06em",animation:"pulse 1s infinite"}}>LOADING DATA…</span>}
           {liveRun && <span className="vt-label" style={{fontSize:9,color:"#10b981",letterSpacing:".08em",animation:"pulse 1s infinite"}}>LIVE MEASURING</span>}
-          {lastRun && <span className="vt-label" style={{fontSize:8,color:"rgba(255,255,255,0.2)"}}>ran {lastRun.toLocaleTimeString()}</span>}
+          {lastRun && <span className="vt-label" style={{fontSize:8,color:"rgba(255,255,255,0.2)"}}>ran {lastRun.toLocaleTimeString("en",{hour:"2-digit",minute:"2-digit",second:"2-digit"})}</span>}
           <div style={{display:"flex",alignItems:"center",gap:5,padding:"3px 8px",borderRadius:3,background:status==="live"?"rgba(16,185,129,0.1)":"rgba(239,68,68,0.1)",border:`1px solid ${status==="live"?"rgba(16,185,129,0.25)":"rgba(239,68,68,0.25)"}`}}>
             <span style={{width:5,height:5,borderRadius:"50%",background:status==="live"?"#10b981":"#ef4444",display:"inline-block"}}/>
             <span style={{fontSize:10,fontWeight:700,color:status==="live"?"#10b981":"#ef4444"}}>{status==="live"?"LIVE":"DEMO"}</span>
