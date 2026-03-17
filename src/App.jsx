@@ -2753,7 +2753,7 @@ function getChartHoverBar(x, width, bars, view = {}) {
   return bar ? { bar, idx, absoluteIndex: start + idx } : null;
 }
 
-function drawCandles(canvas, bars, chartType, view = {}) {
+function drawCandles(canvas, bars, chartType, view = {}, scaleOut = null) {
   if (!canvas) return;
   const par = canvas.parentElement;
   if (!par) return;
@@ -2820,6 +2820,7 @@ function drawCandles(canvas, bars, chartType, view = {}) {
   const yMin = lo - rng*0.03, yMax = hi + rng*0.06;
   const toY = v => PAD.t + PH * (1 - (v-yMin)/(yMax-yMin));
   const toX = i => PAD.l + (i + 0.5 - overscrollShiftBars) * colW;
+  if (scaleOut) { scaleOut.yMin=yMin; scaleOut.yMax=yMax; scaleOut.padT=PAD.t; scaleOut.ph=PH; scaleOut.padR=PAD.r; scaleOut.w=W; }
 
   // Grid lines + price labels
   const gridCount = 6;
@@ -2947,6 +2948,7 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
   const [corrHeight, setCorrHeight] = useState(()=>window.innerWidth<=768?80:176);
   const [corrInfoHovered, setCorrInfoHovered] = useState(false);
   const corrResizeRef = useRef({ active:false, startY:0, startH:0 });
+  const chartScaleRef = useRef({ yMin:0, yMax:0, padT:12, ph:0, padR:80, w:0 });
   const visibleBars = zoomBars;
   const benchmarkSymbol = ({
     "BTC":"ETH","ETH":"BTC","SOL":"BTC","DOGE":"BTC","USDC":"BTC",
@@ -2957,7 +2959,7 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
   })[chartAsset] ?? "BTC";
   const renderChart = useCallback(() => {
     if (!canvasRef.current) return;
-    drawCandles(canvasRef.current, barsRef.current, chartType, { offset:viewOffset, visibleCount:visibleBars, overscrollBars:CHART_OVERSCROLL_BARS });
+    drawCandles(canvasRef.current, barsRef.current, chartType, { offset:viewOffset, visibleCount:visibleBars, overscrollBars:CHART_OVERSCROLL_BARS }, chartScaleRef.current);
   }, [chartType, viewOffset, visibleBars]);
   const renderCorrChart = useCallback(() => {
     if (!corrCanvasRef.current) return;
@@ -3255,6 +3257,19 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
         {crosshairActive && crosshairX != null && (
           <div style={{position:"absolute",top:0,bottom:0,left:crosshairX,width:1,background:"rgba(196,181,253,0.45)",pointerEvents:"none",boxShadow:"0 0 0 1px rgba(124,58,237,0.08)"}}/>
         )}
+        {crosshairActive && crosshairY != null && (()=>{
+          const { yMin, yMax, padT, ph, padR } = chartScaleRef.current;
+          if (!ph || crosshairY < padT || crosshairY > padT + ph) return null;
+          const price = yMin + (yMax - yMin) * (1 - (crosshairY - padT) / ph);
+          const label = fmtP(price);
+          const areaW = canvasRef.current?.parentElement?.clientWidth || 0;
+          return (<>
+            <div style={{position:"absolute",left:0,right:0,top:crosshairY,height:1,background:"rgba(196,181,253,0.3)",pointerEvents:"none",borderTop:"1px dashed rgba(196,181,253,0.35)"}}/>
+            <div style={{position:"absolute",top:crosshairY-10,right:0,width:padR-2,height:20,background:"rgba(124,58,237,0.85)",borderRadius:"3px 0 0 3px",display:"flex",alignItems:"center",justifyContent:"center",pointerEvents:"none",border:"1px solid rgba(196,181,253,0.4)"}}>
+              <span style={{fontSize:9,fontWeight:700,color:"#fff",fontFamily:"'Space Mono',monospace",letterSpacing:".02em",whiteSpace:"nowrap"}}>{label}</span>
+            </div>
+          </>);
+        })()}
         <div style={{position:"absolute",left:16,bottom:12,padding:"4px 8px",background:"rgba(7,5,15,0.72)",border:"1px solid rgba(255,255,255,0.08)",borderRadius:4,color:"rgba(255,255,255,0.38)",fontSize:9,letterSpacing:".04em",pointerEvents:"none"}}>
           Drag to pan · Wheel to zoom
         </div>
