@@ -3153,7 +3153,6 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
     }
     if ((e.pointerType === "mouse" && e.button !== 0) || barsRef.current.length <= visibleBars) return;
     setCrosshairActive(true);
-    const rect = e.currentTarget.getBoundingClientRect();
     setCrosshairX(e.clientX - rect.left);
     dragRef.current = { active:true, pointerId:e.pointerId, startX:e.clientX, startOffset:viewOffset };
     e.currentTarget.setPointerCapture(e.pointerId);
