@@ -2817,7 +2817,11 @@ function drawCandles(canvas, bars, chartType, view = {}, scaleOut = null) {
   const lo = Math.min(...vis.map(b=>b.l));
   const hi = Math.max(...vis.map(b=>b.h));
   const rng = hi - lo || hi * 0.002 || 1;
-  const yMin = lo - rng*0.03, yMax = hi + rng*0.06;
+  const { yZoom = 1 } = view;
+  const baseMin = lo - rng*0.03, baseMax = hi + rng*0.06;
+  const center = (baseMin + baseMax) / 2;
+  const half = (baseMax - baseMin) / 2 / yZoom;
+  const yMin = center - half, yMax = center + half;
   const toY = v => PAD.t + PH * (1 - (v-yMin)/(yMax-yMin));
   const toX = i => PAD.l + (i + 0.5 - overscrollShiftBars) * colW;
   if (scaleOut) { scaleOut.yMin=yMin; scaleOut.yMax=yMax; scaleOut.padT=PAD.t; scaleOut.ph=PH; scaleOut.padR=PAD.r; scaleOut.w=W; }
@@ -2951,6 +2955,8 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
   const chartScaleRef = useRef({ yMin:0, yMax:0, padT:12, ph:0, padR:80, w:0 });
   const pointersRef   = useRef(new Map());
   const pinchRef      = useRef({ active:false, initDist:0, initBars:0 });
+  const [yZoom, setYZoom] = useState(1);
+  const yDragRef = useRef({ active:false, startY:0, startZoom:1 });
   const visibleBars = zoomBars;
   const benchmarkSymbol = ({
     "BTC":"ETH","ETH":"BTC","SOL":"BTC","DOGE":"BTC","USDC":"BTC",
@@ -2961,8 +2967,8 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
   })[chartAsset] ?? "BTC";
   const renderChart = useCallback(() => {
     if (!canvasRef.current) return;
-    drawCandles(canvasRef.current, barsRef.current, chartType, { offset:viewOffset, visibleCount:visibleBars, overscrollBars:CHART_OVERSCROLL_BARS }, chartScaleRef.current);
-  }, [chartType, viewOffset, visibleBars]);
+    drawCandles(canvasRef.current, barsRef.current, chartType, { offset:viewOffset, visibleCount:visibleBars, overscrollBars:CHART_OVERSCROLL_BARS, yZoom }, chartScaleRef.current);
+  }, [chartType, viewOffset, visibleBars, yZoom]);
   const renderCorrChart = useCallback(() => {
     if (!corrCanvasRef.current) return;
     const benchmarkBars = (chartHist[benchmarkSymbol] || {})[chartTf] || [];
@@ -3076,13 +3082,14 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
     renderCorrChart();
   },[renderChart, renderCorrChart]);
 
-  // Clear crosshair when switching assets
+  // Clear crosshair + reset Y-zoom when switching assets
   useEffect(() => {
     setCrosshairActive(false);
     setCrosshairX(null);
     setCrosshairY(null);
     setHoverBar(null);
-  }, [chartAsset]);
+    setYZoom(1);
+  }, [chartAsset, chartTf]);
 
   const stopDragging = useCallback((e) => {
     if (e?.pointerId != null) {
@@ -3091,6 +3098,7 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
     if (pointersRef.current.size < 2) {
       pinchRef.current = { active:false, initDist:0, initBars:0 };
     }
+    yDragRef.current = { active:false, startY:0, startZoom:1 };
     if (dragRef.current.pointerId != null && e?.currentTarget?.hasPointerCapture?.(dragRef.current.pointerId)) {
       e.currentTarget.releasePointerCapture(dragRef.current.pointerId);
     }
@@ -3120,6 +3128,15 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
   }, []);
 
   const onChartPointerDown = useCallback((e) => {
+    // Y-axis drag (right panel) → vertical price scale zoom
+    const rect = e.currentTarget.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const padR = rect.width < 500 ? 54 : 80;
+    if (x > rect.width - padR - 2) {
+      yDragRef.current = { active:true, startY:e.clientY, startZoom:yZoom };
+      e.currentTarget.setPointerCapture(e.pointerId);
+      return;
+    }
     pointersRef.current.set(e.pointerId, { x:e.clientX, y:e.clientY });
     if (pointersRef.current.size === 2) {
       // Two fingers — start pinch zoom
@@ -3141,9 +3158,15 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
     dragRef.current = { active:true, pointerId:e.pointerId, startX:e.clientX, startOffset:viewOffset };
     e.currentTarget.setPointerCapture(e.pointerId);
     setIsDragging(true);
-  }, [viewOffset, visibleBars, zoomBars]);
+  }, [viewOffset, visibleBars, zoomBars, yZoom]);
 
   const onChartPointerMove = useCallback((e) => {
+    // Y-axis vertical zoom drag
+    if (yDragRef.current.active) {
+      const delta = (yDragRef.current.startY - e.clientY) / 120;
+      setYZoom(Math.max(0.15, Math.min(20, yDragRef.current.startZoom * Math.exp(delta))));
+      return;
+    }
     if (pointersRef.current.has(e.pointerId)) {
       pointersRef.current.set(e.pointerId, { x:e.clientX, y:e.clientY });
     }
@@ -3188,6 +3211,8 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
     setViewOffset(prev => Math.max(-CHART_OVERSCROLL_BARS, Math.min(prev, nextMaxOffset)));
   }, [visibleBars]);
 
+  const { padR: scalePadR = 80, w: scaleW = 0 } = chartScaleRef.current;
+  const isOnYAxis = crosshairX != null && scaleW > 0 && crosshairX > scaleW - scalePadR - 2;
   const cur = prices[chartAsset];
   const hist = (chartHist[chartAsset]||{})[chartTf]||[];
   const pct  = hist.length && cur ? (cur-hist[0].o)/hist[0].o*100 : null;
@@ -3297,7 +3322,7 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
           onPointerLeave={(e)=>{ stopDragging(e); clearCrosshair(); }}
           onPointerMoveCapture={updateCrosshair}
           onWheel={onChartWheel}
-          style={{position:"absolute",inset:0,width:"100%",height:"100%",cursor:isDragging?"grabbing":"grab",touchAction:"none"}}
+          style={{position:"absolute",inset:0,width:"100%",height:"100%",cursor:isDragging?"grabbing":isOnYAxis?"ns-resize":"grab",touchAction:"none"}}
         />
         {crosshairActive && crosshairX != null && (
           <div style={{position:"absolute",top:0,bottom:0,left:crosshairX,width:1,background:"rgba(196,181,253,0.45)",pointerEvents:"none",boxShadow:"0 0 0 1px rgba(124,58,237,0.08)"}}/>
