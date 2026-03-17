@@ -2817,9 +2817,9 @@ function drawCandles(canvas, bars, chartType, view = {}, scaleOut = null) {
   const lo = Math.min(...vis.map(b=>b.l));
   const hi = Math.max(...vis.map(b=>b.h));
   const rng = hi - lo || hi * 0.002 || 1;
-  const { yZoom = 1, yOffset = 0 } = view;
+  const { yZoom = 1 } = view;
   const baseRange = rng * 1.09;
-  const refPrice = (vis[N - 1]?.c ?? (lo + hi) / 2) + yOffset;
+  const refPrice = vis[N - 1]?.c ?? (lo + hi) / 2;
   const rangeH = baseRange / Math.max(yZoom, 0.1);
   const yMin = refPrice - rangeH * 0.55;
   const yMax = refPrice + rangeH * 0.45;
@@ -2941,7 +2941,7 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
   const canvasRef = useRef();
   const corrCanvasRef = useRef();
   const barsRef   = useRef([]);
-  const dragRef   = useRef({ active:false, pointerId:null, startX:0, startY:0, startOffset:0, startYOffset:0, dir:null });
+  const dragRef   = useRef({ active:false, pointerId:null, startX:0, startOffset:0 });
   const [viewOffset, setViewOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
   const [zoomBars, setZoomBars] = useState(()=>window.innerWidth<=768?90:CHART_VISIBLE_BARS);
@@ -2957,7 +2957,6 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
   const pointersRef   = useRef(new Map());
   const pinchRef      = useRef({ active:false, initDist:0, initBars:0 });
   const [yZoom, setYZoom] = useState(1);
-  const [yOffset, setYOffset] = useState(0);
   const yDragRef = useRef({ active:false, startY:0, startZoom:1 });
   const visibleBars = zoomBars;
   const benchmarkSymbol = ({
@@ -2969,8 +2968,8 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
   })[chartAsset] ?? "BTC";
   const renderChart = useCallback(() => {
     if (!canvasRef.current) return;
-    drawCandles(canvasRef.current, barsRef.current, chartType, { offset:viewOffset, visibleCount:visibleBars, overscrollBars:CHART_OVERSCROLL_BARS, yZoom, yOffset }, chartScaleRef.current);
-  }, [chartType, viewOffset, visibleBars, yZoom, yOffset]);
+    drawCandles(canvasRef.current, barsRef.current, chartType, { offset:viewOffset, visibleCount:visibleBars, overscrollBars:CHART_OVERSCROLL_BARS, yZoom }, chartScaleRef.current);
+  }, [chartType, viewOffset, visibleBars, yZoom]);
   const renderCorrChart = useCallback(() => {
     if (!corrCanvasRef.current) return;
     const benchmarkBars = (chartHist[benchmarkSymbol] || {})[chartTf] || [];
@@ -3091,7 +3090,6 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
     setCrosshairY(null);
     setHoverBar(null);
     setYZoom(1);
-    setYOffset(0);
   }, [chartAsset, chartTf]);
 
   const stopDragging = useCallback((e) => {
@@ -3105,7 +3103,7 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
     if (dragRef.current.pointerId != null && e?.currentTarget?.hasPointerCapture?.(dragRef.current.pointerId)) {
       e.currentTarget.releasePointerCapture(dragRef.current.pointerId);
     }
-    dragRef.current = { active:false, pointerId:null, startX:0, startY:0, startOffset:0, startYOffset:0, dir:null };
+    dragRef.current = { active:false, pointerId:null, startX:0, startOffset:0 };
     setIsDragging(false);
   }, []);
 
@@ -3150,17 +3148,17 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
       if (dragRef.current.active && dragRef.current.pointerId != null) {
         try { e.currentTarget.releasePointerCapture(dragRef.current.pointerId); } catch(_) {}
       }
-      dragRef.current = { active:false, pointerId:null, startX:0, startY:0, startOffset:0, startYOffset:0, dir:null };
+      dragRef.current = { active:false, pointerId:null, startX:0, startOffset:0 };
       setIsDragging(false);
       return;
     }
-    if ((e.pointerType === "mouse" && e.button !== 0)) return;
+    if ((e.pointerType === "mouse" && e.button !== 0) || barsRef.current.length <= visibleBars) return;
     setCrosshairActive(true);
     setCrosshairX(e.clientX - rect.left);
-    dragRef.current = { active:true, pointerId:e.pointerId, startX:e.clientX, startY:e.clientY, startOffset:viewOffset, startYOffset:yOffset, dir:null };
+    dragRef.current = { active:true, pointerId:e.pointerId, startX:e.clientX, startOffset:viewOffset };
     e.currentTarget.setPointerCapture(e.pointerId);
     setIsDragging(true);
-  }, [viewOffset, visibleBars, zoomBars, yZoom, yOffset]);
+  }, [viewOffset, visibleBars, zoomBars, yZoom]);
 
   const onChartPointerMove = useCallback((e) => {
     // Y-axis vertical zoom drag
@@ -3185,30 +3183,15 @@ function ChartView({assets, prices, chartAsset, setChartAsset, chartTf, setChart
       return;
     }
     if (!dragRef.current.active) return;
-    const dx = e.clientX - dragRef.current.startX;
-    const dy = e.clientY - dragRef.current.startY;
-    // Detect direction after 5px threshold
-    if (!dragRef.current.dir) {
-      if (Math.abs(dx) < 5 && Math.abs(dy) < 5) return;
-      dragRef.current.dir = Math.abs(dy) > Math.abs(dx) ? 'y' : 'x';
-    }
-    if (dragRef.current.dir === 'y') {
-      // Vertical pan — shift price range
-      const { yMin, yMax, ph } = chartScaleRef.current;
-      if (!ph) return;
-      const pricePerPx = (yMax - yMin) / ph;
-      setYOffset(dragRef.current.startYOffset + dy * pricePerPx);
-      return;
-    }
-    // Horizontal pan — shift time
     const bars = barsRef.current;
     const maxOffset = Math.max(0, bars.length - visibleBars);
     const minOffset = -CHART_OVERSCROLL_BARS;
+    const maxPanOffset = maxOffset;
     if (maxOffset <= 0) return;
     const plotWidth = Math.max(120, (canvasRef.current?.parentElement?.clientWidth || 0) - 88);
     const pxPerBar = plotWidth / visibleBars;
-    const deltaBars = Math.round(dx / Math.max(pxPerBar, 1));
-    const nextOffset = Math.max(minOffset, Math.min(maxOffset, dragRef.current.startOffset + deltaBars));
+    const deltaBars = Math.round((e.clientX - dragRef.current.startX) / Math.max(pxPerBar, 1));
+    const nextOffset = Math.max(minOffset, Math.min(maxPanOffset, dragRef.current.startOffset + deltaBars));
     setViewOffset(prev => prev === nextOffset ? prev : nextOffset);
   }, [visibleBars]);
 
