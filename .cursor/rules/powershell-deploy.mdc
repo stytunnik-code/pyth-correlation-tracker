@@ -1,0 +1,20 @@
+---
+description: Always provide PowerShell deploy command after edits
+alwaysApply: true
+---
+
+# PowerShell Deploy Command
+
+After making any code changes to this project, **always** include a ready-to-run PowerShell command for the user to commit and deploy (e.g. to Vercel).
+
+## Format
+
+```powershell
+cd c:\Users\stytu\pyth-tracker; git add .; git commit -m "Short description"; git push
+```
+
+## Customization
+
+- Change the commit message to describe the actual changes
+- Use `;` (semicolon) between commands for PowerShell compatibility
+- Do not use `&&` — it does not work in PowerShell
