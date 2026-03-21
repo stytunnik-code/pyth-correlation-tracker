@@ -100,10 +100,10 @@ function drawCandles(canvas, bars, chartType, view = {}, scaleOut = null) {
   const rng = hi - lo || hi * 0.002 || 1;
   const { yZoom = 1, yOffset = 0 } = view;
   const baseRange = rng * 1.09;
-  const refPrice = (vis[N - 1]?.c ?? (lo + hi) / 2) + yOffset;
+  const refPrice = (lo + hi) / 2 + yOffset;
   const rangeH = baseRange / Math.max(yZoom, 0.1);
-  const yMin = refPrice - rangeH * 0.55;
-  const yMax = refPrice + rangeH * 0.45;
+  const yMin = refPrice - rangeH * 0.5;
+  const yMax = refPrice + rangeH * 0.5;
   const toY = v => PAD.t + PH * (1 - (v-yMin)/(yMax-yMin));
   const toX = i => PAD.l + (i + 0.5 - overscrollShiftBars) * colW;
   if (scaleOut) { scaleOut.yMin=yMin; scaleOut.yMax=yMax; scaleOut.padT=PAD.t; scaleOut.ph=PH; scaleOut.padR=PAD.r; scaleOut.w=W; }
