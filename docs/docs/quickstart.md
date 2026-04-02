@@ -1,6 +1,6 @@
 # Quick Start
 
-Get up and running with Pyth Correlation Tracker in 30 seconds.
+Get up and running with Pyth Correlation Tracker in under a minute.
 
 ---
 
@@ -8,63 +8,56 @@ Get up and running with Pyth Correlation Tracker in 30 seconds.
 
 Navigate to [pythcorrelation.com](https://pythcorrelation.com).
 
-The loading screen will initialize the oracle feeds and prefetch 60 hours of historical data for all 28 assets.
+The loading screen initializes live feeds and prefetches historical benchmark data.
 
 ---
 
-## Step 2 — Choose Your Assets
+## Step 2 — Choose Assets
 
-By default, 10 core crypto assets are selected. Click the **⊞ selector** in the top-right header to customize which assets appear in the matrix.
+Use the selector in the header to choose which assets appear in the Matrix.
 
 You can filter by category:
-- **Crypto** — 18 assets
-- **FX Pairs** — EUR/USD, GBP/USD
-- **Commodities** — Gold, Oil
-- **Equities** — AAPL
-- **Indices** — SPY, QQQ, DIA, IWM
+
+- Crypto
+- FX Pairs
+- Commodities
+- Equities
+- Indices
 
 ---
 
-## Step 3 — Read the Correlation Matrix
+## Step 3 — Read the Matrix
 
-The heatmap shows every pair's **Pearson correlation** on a -1 to +1 scale:
+The heatmap shows **Pearson correlation on aligned returns** on a scale from -1 to +1.
 
-| Color | Value | Meaning |
-|-------|-------|---------|
-| 🟢 Green | +0.65 to +1.0 | Strong positive — move together |
-| 🟡 Yellow | +0.30 to +0.65 | Moderate positive |
-| 🟣 Purple | -0.30 to +0.30 | Uncorrelated |
-| 🟠 Orange | -0.65 to -0.30 | Moderate negative |
-| 🔴 Red | -1.0 to -0.65 | Strong negative — move opposite |
-
-Click any cell to open the **Correlation Deep-Dive** for that pair.
+Click any cell to open a pair analysis panel.
 
 ---
 
-## Step 4 — Explore the Modules
+## Step 4 — Explore Modules
 
-Use the **tab bar** at the top to switch between modules:
-
-- **MATRIX** — main live heatmap dashboard
-- **CHARTS** — candlestick charts with multiple timeframes
-- **CORR** — pair correlation deep-dive with rolling history
-- **ENTROPY** — nonlinear dependency analysis
-- **LEAD-LAG** — who leads, who follows
+- **MATRIX** — live cross-asset heatmap
+- **CHARTS** — OHLCV charts from Pyth Benchmarks
+- **CORR** — rolling pair correlation
+- **LEAD-LAG** — lag structure with OOS check
+- **ENTROPY** — Gaussian entropy and adjusted NMI
 
 ---
 
-## Step 5 — Share Insights
+## Step 5 — Check Feed Health
 
-Each correlation pair has a **Share** button that generates a 1200×1200 image card with the correlation value, bar, and Pyth branding — ready to post on X/Twitter.
+Look at the header badge:
+
+- `FEED OK`
+- `FEED WARN`
+- `FEED DEGRADED`
+
+If the feed is not healthy, open the diagnostics popover before trusting short-term live analytics.
 
 ---
 
 ## Tips
 
-{% hint style="info" %}
-The correlation window is **200 ticks at ~3 seconds each** ≈ 10 minutes of live data. Patterns stabilize after ~60 ticks.
-{% endhint %}
-
-{% hint style="warning" %}
-Equity data (AAPL, SPY, QQQ, DIA, IWM) may show flat or stale prices outside US market hours (9:30 AM – 4:00 PM ET, Mon–Fri).
-{% endhint %}
+- The correlation window is **200 aligned ticks** at roughly 3 seconds each
+- Patterns usually stabilize after **~60 ticks**
+- Equity feeds may be flat or stale outside US market hours

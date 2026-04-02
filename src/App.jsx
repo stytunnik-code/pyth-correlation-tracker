@@ -7,6 +7,8 @@ import { ASSETS, SEED, CAT_COLORS } from "./constants";
 import { pearson, corrBg, corrFg, corrTipLabel, getHeatmapTooltipPosition, strengthInfo } from "./utils/math";
 import { fmt, fmtPct } from "./utils/format";
 import { fetchPyth, CHART_FETCH_BARS } from "./utils/pyth";
+import { pctReturns } from "./utils/entropy";
+import { summarizeLiveDataHealth } from "./utils/live-data";
 import PythLogo from "./components/PythLogo";
 import Spark from "./components/Spark";
 import LoadingCanvas from "./components/LoadingCanvas";
@@ -172,8 +174,9 @@ function CorrChart({symA,symB,histRef}){
   const ref=useRef();
   useEffect(()=>{
     const ha=histRef.current[symA]||[],hb=histRef.current[symB]||[];
-    const n=Math.min(ha.length,hb.length),pts=[];
-    for(let i=4;i<=n;i++){const v=pearson(ha.slice(0,i),hb.slice(0,i));if(v!==null)pts.push(v);}
+    const ra=pctReturns(ha),rb=pctReturns(hb);
+    const n=Math.min(ra.length,rb.length),pts=[];
+    for(let i=4;i<=n;i++){const v=pearson(ra.slice(0,i),rb.slice(0,i));if(v!==null)pts.push(v);}
     const c=ref.current;if(!c||pts.length<2)return;
     const ctx=c.getContext("2d"),W=c.offsetWidth||400,H=100;
     c.width=W;c.height=H;ctx.clearRect(0,0,W,H);
@@ -339,12 +342,14 @@ export default function App(){
   const [corrAlertPair,setCorrAlertPair]=useState("BTC-ETH");
   const [corrAlertThreshold,setCorrAlertThreshold]=useState(0.8);
   const [corrAlertHit,setCorrAlertHit]=useState(false);
+  const [feedDiagOpen,setFeedDiagOpen]=useState(false);
   const [selectedCoins,setSelectedCoins]=useState(()=>{
     try{const s=localStorage.getItem("sc");return s?new Set(JSON.parse(s)):new Set(DEFAULT_COINS);}catch{return new Set(DEFAULT_COINS);}
   });
   const [pickerOpen,setPickerOpen]=useState(false);
   const pickerRef=useRef(null);
   const histRef=useRef({});
+  const tickRef=useRef({});
   const corrTraceRef=useRef({});
 
   useEffect(()=>{setTimeout(()=>setMounted(true),80);},[]);
@@ -361,10 +366,27 @@ export default function App(){
     return()=>document.removeEventListener("mousedown",handler);
   },[pickerOpen]);
 
-  function push(sym,price){
+  function push(sym,price,ts=Math.floor(Date.now()/1000)){
     if(!histRef.current[sym])histRef.current[sym]=[];
     histRef.current[sym].push(price);
     if(histRef.current[sym].length>200)histRef.current[sym].shift();
+    if(!tickRef.current[sym])tickRef.current[sym]=[];
+    tickRef.current[sym].push({t:ts,p:price});
+    if(tickRef.current[sym].length>240)tickRef.current[sym].shift();
+  }
+
+  function alignedReturnCorr(symA, symB){
+    const ta=tickRef.current[symA]||[],tb=tickRef.current[symB]||[];
+    if(ta.length<4||tb.length<4)return null;
+    const bMap=new Map(tb.map(t=>[t.t,t.p]));
+    const aPrices=[],bPrices=[];
+    for(const tick of ta){
+      const bp=bMap.get(tick.t);
+      if(!Number.isFinite(tick.p)||!Number.isFinite(bp))continue;
+      aPrices.push(tick.p);bPrices.push(bp);
+    }
+    if(aPrices.length<4)return null;
+    return pearson(pctReturns(aPrices).slice(-200),pctReturns(bPrices).slice(-200));
   }
 
   const PYTH_SYM_PREFETCH = {
@@ -411,13 +433,14 @@ export default function App(){
       const items=data.parsed||[];
       if(!items.length)throw new Error("empty");
       const np={};
+      const sampleTs=Math.floor(Date.now()/1000);
       items.forEach(item=>{
         const cleanId=item.id?.replace(/^0x/,"");
         const asset=ASSETS.find(a=>a.id.replace(/^0x/,"")===cleanId);
         if(!asset)return;
         const po=item.price;if(!po)return;
         const p=parseFloat(po.price)*Math.pow(10,po.expo??-8);
-        if(isFinite(p)&&p>0){np[asset.symbol]=p;push(asset.symbol,p);}
+        if(isFinite(p)&&p>0){np[asset.symbol]=p;push(asset.symbol,p,sampleTs);}
       });
       if(Object.keys(np).length>0){
         setPrices(prev=>{ setPrevPrices(pp=>({...pp,...prev})); return np; });
@@ -440,13 +463,14 @@ export default function App(){
           return d.parsed||[];
         }));
         const np2={};
+        const sampleTs2=Math.floor(Date.now()/1000);
         results.flat().forEach(item=>{
           const cleanId=item.id?.replace(/^0x/,"");
           const asset=ASSETS.find(a=>a.id.replace(/^0x/,"")===cleanId);
           if(!asset)return;
           const po=item.price;if(!po)return;
           const p=parseFloat(po.price)*Math.pow(10,po.expo??-8);
-          if(isFinite(p)&&p>0){np2[asset.symbol]=p;push(asset.symbol,p);}
+          if(isFinite(p)&&p>0){np2[asset.symbol]=p;push(asset.symbol,p,sampleTs2);}
         });
         if(Object.keys(np2).length>0){
           setPrices(prev=>{ setPrevPrices(pp=>({...pp,...prev})); return np2; });
@@ -454,10 +478,11 @@ export default function App(){
           setStatus("live");setTickCount(t=>t+1);setLastUpdate(new Date());setErrorMsg(null);return;
         }
       }catch{}
+      const demoTs=Math.floor(Date.now()/1000);
       ASSETS.forEach(a=>{
         const h=histRef.current[a.symbol];
         const last=h?.length?h[h.length-1]:SEED[a.symbol]??100;
-        push(a.symbol,last+(Math.random()-.49)*last*.002);
+        push(a.symbol,last+(Math.random()-.49)*last*.002,demoTs);
       });
       setPrices(Object.fromEntries(ASSETS.map(a=>[a.symbol,histRef.current[a.symbol].slice(-1)[0]])));
       setHistory({...histRef.current});setStatus("demo");setTickCount(t=>t+1);setLastUpdate(new Date());
@@ -491,7 +516,7 @@ export default function App(){
     const nc={};
     ASSETS.forEach((a,i)=>ASSETS.forEach((b,j)=>{
       if(i===j){nc[`${a.symbol}-${b.symbol}`]=1;return;}
-      nc[`${a.symbol}-${b.symbol}`]=pearson(histRef.current[a.symbol]||[],histRef.current[b.symbol]||[]);
+      nc[`${a.symbol}-${b.symbol}`]=alignedReturnCorr(a.symbol,b.symbol);
     }));
     setCorr(nc);
 
@@ -564,6 +589,33 @@ export default function App(){
   const avgCorr=validCorrs.length?validCorrs.reduce((a,b)=>a+b,0)/validCorrs.length:0;
   const strongPos=validCorrs.filter(v=>v>0.7).length;
   const strongNeg=validCorrs.filter(v=>v<-0.7).length;
+  const feedHealth=useMemo(()=>{
+    const nowSec=Math.floor(Date.now()/1000);
+    const refSeries=tickRef.current.BTC||tickRef.current.ETH||[];
+    const summaries=ASSETS.map(a=>{
+      const tickSeries=tickRef.current[a.symbol]||[];
+      if(!tickSeries.length)return null;
+      return {
+        symbol:a.symbol,
+        ...summarizeLiveDataHealth({
+          tickSeries,
+          compareSeries: refSeries.length?refSeries:tickSeries,
+          livePrice: prices[a.symbol],
+          benchmarkClose: null,
+          nowSec,
+          staleAfterSec: 15,
+          maxSkewSec: 6,
+        })
+      };
+    }).filter(Boolean);
+    const issueCount=summaries.filter(s=>!s.ok).length;
+    const staleCount=summaries.filter(s=>s.issues.includes("stale_tick")).length;
+    const skewCount=summaries.filter(s=>s.issues.includes("timestamp_skew")).length;
+    const badOrderCount=summaries.filter(s=>s.issues.includes("non_monotonic_ticks")).length;
+    const worst=summaries.find(s=>!s.ok)||null;
+    const level=badOrderCount>0||staleCount>=3?"bad":issueCount>0?"warn":"good";
+    return { summaries, issueCount, staleCount, skewCount, badOrderCount, worst, level };
+  },[prices,tickCount]);
 
   const selCorr=selected?corr[`${selected.a}-${selected.b}`]??null:null;
   const selA=selected?ASSETS.find(a=>a.symbol===selected.a):null;
@@ -690,6 +742,53 @@ export default function App(){
               </div>
             )}
           </div>
+          <div style={{position:"relative",marginRight:6}}>
+            <button onClick={()=>setFeedDiagOpen(v=>!v)} style={{display:"flex",alignItems:"center",gap:6,padding:"4px 10px",borderRadius:6,cursor:"pointer",
+              background:feedHealth.level==="good"?"rgba(16,185,129,0.12)":feedHealth.level==="warn"?"rgba(245,158,11,0.12)":"rgba(239,68,68,0.12)",
+              border:`1px solid ${feedHealth.level==="good"?"rgba(16,185,129,0.28)":feedHealth.level==="warn"?"rgba(245,158,11,0.28)":"rgba(239,68,68,0.28)"}`}}>
+              <span style={{width:6,height:6,borderRadius:"50%",display:"inline-block",
+                background:feedHealth.level==="good"?"#10b981":feedHealth.level==="warn"?"#f59e0b":"#ef4444"}}/>
+              <span style={{fontSize:10,fontWeight:700,letterSpacing:".08em",
+                color:feedHealth.level==="good"?"#34d399":feedHealth.level==="warn"?"#fbbf24":"#f87171"}}>
+                FEED {feedHealth.level==="good"?"OK":feedHealth.level==="warn"?"WARN":"DEGRADED"}
+              </span>
+              {feedHealth.summaries.length>0&&(
+                <span style={{fontSize:9,color:"rgba(255,255,255,0.35)"}}>
+                  {feedHealth.issueCount===0?`${feedHealth.summaries.length} assets`:`${feedHealth.issueCount}/${feedHealth.summaries.length} flagged`}
+                </span>
+              )}
+            </button>
+            {feedDiagOpen&&(
+              <div style={{position:"absolute",top:"calc(100% + 8px)",right:0,zIndex:9999,minWidth:320,maxWidth:380,
+                background:"#0f0b1e",border:"1px solid rgba(124,58,237,0.35)",borderRadius:10,padding:"12px 14px",
+                boxShadow:"0 12px 48px rgba(0,0,0,0.85)"}}>
+                <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10}}>
+                  <div style={{fontSize:11,fontWeight:700,letterSpacing:".08em",color:"#e2d9f3"}}>FEED DIAGNOSTICS</div>
+                  <button onClick={()=>setFeedDiagOpen(false)} style={{background:"transparent",border:"none",color:"rgba(255,255,255,0.35)",cursor:"pointer",fontSize:12}}>×</button>
+                </div>
+                <div style={{fontSize:9,color:"rgba(255,255,255,0.35)",marginBottom:10}}>
+                  stale: {feedHealth.staleCount} · skew: {feedHealth.skewCount} · non-monotonic: {feedHealth.badOrderCount}
+                </div>
+                <div style={{display:"flex",flexDirection:"column",gap:6,maxHeight:260,overflowY:"auto"}}>
+                  {feedHealth.summaries.filter(s=>!s.ok).length===0?(
+                    <div style={{fontSize:10,color:"#34d399"}}>No current feed issues detected.</div>
+                  ):feedHealth.summaries.filter(s=>!s.ok).map(s=>(
+                    <div key={s.symbol} style={{padding:"8px 10px",borderRadius:8,background:"rgba(255,255,255,0.03)",border:"1px solid rgba(255,255,255,0.06)"}}>
+                      <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:4}}>
+                        <span style={{fontSize:11,fontWeight:700,color:"#fff"}}>{s.symbol}</span>
+                        <span style={{fontSize:8,color:s.stale?"#f87171":"#fbbf24"}}>{s.issues.join(", ")}</span>
+                      </div>
+                      <div style={{display:"flex",gap:10,fontSize:9,color:"rgba(255,255,255,0.45)"}}>
+                        <span>age: {s.ageSec ?? "–"}s</span>
+                        <span>skew: {s.skewSec ?? "–"}s</span>
+                        <span>order: {s.monotonic ? "ok" : "bad"}</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
           <div className={`pill ${status}`}><span className="dot"/>{status==="live"?"LIVE":"DEMO"}</div>
           <div className="tick-badge">#{tickCount}</div>
         </div>
@@ -748,6 +847,22 @@ export default function App(){
             <div className="err-banner" role="alert">
               <span className="err-banner-icon">⚠</span>
               <span>{errorMsg}</span>
+            </div>
+          )}
+          {status==="live"&&feedHealth.level!=="good"&&(
+            <div className="err-banner" role="status" style={{
+              background:feedHealth.level==="warn"?"rgba(245,158,11,0.08)":"rgba(239,68,68,0.08)",
+              borderColor:feedHealth.level==="warn"?"rgba(245,158,11,0.22)":"rgba(239,68,68,0.22)",
+              color:feedHealth.level==="warn"?"#fbbf24":"#f87171"
+            }}>
+              <span className="err-banner-icon">{feedHealth.level==="warn"?"вљ ":"!"}</span>
+              <span>
+                Feed health {feedHealth.level==="warn"?"warning":"degraded"}:
+                {feedHealth.staleCount>0?` stale ${feedHealth.staleCount}`:""}
+                {feedHealth.skewCount>0?` · skew ${feedHealth.skewCount}`:""}
+                {feedHealth.badOrderCount>0?` · non-monotonic ${feedHealth.badOrderCount}`:""}
+                {feedHealth.worst?` · worst ${feedHealth.worst.symbol}`:""}
+              </span>
             </div>
           )}
 
@@ -1055,9 +1170,9 @@ export default function App(){
       {activeTab !== "matrix" && (
         <div style={{position:"fixed",inset:0,background:"#07050f",zIndex:200,display:"flex",flexDirection:"column",animation:"fadein .22s ease"}}>
           {activeTab==="charts" && <ChartView assets={ASSETS} prices={prices} chartAsset={chartAsset} setChartAsset={setChartAsset} chartTf={chartTf} setChartTf={setChartTf} chartType={chartType} setChartType={setChartType} chartHist={chartHist} setChartHist={setChartHist} setActiveTab={setActiveTab} status={status} histRef={histRef}/>}
-          {activeTab==="corr" && <CorrView histRef={histRef} prices={prices} assets={ASSETS} setActiveTab={setActiveTab} status={status} initialPair={initialCorrPair}/>}
-          {activeTab==="leadlag" && <LeadLagView histRef={histRef} prices={prices} assets={ASSETS} setActiveTab={setActiveTab} status={status}/>}
-          {activeTab==="entropy" && <EntropyView histRef={histRef} prices={prices} assets={ASSETS} setActiveTab={setActiveTab} status={status} liveRun={entropyLiveRun} setLiveRun={setEntropyLiveRun} corrAlertEnabled={corrAlertEnabled} setCorrAlertEnabled={setCorrAlertEnabled} corrAlertPair={corrAlertPair} setCorrAlertPair={setCorrAlertPair} corrAlertThreshold={corrAlertThreshold} setCorrAlertThreshold={setCorrAlertThreshold} corrAlertHit={corrAlertHit} corrAlertOptions={corrAlertOptions}/>}
+          {activeTab==="corr" && <CorrView histRef={histRef} tickRef={tickRef} prices={prices} assets={ASSETS} setActiveTab={setActiveTab} status={status} initialPair={initialCorrPair}/>}
+          {activeTab==="leadlag" && <LeadLagView histRef={histRef} tickRef={tickRef} prices={prices} assets={ASSETS} setActiveTab={setActiveTab} status={status}/>}
+          {activeTab==="entropy" && <EntropyView histRef={histRef} tickRef={tickRef} prices={prices} assets={ASSETS} setActiveTab={setActiveTab} status={status} liveRun={entropyLiveRun} setLiveRun={setEntropyLiveRun} corrAlertEnabled={corrAlertEnabled} setCorrAlertEnabled={setCorrAlertEnabled} corrAlertPair={corrAlertPair} setCorrAlertPair={setCorrAlertPair} corrAlertThreshold={corrAlertThreshold} setCorrAlertThreshold={setCorrAlertThreshold} corrAlertHit={corrAlertHit} corrAlertOptions={corrAlertOptions}/>}
           {activeTab==="docs" && <DocsView setActiveTab={setActiveTab}/>}
         </div>
       )}
@@ -1091,7 +1206,7 @@ export default function App(){
           <PythLogo size={18}/>
           <span>Powered by <a href="https://pyth.network" target="_blank" rel="noreferrer" className="fl">Pyth Network</a></span>
           <span className="foot-sep">·</span>
-          <span style={{color:"rgba(255,255,255,0.35)"}}>© 2025 rustrell. All rights reserved.</span>
+          <span style={{color:"rgba(255,255,255,0.35)"}}>© 2026 rustrell. All rights reserved.</span>
           <span className="foot-sep">·</span>
           <a href="mailto:stytunnik@gmail.com" style={{color:"rgba(255,255,255,0.3)",textDecoration:"none",fontSize:11}} onMouseEnter={e=>e.target.style.color="#a78bfa"} onMouseLeave={e=>e.target.style.color="rgba(255,255,255,0.3)"}>stytunnik@gmail.com</a>
           <span className="foot-sep">·</span>

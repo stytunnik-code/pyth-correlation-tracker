@@ -3,7 +3,7 @@ import PythLogo from "../components/PythLogo.jsx";
 import { pearson } from "../utils/math.js";
 import { fetchPyth } from "../utils/pyth.js";
 import {
-  WIN_CFG, pctReturns, rollingPearson, fmtAxisTime,
+  WIN_CFG, pctReturns, rollingPearson, fmtAxisTime, mergeHistoricalBarsWithLiveTicks,
 } from "../utils/entropy.js";
 
 const CORR_PAIRS = [
@@ -197,7 +197,7 @@ function drawRolling(canvas, allPts, times, cutoff, windowKey) {
   }
 }
 
-export default function CorrView({histRef, prices, assets, setActiveTab, status, initialPair}) {
+export default function CorrView({histRef, tickRef, prices, assets, setActiveTab, status, initialPair}) {
   const scatterRef = useRef();
   const rollingRef = useRef();
   const [symA, setSymA] = useState(()=>assets[0]?.symbol||"BTC");
@@ -268,10 +268,9 @@ export default function CorrView({histRef, prices, assets, setActiveTab, status,
   const getBarData = (sym) => {
     const key=`${corrWindow}_${sym}`;
     const hist=bars[key]||[];
-    const liveC=histRef.current[sym]||[];
-    const now=Math.floor(Date.now()/1000);
-    const liveBars=liveC.slice(-60).map((c,i,a)=>({t:now-(a.length-1-i)*3,c}));
-    const merged=[...hist,...liveBars];
+    const merged=corrWindow==="1D"
+      ? mergeHistoricalBarsWithLiveTicks(hist, tickRef?.current?.[sym] || [], 60, 500)
+      : hist;
     return { closes:merged.map(b=>b.c), times:merged.map(b=>b.t) };
   };
 

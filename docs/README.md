@@ -10,40 +10,41 @@
 
 **Pyth Correlation Tracker** is a real-time financial analytics dashboard that streams live price data from the [Pyth Network](https://pyth.network) oracle and computes statistical relationships between 28 major assets across crypto, forex, metals, equities, and indices.
 
-Unlike traditional charting tools that show prices in isolation, this platform reveals **hidden connections between markets** — how BTC moves with gold, whether ETH leads or lags SOL, and how macro assets like EUR/USD relate to crypto during different market regimes.
+Unlike traditional charting tools that show prices in isolation, this platform reveals hidden connections between markets: how BTC moves with gold, whether ETH leads or lags SOL, and how macro assets like EUR/USD relate to crypto during different market regimes.
 
 ***
 
 ## Key Capabilities
 
-| Module             | Description                                               |
-| ------------------ | --------------------------------------------------------- |
-| 📊 **Matrix**      | Live Pearson correlation heatmap across all asset pairs   |
-| 📈 **Charts**      | OHLCV candlestick + indicator charts via Pyth Benchmarks  |
-| 🔗 **Correlation** | Deep-dive pair analysis with rolling history              |
-| 🧠 **Entropy Lab** | Shannon entropy + NMI nonlinear dependency detection      |
-| ⏱ **Lead-Lag**     | Cross-correlation shift analysis — who leads, who follows |
+| Module | Description |
+| --- | --- |
+| Matrix | Live Pearson correlation heatmap across all asset pairs |
+| Charts | OHLCV candlestick and line charts via Pyth Benchmarks |
+| Correlation | Deep-dive pair analysis with rolling history |
+| Entropy Lab | Gaussian entropy and adjusted NMI nonlinear dependency detection |
+| Lead-Lag | Cross-correlation shift analysis with OOS confirmation |
 
 ***
 
 ## Live Stats
 
-* **28 assets** tracked simultaneously
-* **3-second** price update interval
-* **400ms** Pyth oracle latency
-* **200-tick** rolling correlation window
-* **Pyth Hermes** WebSocket for live feeds
-* **Pyth Benchmarks** for historical OHLCV
+- **28 assets** tracked simultaneously
+- **3-second** price update interval
+- **200 aligned ticks** rolling correlation window
+- **Pyth Hermes REST polling** for live feeds
+- **Pyth Benchmarks** for historical OHLCV
+- **Timestamp-aligned live tick store** for downstream analytics
+- **Feed diagnostics** for stale ticks, skew, and ordering issues
 
 ***
 
 ## Quick Links
 
-* 🌐 [Live App](https://pythcorrelation.com)
-* 🐦 [Twitter / X](https://x.com/xzolmoney)
-* 📬 [Contact](mailto:stytunnik@gmail.com)
-* 🔮 [Pyth Network](https://pyth.network)
+- [Live App](https://pythcorrelation.com)
+- [Twitter / X](https://x.com/xzolmoney)
+- [Contact](mailto:stytunnik@gmail.com)
+- [Pyth Network](https://pyth.network)
 
 ***
 
-_©_ Hackathon _2026 rustrell. All rights reserved._
+_© Hackathon 2026 rustrell. All rights reserved._

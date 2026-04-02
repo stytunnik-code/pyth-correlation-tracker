@@ -2,72 +2,60 @@
 
 ## Overview
 
-Pyth Correlation Tracker is an open-access, real-time financial analytics platform built on top of the [Pyth Network](https://pyth.network) decentralized oracle infrastructure.
+Pyth Correlation Tracker is an open-access, real-time financial analytics platform built on top of the [Pyth Network](https://pyth.network) oracle stack.
 
-The core insight is simple: **prices don't move in isolation**. When BTC dumps, ETH usually follows. When the dollar strengthens, gold often falls. These relationships — correlations — are the hidden architecture of financial markets.
+The platform is designed to show not just price, but **relationships**:
 
-This platform makes those relationships visible, live, as they happen.
-
----
-
-## Why Correlations Matter
-
-Traditional portfolio tools show you what happened. This platform shows you **how assets relate to each other right now**, which enables:
-
-- **Risk management** — avoid holding two assets that move identically (concentrated risk)
-- **Diversification** — find assets with low or negative correlations
-- **Regime detection** — correlations shift during crises, identifying market regimes
-- **Alpha discovery** — lead-lag relationships reveal predictive signals
+- who moves with whom;
+- who leads and who follows;
+- which return streams are more chaotic;
+- where nonlinear structure exists beyond Pearson correlation.
 
 ---
 
 ## Architecture Overview
 
 ```
-Pyth Hermes WebSocket
-        │
-        ▼
-   Price Feed (28 assets, ~3s)
-        │
-        ▼
-  Rolling History Buffer (200 ticks)
-        │
-   ┌────┴────────────────┐
-   │                     │
-   ▼                     ▼
-Pearson Matrix      Entropy (NMI)
-(linear corr)    (nonlinear corr)
-   │                     │
-   └─────────┬───────────┘
-             │
-             ▼
-      Lead-Lag Analysis
-      (cross-correlation)
-             │
-             ▼
-        Live UI (React)
+Pyth Hermes REST polling
+        |
+        v
+Timestamped live tick store
+        |
+        v
+Aligned return pipeline
+   |          |            |
+   v          v            v
+Matrix    Correlation   Entropy
+                           |
+                           v
+                      Lead-Lag
+                           |
+                           v
+                      React UI
 ```
 
----
-
-## Asset Classes Covered
-
-- **Crypto** — BTC, ETH, SOL, DOGE, AVAX, ADA, LINK, SUI, NEAR, HYPE, and more
-- **FX** — EUR/USD, GBP/USD
-- **Metals** — XAU/USD (Gold)
-- **Energy** — WTI Crude Oil
-- **Equities** — AAPL
-- **Indices** — SPY, QQQ, DIA, IWM
+Historical OHLCV bars come from **Pyth Benchmarks** and are merged with timestamped live ticks where needed.
 
 ---
 
 ## Technology Stack
 
 | Layer | Technology |
-|-------|-----------|
+| --- | --- |
 | Frontend | React 18, Canvas API |
-| Oracle (live) | Pyth Hermes WebSocket |
+| Oracle (live) | Pyth Hermes REST polling |
 | Oracle (historical) | Pyth Benchmarks REST |
-| Math | Custom Pearson, Shannon Entropy, NMI |
+| Math | Custom Pearson, Gaussian Entropy, adjusted NMI |
 | Hosting | Vercel |
-| Data | 100% on-chain oracle data |
+
+---
+
+## Quality Layers
+
+The current version includes:
+
+- quant validation tests;
+- synthetic edge-case tests;
+- API contract tests;
+- live data sanity tests;
+- runtime feed diagnostics in the UI.

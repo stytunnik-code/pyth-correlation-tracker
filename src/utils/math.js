@@ -1,10 +1,15 @@
 export function pearson(a,b){
   const n=Math.min(a.length,b.length);if(n<4)return null;
-  const ax=a.slice(-n),bx=b.slice(-n);
-  const ma=ax.reduce((s,v)=>s+v,0)/n,mb=bx.reduce((s,v)=>s+v,0)/n;
+  const pairs=[];
+  for(let i=0;i<n;i++){
+    const av=a[a.length-n+i],bv=b[b.length-n+i];
+    if(Number.isFinite(av)&&Number.isFinite(bv))pairs.push([av,bv]);
+  }
+  if(pairs.length<4)return null;
+  const ma=pairs.reduce((s,[v])=>s+v,0)/pairs.length,mb=pairs.reduce((s,[,v])=>s+v,0)/pairs.length;
   let num=0,da=0,db=0;
-  for(let i=0;i<n;i++){const ai=ax[i]-ma,bi=bx[i]-mb;num+=ai*bi;da+=ai*ai;db+=bi*bi;}
-  const d=Math.sqrt(da*db);return d===0?0:Math.max(-1,Math.min(1,num/d));
+  for(let i=0;i<pairs.length;i++){const ai=pairs[i][0]-ma,bi=pairs[i][1]-mb;num+=ai*bi;da+=ai*ai;db+=bi*bi;}
+  const d=Math.sqrt(da*db);return d===0?null:Math.max(-1,Math.min(1,num/d));
 }
 
 export function corrBg(v){

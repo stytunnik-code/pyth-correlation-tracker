@@ -4,7 +4,7 @@ import { pearson } from "../utils/math.js";
 import { fetchPyth } from "../utils/pyth.js";
 import {
   WIN_CFG, MAX_LAG, pctReturns, rollingPearson,
-  crossCorrFull, findLeadLag, fmtLag,
+  crossCorrFull, findLeadLagValidated, fmtLag, mergeHistoricalBarsWithLiveTicks,
 } from "../utils/entropy.js";
 
 function drawXCorr(canvas, pts, symA, symB, windowKey, hoverIdx=null) {
@@ -287,7 +287,7 @@ function drawPriceLines(canvas, cA, cB, symA, symB, colA, colB, result, windowKe
   }
 }
 
-export default function LeadLagView({histRef, prices, assets, setActiveTab, status}) {
+export default function LeadLagView({histRef, tickRef, prices, assets, setActiveTab, status}) {
   const xcRef = useRef();
   const [llWindow, setLlWindow] = useState("7D");
   const [llBars, setLlBars]     = useState({});
@@ -333,15 +333,14 @@ export default function LeadLagView({histRef, prices, assets, setActiveTab, stat
   const getCloses = sym => {
     const hist=llBars[`${llWindow}_${sym}`]||[];
     if(llWindow!=="1D") return hist.map(b=>b.c).slice(-500);
-    const live=histRef.current[sym]||[];
-    return [...hist.map(b=>b.c),...live].slice(-500);
+    return mergeHistoricalBarsWithLiveTicks(hist, tickRef?.current?.[sym] || [], 60, 500).map(b=>b.c);
   };
 
   const cA=getCloses(symA), cB=getCloses(symB);
   const ra=pctReturns(cA), rb=pctReturns(cB);
   const maxLag=MAX_LAG[llWindow]||24;
   const result=symA!==symB&&ra.length>maxLag*2&&rb.length>maxLag*2
-    ? findLeadLag(symA,symB,ra,rb,maxLag) : null;
+    ? findLeadLagValidated(symA,symB,ra,rb,maxLag) : null;
 
   const aAsset=assets.find(x=>x.symbol===symA)||{color:"#a78bfa",symbol:symA};
   const bAsset=assets.find(x=>x.symbol===symB)||{color:"#7c3aed",symbol:symB};
@@ -390,12 +389,12 @@ export default function LeadLagView({histRef, prices, assets, setActiveTab, stat
         const rra=pctReturns(getCloses(a)), rrb=pctReturns(getCloses(b));
         const ml=Math.min(maxLag, Math.floor(Math.min(rra.length,rrb.length)/3));
         if(ml>=1&&rra.length>ml*2&&rrb.length>ml*2){
-          const r=findLeadLag(a,b,rra,rrb,ml);
+          const r=findLeadLagValidated(a,b,rra,rrb,ml);
           if(r) rows.push({a,b,r});
         }
       }
     }
-    return rows.sort((x,y)=>Math.abs(y.r.corrAtLag)-Math.abs(x.r.corrAtLag));
+    return rows.sort((x,y)=>Math.abs((y.r.validatedCorr ?? y.r.corrAtLag) || 0)-Math.abs((x.r.validatedCorr ?? x.r.corrAtLag) || 0));
   },[assets,llBars,llWindow,tick]); // eslint-disable-line
 
   const corrCol=v=>v==null?"rgba(255,255,255,0.3)":Math.abs(v)>=0.7?"#10b981":Math.abs(v)>=0.4?"#f59e0b":"rgba(255,255,255,0.35)";
@@ -514,7 +513,12 @@ export default function LeadLagView({histRef, prices, assets, setActiveTab, stat
               <div style={{padding:"10px 16px",borderRight:"1px solid rgba(124,58,237,0.12)",textAlign:"center"}}>
                 <div style={{fontSize:8,color:"rgba(255,255,255,0.25)",letterSpacing:".08em",marginBottom:3}}>PEAK CORR.</div>
                 <div style={{fontSize:16,fontWeight:700,color:corrCol(result.corrAtLag)}}>{result.corrAtLag>=0?"+":""}{result.corrAtLag.toFixed(3)}</div>
-                <div style={{fontSize:7,color:"rgba(255,255,255,0.15)",marginTop:2}}>with lag</div>
+                <div style={{fontSize:7,color:"rgba(255,255,255,0.15)",marginTop:2}}>in-sample</div>
+              </div>
+              <div style={{padding:"10px 16px",borderRight:"1px solid rgba(124,58,237,0.12)",textAlign:"center"}}>
+                <div style={{fontSize:8,color:"rgba(255,255,255,0.25)",letterSpacing:".08em",marginBottom:3}}>OOS CHECK</div>
+                <div style={{fontSize:16,fontWeight:700,color:corrCol(result.testCorrAtLag)}}>{result.testCorrAtLag!=null?(result.testCorrAtLag>=0?"+":"")+result.testCorrAtLag.toFixed(3):"вЂ“"}</div>
+                <div style={{fontSize:7,color:"rgba(255,255,255,0.15)",marginTop:2}}>{result.validationStatus==="confirmed"?"confirmed":result.validationStatus==="rejected"?"rejected":"short sample"}</div>
               </div>
               <div style={{padding:"10px 16px",borderRight:"1px solid rgba(124,58,237,0.12)",textAlign:"center"}}>
                 <div style={{fontSize:8,color:"rgba(255,255,255,0.25)",letterSpacing:".08em",marginBottom:3}}>ZERO-LAG CORR.</div>
@@ -622,7 +626,8 @@ export default function LeadLagView({histRef, prices, assets, setActiveTab, stat
             const lA=assets.find(x=>x.symbol===r.leader)||{color:"#a78bfa"};
             const fA=assets.find(x=>x.symbol===r.follower)||{color:"#6b5c8a"};
             const isActive=(symA===a&&symB===b)||(symA===b&&symB===a);
-            const barPct=Math.abs(r.corrAtLag)*100;
+            const rankCorr=(r.validatedCorr ?? r.corrAtLag) || 0;
+            const barPct=Math.abs(rankCorr)*100;
             return(
               <div key={`${a}-${b}`} onClick={()=>{setSymA(a);setSymB(b);}}
                 style={{padding:"9px 14px",borderBottom:"1px solid rgba(255,255,255,0.04)",cursor:"pointer",
@@ -637,10 +642,11 @@ export default function LeadLagView({histRef, prices, assets, setActiveTab, stat
                   </span>
                 </div>
                 <div style={{height:4,background:"rgba(255,255,255,0.05)",borderRadius:2,overflow:"hidden",marginBottom:4}}>
-                  <div style={{height:"100%",width:`${barPct}%`,background:r.corrAtLag>=0?"#10b981":"#ef4444",borderRadius:2}}/>
+                  <div style={{height:"100%",width:`${barPct}%`,background:rankCorr>=0?"#10b981":"#ef4444",borderRadius:2}}/>
                 </div>
                 <div style={{display:"flex",gap:10}}>
-                  <span style={{fontSize:8,color:corrCol(r.corrAtLag)}} title="Correlation at the optimal lag">peak r: {r.corrAtLag>=0?"+":""}{r.corrAtLag.toFixed(3)}</span>
+                  <span style={{fontSize:8,color:corrCol(r.corrAtLag)}} title="Correlation at the optimal lag">train: {r.corrAtLag>=0?"+":""}{r.corrAtLag.toFixed(3)}</span>
+                  <span style={{fontSize:8,color:corrCol(r.testCorrAtLag)}} title="Out-of-sample correlation at the trained lag">oos: {r.testCorrAtLag!=null?(r.testCorrAtLag>=0?"+":"")+r.testCorrAtLag.toFixed(3):"вЂ“"}</span>
                   {r.corrAt0!=null&&<span style={{fontSize:8,color:"rgba(255,255,255,0.2)"}} title="Correlation with no time shift">at 0-lag: {r.corrAt0>=0?"+":""}{r.corrAt0.toFixed(2)}</span>}
                 </div>
               </div>

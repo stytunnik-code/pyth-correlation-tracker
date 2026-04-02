@@ -27,10 +27,10 @@ Full OHLCV candlestick and line charts for any asset. Drag to pan, scroll to zoo
 Deep-dive rolling Pearson correlation between any two assets. Free pair selection via dropdowns + quick-select chips for preset pairs. Windows: `1D · 7D · 30D · 90D`. Animated scrubber to replay the correlation history. Scatter plot of returns + regression line.
 
 ### Lead-Lag
-Detects which asset moves first in a pair. Cross-correlation analysis scanned across all possible time lags. Identifies the leader, follower, lag duration, and strength at lag. Rankings panel lists all pairs by lead-lag strength. Windows: `1D (up to 60 min) · 7D (24h) · 30D / 90D (7 days)`.
+Detects which asset moves first in a pair. Cross-correlation analysis is scanned across all possible time lags, then the discovered lag is checked on an out-of-sample segment before being treated as a stronger signal. The panel identifies the leader, follower, lag duration, in-sample strength, and OOS confirmation. Windows: `1D (up to 60 min) · 7D (24h) · 30D / 90D (7 days)`.
 
 ### Entropy
-Information-theoretic analysis of each asset's return distribution. Gaussian Differential Entropy `H = ½·ln(2πeσ²)` with 60-iteration bootstrap confidence intervals, seeded from live Pyth prices. Normalized Mutual Information (NMI) heatmap reveals non-linear dependencies that Pearson misses. Correlation Stability Alert: triggers when a pair's correlation is tight (range ≤ 0.04) and strong (|r| ≥ threshold) over the last 6 samples.
+Information-theoretic analysis of each asset's return distribution. Gaussian Differential Entropy `H = ½·ln(2πeσ²)` is used for asset ranking, while adjusted NMI is used for nonlinear dependency detection after subtracting a shuffled-noise baseline. Correlation Stability Alert triggers when a pair's correlation is tight (range ≤ 0.04) and strong (|r| ≥ threshold) over the last 6 samples.
 
 ---
 
@@ -78,7 +78,7 @@ Customizable via the coin picker — saved to `localStorage`.
 ```
 GET https://hermes.pyth.network/v2/updates/price/latest?ids[]=<feed_id>&parsed=true
 ```
-Polled every 3 seconds. Prices parsed from `price × 10^expo`. Batched at 10 IDs per request.
+Polled every 3 seconds. Prices parsed from `price × 10^expo`. Batched at 10 IDs per request. Live ticks are stored with timestamps and aligned before downstream analytics.
 
 **Pyth Benchmarks — historical OHLCV**
 ```
@@ -98,8 +98,8 @@ If Hermes is unavailable the app falls back to demo mode with simulated price mo
 r(X,Y) = Σ[(xi - x̄)(yi - ȳ)] / √[Σ(xi-x̄)² · Σ(yi-ȶ)²]
 
 Range:  −1.0 (perfect inverse) → 0 (no relation) → +1.0 (perfect positive)
-Input:  percent returns, not raw prices
-Window: rolling 200 ticks in Matrix (~10 min at 3s interval)
+Input:  aligned percent returns, not raw prices
+Window: rolling 200 aligned ticks in Matrix (~10 min at 3s interval)
         configurable 1D / 7D / 30D / 90D in Correlation tab
 ```
 
@@ -114,22 +114,21 @@ Used for all correlation and entropy calculations to remove non-stationarity.
 H(X) = ½ · ln(2πe · σ²)   [nats]
 ```
 Measures predictability of return distribution. USDC ≈ −9 nats (flat), BTC ≈ −1 nat (volatile).
-95% confidence intervals from 60-iteration bootstrap, per-asset `mulberry32` PRNG seeded from live Pyth prices.
+Bootstrap confidence intervals are seeded deterministically from live Pyth prices.
 
-**Normalized Mutual Information (Entropy tab)**
+**Adjusted Normalized Mutual Information (Entropy tab)**
 ```
 MI(X,Y)  = H(X) + H(Y) − H(X,Y)
 NMI(X,Y) = MI(X,Y) / √[H(X) · H(Y)]   ∈ [0, 1]
 ```
-Joint entropy computed via 8-bin quantile binning of return series.
-Hidden connections: |Pearson r| < 0.35 but NMI > 0.30 → non-linear dependency.
+Joint entropy is computed via 8-bin quantile binning of return series. The UI uses adjusted NMI after subtracting shuffled-baseline dependence. Hidden connections are weak-Pearson pairs whose adjusted NMI still remains meaningfully above baseline.
 
 **Cross-Correlation / Lead-Lag**
 ```
 ρ(k) = Pearson(X[0:n−k], Y[k:n])     k > 0  →  Y lags X
 ρ(k) = Pearson(X[|k|:n], Y[0:n−|k|]) k < 0  →  X lags Y
 ```
-Scans lags from `−MAX_LAG` to `+MAX_LAG`. Peak gives leader, follower, and lag duration.
+Scans lags from `−MAX_LAG` to `+MAX_LAG`. The best lag is found on a train segment and then checked on an out-of-sample segment before it is ranked as a stronger lead-lag signal.
 
 ---
 
@@ -140,9 +139,9 @@ Pyth Hermes REST (every 3s)
     ↓
 /api/pyth.js  →  price map  →  React state
     ↓
-Rolling 200-tick history buffer (per asset, in-memory)
+Timestamped live tick store + rolling history buffer (per asset, in-memory)
     ↓
-Pearson r matrix (N×N, recalculated on every tick)
+Aligned-return Pearson r matrix (N×N, recalculated on every tick)
     ↓
 Matrix heatmap · Correlation charts · Entropy engine · Lead-lag detector
 
@@ -202,6 +201,12 @@ TELEGRAM_CHAT_ID=your_chat_id
 | **CSS-in-JS** | Inline styles + `<style>` tag — zero CSS dependencies |
 
 All statistical algorithms (Pearson, entropy, NMI, lead-lag, bootstrap) are implemented from scratch in vanilla JS.
+
+The repo also includes local validation suites for:
+- quantitative core logic;
+- synthetic edge cases;
+- API contracts;
+- live data sanity checks.
 
 ---
 

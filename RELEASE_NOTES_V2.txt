@@ -1,0 +1,249 @@
+PYTH CORRELATION TRACKER
+RELEASE NOTES V2
+
+==================================================
+1. ОБЩИЙ СТАТУС
+==================================================
+
+Текущая версия проекта переведена из состояния "визуально рабочий, но местами статистически грязный прототип" в состояние "рабочий аналитический инструмент с базовой проверкой качества данных и тестовым контуром".
+
+Основной фокус v2:
+- очистка quantitative logic;
+- исправление live merge;
+- устранение ложных корреляций;
+- приведение entropy и lead-lag к более честной логике;
+- добавление тестов;
+- добавление feed diagnostics.
+
+
+==================================================
+2. ЧТО ИСПРАВЛЕНО В V2
+==================================================
+
+2.1. Matrix
+
+- корреляция переведена с raw price levels на aligned returns;
+- live series теперь выравниваются по timestamp;
+- снижено количество ложных спурионных корреляций.
+
+
+2.2. Live data pipeline
+
+- добавлен timestamped live tick store;
+- live ticks больше не склеиваются по индексу;
+- history + live merge идет по реальным bucket timestamps;
+- убраны fake timestamps в аналитических view.
+
+
+2.3. Chart fixes
+
+- улучшен рендер последней свечи;
+- исправлены flat / doji scenarios;
+- снижены ложные гэпы на HYPE;
+- live marker показывается осторожнее;
+- synthetic live candle logic поджата.
+
+
+2.4. Correlation view
+
+- rolling correlation теперь строится на cleaner merged flow;
+- scatter / rolling view работают на returns;
+- убрана грязная подрисовка live tail.
+
+
+2.5. Lead-Lag
+
+- раньше лучший лаг выбирался и оценивался на одном и том же окне;
+- теперь лаг сначала ищется на train segment;
+- затем проверяется на out-of-sample segment;
+- ranking использует validated score, а не только peak in-sample correlation.
+
+
+2.6. Entropy / NMI
+
+- ranking теперь трактуется как Gaussian entropy of returns;
+- убрана путаница с Shannon entropy в product logic;
+- добавлен permutation-adjusted NMI;
+- hidden connections стали менее шумными.
+
+
+2.7. Math hardening
+
+- `pearson()` фильтрует non-finite пары;
+- degenerate series больше не дают fake zero correlation;
+- `pctReturns()` защищён от деления на 0 и bad values;
+- finite filtering добавлен в entropy / MI pipeline.
+
+
+2.8. API hardening
+
+- `/api/pyth` переведен на partial-success модель через `Promise.allSettled`;
+- один упавший batch больше не валит весь response;
+- добавлены API contract tests.
+
+
+2.9. Feed diagnostics
+
+- добавлен live-data sanity layer;
+- проверяются stale ticks;
+- проверяется timestamp skew;
+- проверяется monotonic order;
+- в UI добавлен badge `FEED OK / WARN / DEGRADED`;
+- по клику открывается diagnostics popover с проблемными symbols.
+
+
+==================================================
+3. ЧТО ДОБАВЛЕНО В V2
+==================================================
+
+Новые/ключевые файлы и слои:
+
+- `PROJECT_GUIDE_RU.txt`
+  Полное русскоязычное описание проекта, изменений и использования.
+
+- `RELEASE_NOTES_V2.txt`
+  Этот файл с итоговой фиксацией состояния v2.
+
+- `src/utils/live-data.js`
+  Утилиты для feed health checks.
+
+- `tests/quant-validation.test.js`
+  Quant validation suite.
+
+- `tests/synthetic-edge-cases.test.js`
+  Synthetic edge cases suite.
+
+- `tests/api-contract.test.js`
+  API contract suite.
+
+- `tests/live-data-sanity.test.js`
+  Live feed sanity suite.
+
+
+==================================================
+4. ТЕСТОВЫЙ КОНТУР V2
+==================================================
+
+В проекте добавлены следующие test scripts:
+
+- `npm run test:quant`
+- `npm run test:synthetic`
+- `npm run test:api`
+- `npm run test:live`
+- `npm run test:all`
+
+Что покрыто:
+
+4.1. Quant
+
+- Pearson;
+- Gaussian entropy;
+- MI / adjusted MI;
+- lead-lag;
+- validated lead-lag;
+- returns logic.
+
+
+4.2. Synthetic edge cases
+
+- empty input;
+- single-point;
+- non-finite values;
+- constant series;
+- different lengths;
+- merge bucket semantics.
+
+
+4.3. API contract
+
+- `/api/pyth`;
+- `/api/benchmarks`;
+- `/api/klines`;
+- partial failure behavior;
+- payload normalization.
+
+
+4.4. Live sanity
+
+- stale tick detection;
+- timestamp skew;
+- monotonic order;
+- health summary logic.
+
+
+==================================================
+5. ДОКУМЕНТАЦИЯ V2
+==================================================
+
+Обновлены ключевые docs-файлы:
+
+- `README.md`
+- `docs/README.md`
+- `docs/docs/overview.md`
+- `docs/docs/quickstart.md`
+- `docs/docs/features/entropy.md`
+- `docs/docs/features/leadlag.md`
+- `docs/docs/methodology/pearson.md`
+- `docs/methodology/entropy-and-nmi.md`
+- `docs/methodology/lead-lag.md`
+- `docs/docs/methodology/entropy-and-nmi.md`
+- `docs/docs/methodology/lead-lag.md`
+
+Что синхронизировано:
+
+- aligned returns вместо raw price levels;
+- Gaussian entropy вместо старого описания Shannon ranking;
+- adjusted NMI вместо сырого NMI как продукта;
+- lead-lag с OOS validation;
+- Hermes как live polling source;
+- feed diagnostics как runtime layer.
+
+
+==================================================
+6. КАКОЕ ТЕКУЩЕЕ СОСТОЯНИЕ ПРОЕКТА
+==================================================
+
+Сейчас проект уже имеет:
+
+- рабочий UI;
+- более чистую quantitative core logic;
+- cleaner live data pipeline;
+- runtime feed health monitoring;
+- базовый regression harness;
+- обновленную документацию;
+- отдельный русскоязычный guide.
+
+То есть v2 это уже не просто "сайт с красивыми карточками", а более дисциплинированная аналитическая версия.
+
+
+==================================================
+7. ЧТО ЕЩЁ ОСТАЁТСЯ КАК НЕ КРИТИЧНЫЙ ДОЛГ
+==================================================
+
+Остаточный, но уже не срочный долг:
+
+- backend telemetry/logging health events;
+- e2e/browser tests;
+- более строгая divergence policy между live и benchmark;
+- дальнейшая полировка UI текстов;
+- возможно отдельный diagnostics screen, если нужен более deep ops режим.
+
+
+==================================================
+8. ВЕРДИКТ ПО V2
+==================================================
+
+v2 закрывает основные логические и математические проблемы v1.
+
+Главный результат:
+- меньше ложных сигналов;
+- меньше грязной склейки данных;
+- лучше контроль качества feed;
+- лучше воспроизводимость;
+- лучше документированность;
+- лучше тестируемость.
+
+Если коротко:
+v1 была хрупкой и местами статистически слабой.
+v2 уже можно считать нормальной рабочей аналитической версией.
+

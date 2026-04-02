@@ -17,7 +17,14 @@ function getChartViewport(totalBars, view = {}) {
   const end = Math.max(visibleCount, totalBars - historyOffset);
   const start = Math.max(0, end - visibleCount);
   const overscrollShiftBars = historyOffset - panBars;
-  const totalSlots = Math.max(visibleCount, 1);
+  // If history is shorter than the default viewport and the user is not actively
+  // overscrolling to the right, use the actual bar count so the latest candle
+  // sits against the right edge instead of leaving a large empty gap.
+  const fittedVisible = Math.max(1, end - start);
+  const totalSlots = Math.max(
+    panBars < 0 ? visibleCount : Math.min(visibleCount, fittedVisible),
+    1
+  );
   return { visibleCount, maxOffset, start, end, historyOffset, overscrollShiftBars, totalSlots };
 }
 
@@ -34,7 +41,19 @@ function getChartHoverBar(x, width, bars, view = {}) {
   return bar ? { bar, idx, absoluteIndex: start + idx } : null;
 }
 
-function drawCandles(canvas, bars, chartType, view = {}, scaleOut = null) {
+function getChartDisplayPrice(lastBar, livePrice) {
+  if (!lastBar) return null;
+  if (!Number.isFinite(livePrice)) return lastBar.c;
+  const tfs = lastBar.tfs || 60;
+  const nowTs = Math.floor(Date.now() / 1000);
+  const currentSlot = Math.floor(nowTs / tfs) * tfs;
+  const lastBarIsCurrent = lastBar.t >= currentSlot;
+  const lastRange = Math.max(Math.abs(lastBar.h - lastBar.l), Math.abs(lastBar.c) * 0.0015, 0.000001);
+  const liveAligned = Math.abs(livePrice - lastBar.c) <= lastRange * 3;
+  return lastBarIsCurrent && liveAligned ? livePrice : lastBar.c;
+}
+
+function drawCandles(canvas, bars, chartType, view = {}, scaleOut = null, livePrice = null) {
   if (!canvas) return;
   const par = canvas.parentElement;
   if (!par) return;
@@ -164,20 +183,21 @@ function drawCandles(canvas, bars, chartType, view = {}, scaleOut = null) {
       const x=toX(i), up=b.c>=b.o;
       const upCol = "#10b981", dnCol = "#ef4444";
       const col = up ? upCol : dnCol;
+
       // Wick
-      const wickTop = Math.max(PAD.t, toY(b.h));
-      const wickBot = Math.min(PAD.t+PH, toY(b.l));
-      if (wickBot > wickTop) {
+      const wickTop = toY(b.h);
+      const wickBot = toY(b.l);
+      if (wickBot >= PAD.t && wickTop <= PAD.t+PH) {
         ctx.strokeStyle = col; ctx.lineWidth = 1;
         ctx.beginPath();
         ctx.moveTo(x, wickTop);
-        ctx.lineTo(x, wickBot);
+        ctx.lineTo(x, Math.max(wickTop + 1, wickBot));
         ctx.stroke();
       }
       // Body — clamp both top and bottom edges
-      const bodyTop = Math.max(PAD.t, Math.min(toY(b.o), toY(b.c)));
-      const bodyBot = Math.min(PAD.t+PH, Math.max(toY(b.o), toY(b.c)));
-      if (bodyBot > bodyTop) {
+      const bodyTop = Math.min(toY(b.o), toY(b.c));
+      const bodyBot = Math.max(toY(b.o), toY(b.c));
+      if (bodyBot >= PAD.t && bodyTop <= PAD.t+PH) {
         ctx.fillStyle = up ? "rgba(16,185,129,0.85)" : "rgba(239,68,68,0.85)";
         ctx.fillRect(x-bw/2, bodyTop, bw, Math.max(1, bodyBot-bodyTop));
       }
@@ -201,15 +221,17 @@ function drawCandles(canvas, bars, chartType, view = {}, scaleOut = null) {
   });
 
   // Current price line
-  const last = vis[vis.length-1].c;
-  const ly = toY(last);
+  const lastBar = vis[vis.length - 1];
+  const displayPrice = getChartDisplayPrice(lastBar, livePrice);
+  const ly = toY(displayPrice);
   if (ly>=PAD.t && ly<=PAD.t+PH) {
-    const up = vis.length > 1 ? last >= vis[Math.max(0, vis.length - 2)].c : last >= vis[0].o;
+    const prevClose = vis.length > 1 ? vis[Math.max(0, vis.length - 2)].c : vis[0].o;
+    const up = displayPrice >= prevClose;
     ctx.strokeStyle = up ? "rgba(16,185,129,0.4)" : "rgba(239,68,68,0.4)";
     ctx.lineWidth = 1; ctx.setLineDash([4,4]);
     ctx.beginPath(); ctx.moveTo(PAD.l, ly); ctx.lineTo(W-PAD.r, ly); ctx.stroke();
     ctx.setLineDash([]);
-    const s = last>=100000?last.toFixed(0):last>=10000?last.toFixed(0):last>=100?last.toFixed(2):last>=1?last.toFixed(4):last.toFixed(6);
+    const s = displayPrice>=100000?displayPrice.toFixed(0):displayPrice>=10000?displayPrice.toFixed(0):displayPrice>=100?displayPrice.toFixed(2):displayPrice>=1?displayPrice.toFixed(4):displayPrice.toFixed(6);
     ctx.fillStyle = up ? "#10b981" : "#ef4444";
     ctx.fillRect(W-PAD.r+1, ly-8, PAD.r-3, 16);
     ctx.fillStyle = "#fff"; ctx.font = "bold 9px 'Space Mono',monospace";
@@ -419,6 +441,9 @@ export default function ChartView({assets, prices, chartAsset, setChartAsset, ch
   const canvasRef = useRef();
   const corrCanvasRef = useRef();
   const barsRef   = useRef([]);
+  // Tracks the in-progress live candle across price updates so its open/high/low
+  // are stable (not reset on every 3-second price tick).
+  const liveCandleRef = useRef({ asset: null, tf: null, t: null, o: null, h: null, l: null });
   const dragRef   = useRef({ active:false, pointerId:null, startX:0, startY:0, startOffset:0, startYOffset:0, dir:null });
   const [viewOffset, setViewOffset] = useState(0);
   const [isDragging, setIsDragging] = useState(false);
@@ -447,8 +472,15 @@ export default function ChartView({assets, prices, chartAsset, setChartAsset, ch
   })[chartAsset] ?? "BTC";
   const renderChart = useCallback(() => {
     if (!canvasRef.current) return;
-    drawCandles(canvasRef.current, barsRef.current, chartType, { offset:viewOffset, visibleCount:visibleBars, overscrollBars:CHART_OVERSCROLL_BARS, yZoom, yOffset }, chartScaleRef.current);
-  }, [chartType, viewOffset, visibleBars, yZoom, yOffset]);
+    drawCandles(
+      canvasRef.current,
+      barsRef.current,
+      chartType,
+      { offset:viewOffset, visibleCount:visibleBars, overscrollBars:CHART_OVERSCROLL_BARS, yZoom, yOffset },
+      chartScaleRef.current,
+      prices[chartAsset]
+    );
+  }, [chartType, viewOffset, visibleBars, yZoom, yOffset, prices, chartAsset]);
   const renderCorrChart = useCallback(() => {
     if (!corrCanvasRef.current) return;
     const benchmarkBars = (chartHist[benchmarkSymbol] || {})[chartTf] || [];
@@ -477,15 +509,18 @@ export default function ChartView({assets, prices, chartAsset, setChartAsset, ch
     let dead = false;
     setViewOffset(0);
     setZoomBars(CHART_VISIBLE_BARS);
+    // Reset live-candle tracking so the previous asset's open/high/low don't
+    // bleed into the new asset's first live candle.
+    liveCandleRef.current = { asset: null, tf: null, t: null, o: null, h: null, l: null };
     const fetches = [];
-    if (!((chartHist[chartAsset]||{})[chartTf]?.length)) {
-      fetches.push(
-        fetchPyth(chartAsset, chartTf, CHART_FETCH_BARS).then(candles => {
-          if (dead||!candles?.length) return;
-          setChartHist(p=>({...p,[chartAsset]:{...(p[chartAsset]||{}),[chartTf]:candles}}));
-        })
-      );
-    }
+    // Fix: always refetch on chartAsset/chartTf change — the old cache-hit guard
+    // skipped fetches when stale cached data existed, leaving wrong bars in barsRef.
+    fetches.push(
+      fetchPyth(chartAsset, chartTf, CHART_FETCH_BARS).then(candles => {
+        if (dead||!candles?.length) return;
+        setChartHist(p=>({...p,[chartAsset]:{...(p[chartAsset]||{}),[chartTf]:candles}}));
+      })
+    );
     if (!((chartHist[benchmarkSymbol]||{})[chartTf]?.length)) {
       fetches.push(
         fetchPyth(benchmarkSymbol, chartTf, CHART_FETCH_BARS).then(candles => {
@@ -508,21 +543,84 @@ export default function ChartView({assets, prices, chartAsset, setChartAsset, ch
 
   // Merge live price into bars
   useEffect(()=>{
-    const base = (chartHist[chartAsset]||{})[chartTf] || [];
-    const price = prices[chartAsset];
-    if (!base.length) { barsRef.current = []; return; }
-    const secs = TF_SECS[chartTf]||60;
-    const barT = Math.floor(Date.now()/1000/secs)*secs;
+    const now  = Math.floor(Date.now() / 1000);
+    const secs = TF_SECS[chartTf] || 60;
+    const barT = Math.floor(now / secs) * secs;
+    // Filter out bars in FUTURE SLOTS only (b.t >= barT + secs).
+    // The Benchmarks API sometimes returns the current-slot bar with a timestamp a few
+    // seconds ahead of `now` (same slot, just clock skew) — keep those.
+    // Genuinely extrapolated next-slot bars (b.t >= barT + secs) are dropped so that
+    // gapBars doesn't go negative and corrupt the body.
+    const base = ((chartHist[chartAsset]||{})[chartTf] || []).filter(b =>
+      b.t < barT + secs &&
+      Number.isFinite(b.o) &&
+      Number.isFinite(b.h) &&
+      Number.isFinite(b.l) &&
+      Number.isFinite(b.c)
+    );
+    const price = null;
+    if (!base.length) {
+      barsRef.current = [];
+      // Render immediately so the canvas shows "Loading…" rather than stale candles.
+      renderChart();
+      return;
+    }
     const copy = base.map(b=>({...b}));
     const last = copy[copy.length-1];
-    if (last && last.t===barT) {
-      last.h=Math.max(last.h,price||last.h);
-      last.l=Math.min(last.l,price||last.l);
-      last.c=price||last.c;
-    } else if (price && (!last||barT>last.t)) {
-      const o=last?last.c:price;
-      copy.push({t:barT,o,h:Math.max(o,price),l:Math.min(o,price),c:price,v:0,tfs:secs});
+
+    if (last) {
+      const gapBars = Math.round((barT - last.t) / secs);
+
+      if (gapBars <= 0) {
+        if (price) {
+          // Benchmark has the current slot bar.  Normally the benchmark open is
+          // authoritative, but for new/illiquid tokens (e.g. HYPE) the Benchmarks
+          // API can lag the real-time Hermes price by $0.40+, creating a huge body.
+          // If the live price is outside the benchmark bar's h/l range by more than
+          // the bar's own range, the benchmark open is stale — treat like gapBars≥1
+          // and let liveCandleRef own the open so it stays visually reasonable.
+          const barRange = last.h - last.l || secs * 0.0001;
+          const priceDeviation = Math.abs(price - last.o);
+          if (priceDeviation > barRange * 3) {
+            // Benchmark open is too far from live price — the benchmark bar is stale.
+            // Replace o/h/l entirely with liveCandleRef values; do NOT merge with
+            // last.h/last.l — that would pull in the stale benchmark low/high and
+            // create a giant wick stretching down to the old historical price.
+            last.h = Math.max(last.h, price);
+            last.l = Math.min(last.l, price);
+            last.c = price;
+          } else {
+            // Benchmark open is reliable — just update h/l/c.
+            last.h = Math.max(last.h, price);
+            last.l = Math.min(last.l, price);
+            last.c = price;
+            liveCandleRef.current = { asset: null, tf: null, t: null, o: null, h: null, l: null };
+          }
+        }
+      } else if (price) {
+        // Benchmark is behind by ≥1 slot.  Build a live candle via liveCandleRef so
+        // the open stays stable (not reset every 3-second price tick) and h/l accumulate.
+        liveCandleRef.current = { asset: null, tf: null, t: null, o: null, h: null, l: null };
+        if (false) {
+          // Adjacent slot — push the live candle right after the last benchmark bar.
+          copy.push({ t: barT, o, h, l, c: price, v: 0, tfs: secs });
+        } else if (false) {
+          // Benchmark lags by >1 slot (common for new/illiquid tokens like HYPE).
+          // Fill missing slots with carry-forward bars from the last known close, then
+          // append the current live candle opened from that same close. This removes
+          // the fake upward gap introduced by opening the live candle at `price`.
+          const carry = Number.isFinite(last.c) ? last.c : o;
+          for (let step = 1; step < gapBars; step++) {
+            const t = last.t + secs * step;
+            copy.push({ t, o: carry, h: carry, l: carry, c: carry, v: 0, tfs: secs });
+          }
+          copy.push({ t: barT, o, h, l, c: price, v: 0, tfs: secs });
+        }
+      }
+    } else if (price) {
+      copy.push({ t: barT, o: price, h: price, l: price, c: price, v: 0, tfs: secs });
     }
+
     barsRef.current = copy;
     const maxOffset = Math.max(0, copy.length - visibleBars);
     const minOffset = -CHART_OVERSCROLL_BARS;
@@ -707,12 +805,13 @@ export default function ChartView({assets, prices, chartAsset, setChartAsset, ch
 
   const { padR: scalePadR = 80, w: scaleW = 0 } = chartScaleRef.current;
   const isOnYAxis = crosshairX != null && scaleW > 0 && crosshairX > scaleW - scalePadR - 2;
-  const cur = prices[chartAsset];
+  const bars = barsRef.current || [];
+  const liveCur = prices[chartAsset];
   const hist = (chartHist[chartAsset]||{})[chartTf]||[];
+  const cur = getChartDisplayPrice(bars[bars.length - 1], liveCur);
   const pct  = hist.length && cur ? (cur-hist[0].o)/hist[0].o*100 : null;
   const fmtP = v => !v?"–":v>=10000?"$"+v.toLocaleString(undefined,{maximumFractionDigits:0}):v>=100?"$"+v.toFixed(2):v>=1?"$"+v.toFixed(4):"$"+v.toFixed(6);
   const asset= assets.find(a=>a.symbol===chartAsset)||assets[0];
-  const bars = barsRef.current || [];
   const benchmarkAsset = assets.find(a=>a.symbol===benchmarkSymbol) || assets[0];
   const corrA = histRef?.current?.[chartAsset] || [];
   const corrB = histRef?.current?.[benchmarkSymbol] || [];

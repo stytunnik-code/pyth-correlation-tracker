@@ -21,7 +21,7 @@ export default async function handler(req, res) {
   }
 
   try {
-    const results = await Promise.all(
+    const results = await Promise.allSettled(
       batches.map(async (batch) => {
         const params = new URLSearchParams();
         batch.forEach(id => params.append("ids[]", id.trim()));
@@ -41,12 +41,17 @@ export default async function handler(req, res) {
       })
     );
 
-    const parsed = results.flat().map(item => ({
+    const parsed = results
+      .filter(result => result.status === "fulfilled")
+      .flatMap(result => result.value)
+      .map(item => ({
       id: item.id,
       price: item.price,
       ema_price: item.ema_price,
       metadata: item.metadata,
     }));
+
+    if (!parsed.length) throw new Error("No valid price updates");
 
     return res.status(200).json({ parsed, count: parsed.length });
   } catch (err) {

@@ -1,14 +1,17 @@
 # Entropy & NMI
 
-How the Entropy Lab measures market predictability and detects hidden nonlinear dependencies between assets.
+How the Entropy Lab measures predictability and detects hidden nonlinear dependencies between assets.
 
 ***
 
 ### Why Entropy?
 
-Pearson correlation captures only **linear** relationships. Two assets can have `r ≈ 0` and still be deeply connected — just in a nonlinear way (volatility coupling, regime-conditional, lagged nonlinear).
+Pearson correlation captures only **linear** relationships. Two assets can have `r ≈ 0` and still be connected in a nonlinear way.
 
-Entropy-based methods detect **any** statistical dependency, regardless of shape.
+Entropy-based methods help answer two different questions:
+
+- how chaotic is a single asset's return stream;
+- how much nonlinear dependence exists between two assets.
 
 ***
 
@@ -20,7 +23,7 @@ All entropy calculations operate on **percent returns**, not raw prices:
 r(t) = (price(t) - price(t-1)) / price(t-1) × 100
 ```
 
-This removes price-level bias and makes assets comparable regardless of their absolute price.
+This removes price-level bias and makes assets more comparable.
 
 ***
 
@@ -29,135 +32,80 @@ This removes price-level bias and makes assets comparable regardless of their ab
 For each asset's return series, the platform computes **Gaussian differential entropy**:
 
 ```
-H(X) = 0.5 * ln(2π·e·σ²)
+H(X) = 0.5 * ln(2π * e * σ²)
 ```
 
 where `σ²` is the variance of percent returns.
 
-```javascript
-function gaussianEntropy(arr) {
-  const mean = arr.reduce((s,v) => s+v, 0) / arr.length;
-  const variance = arr.reduce((s,v) => s+(v-mean)**2, 0) / arr.length;
-  if (variance <= 0) return 0;
-  return 0.5 * Math.log(2 * Math.PI * Math.E * variance);
-}
-```
-
-#### Interpretation
-
-| Asset | Typical σ | Entropy   | Meaning                                   |
-| ----- | --------- | --------- | ----------------------------------------- |
-| USDC  | \~0.001%  | Very low  | Near-zero volatility → highly predictable |
-| Gold  | \~0.3%    | Medium    | Moderate spread → some predictability     |
-| BTC   | \~2–3%    | High      | Wide spread → chaotic                     |
-| DOGE  | \~3–5%    | Very high | Extreme volatility → most chaotic         |
-
-**Lower entropy = more predictable. Higher entropy = more chaotic.**
+Lower entropy means more compressed and stable return behavior.
+Higher entropy means more chaotic and volatile behavior.
 
 ***
 
-### Step 3 — Bootstrap Confidence Interval
+### Step 3 — Bootstrap Confidence
 
-To measure the **reliability** of each entropy estimate, the platform uses bootstrap resampling:
+To measure the reliability of each entropy estimate, the platform uses bootstrap resampling:
 
-1. From the full returns series, draw N random samples with replacement
-2. Compute `gaussianEntropy` for each resample (60 iterations)
-3. Report the **mean** and **±1σ confidence band**
+1. sample returns with replacement;
+2. compute gaussian entropy on each resample;
+3. report the full-sample estimate plus uncertainty statistics.
 
-This tells you: is the entropy estimate stable, or noisy due to small sample size?
-
-```
-BTC  → H = 2.34 ± 0.12  (stable — large sample)
-HYPE → H = 2.81 ± 0.44  (wider CI — newer asset, less history)
-```
+The current product uses deterministic seeding from live Pyth prices, so the same state is reproducible.
 
 ***
 
 ### Step 4 — Mutual Information and NMI
 
-To detect nonlinear dependencies between pairs, the platform computes **Normalized Mutual Information (NMI)**.
-
-#### Discretization
-
-Continuous returns are binned using **quantile binning** (equal-frequency bins, 8 bins by default):
-
-```javascript
-function quantileBins(arr, nBins = 8) {
-  const sorted = [...arr].sort((a,b) => a-b);
-  const edges = [];
-  for (let i=1; i<nBins; i++)
-    edges.push(sorted[Math.floor(i/nBins * arr.length)]);
-  return arr.map(v => { let b=0; for(const e of edges){if(v>e)b++;} return b; });
-}
-```
-
-Quantile binning ensures each bin has equal occupancy — avoiding the sparse-bin problem of fixed-width histograms.
-
-#### Shannon Entropy of Bins
+To detect nonlinear dependence between two return series, the platform computes:
 
 ```
-H(X) = -Σ p_i · log₂(p_i)
+MI(X,Y) = H(X) + H(Y) - H(X,Y)
+NMI(X,Y) = MI(X,Y) / sqrt(H(X) * H(Y))
 ```
 
-#### Joint Entropy
-
-```
-H(X,Y) = -Σ p_ij · log₂(p_ij)
-```
-
-#### Mutual Information
-
-```
-I(X;Y) = H(X) + H(Y) - H(X,Y)
-```
-
-#### Normalization
-
-```
-NMI(X,Y) = I(X;Y) / sqrt(H(X) · H(Y))   ∈ [0, 1]
-```
-
-```javascript
-const nmi = Math.sqrt(hA * hB) > 0 ? mi / Math.sqrt(hA * hB) : 0;
-```
-
-Normalization makes NMI **scale-invariant** and comparable across different assets.
+Returns are discretized with **quantile binning** before Shannon and joint entropy are computed.
 
 ***
 
-### Step 5 — Hidden Connections
+### Step 5 — Adjusted NMI
 
-A pair is flagged as a **Hidden Connection** when:
+Raw NMI on finite samples can be noisy.
 
-```
-|Pearson r| < 0.35   AND   NMI > 0.30
-```
+The current version improves this by running shuffled baselines:
 
-These pairs appear linearly uncorrelated but share significant nonlinear dependence — often representing:
+1. compute observed NMI;
+2. shuffle one series multiple times;
+3. compute baseline NMI on shuffled samples;
+4. subtract the baseline mean from observed NMI.
 
-* **Volatility coupling** — similar variance patterns, opposite directions
-* **Regime-conditional** correlation — related only during stress events
-* **Lagged nonlinear** relationships outside Pearson's detection range
+The UI uses this **adjusted NMI**, not raw NMI.
+
+This makes hidden nonlinear signals less likely to be pure noise.
 
 ***
 
-### NMI Heatmap Color Scale
+### Step 6 — Hidden Connections
 
-| Color       | NMI Value | Meaning                |
-| ----------- | --------- | ---------------------- |
-| Dark purple | 0.0       | Completely independent |
-| Violet      | 0.5       | Moderate dependence    |
-| Green       | 1.0       | Perfectly dependent    |
+A pair is treated as a stronger hidden connection when:
+
+- Pearson is weak or not very informative;
+- adjusted NMI still remains above baseline.
+
+These pairs may represent:
+
+- volatility coupling;
+- regime-conditional links;
+- lagged nonlinear dependence.
 
 ***
 
 ### Minimum Sample
 
-NMI requires at least **20 ticks** to compute. The **Assets Ready** counter in the Entropy Lab header shows how many assets have sufficient history.
+NMI requires a minimum amount of data to be meaningful. The Entropy Lab header shows how many assets are currently ready.
 
 ***
 
 ### References
 
-* Shannon, C.E. (1948). _A Mathematical Theory of Communication_. Bell System Technical Journal.
-* Bandt, C. & Pompe, B. (2002). _Permutation Entropy_. Physical Review Letters.
+- Shannon, C.E. (1948). _A Mathematical Theory of Communication_.
+- standard mutual information and entropy identities from information theory.

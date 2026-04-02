@@ -1,12 +1,12 @@
 import { useState, useEffect, useRef, useCallback } from "react";
 import PythLogo from "../components/PythLogo.jsx";
 import { pearson } from "../utils/math.js";
-import { PYTH_SYM, fetchCloses } from "../utils/pyth.js";
+import { PYTH_SYM, fetchPyth } from "../utils/pyth.js";
 import {
   pctReturns,
   mulberry32, pythSeed, gaussianEntropy,
-  quantileBins, shannonH, jointH, computeMI,
-  bootstrapEntropy, interpolateMatrix, interpolateEntropyRanking,
+  quantileBins, shannonH, jointH, permutationAdjustedMI,
+  bootstrapEntropy, interpolateMatrix, interpolateEntropyRanking, mergeHistoricalBarsWithLiveTicks,
 } from "../utils/entropy.js";
 
 function drawEntropyBars(canvas, ranking, assets, minH, maxH) {
@@ -100,7 +100,7 @@ function drawEntropyBars(canvas, ranking, assets, minH, maxH) {
   }
   ctx.fillStyle = "rgba(255,255,255,0.1)"; ctx.font = "8px 'Space Mono',monospace";
   ctx.textAlign = "center"; ctx.textBaseline = "top";
-  ctx.fillText("predictable  ←  entropy of returns  →  chaotic", PAD.l + CW / 2, H - PAD.b + 14);
+  ctx.fillText("predictable  ←  gaussian entropy of returns  →  chaotic", PAD.l + CW / 2, H - PAD.b + 14);
 }
 
 function drawNMIHeatmap(canvas, assets, nmiMatrix) {
@@ -268,7 +268,7 @@ function drawHiddenConnections(canvas, assets, nmiMatrix, pearsonMatrix) {
   });
 }
 
-export default function EntropyView({ histRef, prices, assets, setActiveTab, status, liveRun, setLiveRun, corrAlertEnabled, setCorrAlertEnabled, corrAlertPair, setCorrAlertPair, corrAlertThreshold, setCorrAlertThreshold, corrAlertHit, corrAlertOptions }) {
+export default function EntropyView({ histRef, tickRef, prices, assets, setActiveTab, status, liveRun, setLiveRun, corrAlertEnabled, setCorrAlertEnabled, corrAlertPair, setCorrAlertPair, corrAlertThreshold, setCorrAlertThreshold, corrAlertHit, corrAlertOptions }) {
   const barRef     = useRef();
   const heatRef    = useRef();
   const hiddenRef  = useRef();
@@ -276,7 +276,7 @@ export default function EntropyView({ histRef, prices, assets, setActiveTab, sta
   const [entropyData, setEntropyData] = useState(null);
   const [nmiMatrix,   setNmiMatrix]   = useState([]);
   const [pearsonMat,  setPearsonMat]  = useState([]);
-  const [closes,      setCloses]      = useState({});
+  const [barsBySymbol, setBarsBySymbol] = useState({});
   const [loading,     setLoading]     = useState(false);
   const [seedInfo,    setSeedInfo]    = useState(null);
   const [lastRun,     setLastRun]     = useState(null);
@@ -296,18 +296,18 @@ export default function EntropyView({ histRef, prices, assets, setActiveTab, sta
 
   const BINS = 8, N_ITER = 40, SAMPLE = 120;
 
-  // Fetch closes for all assets
+  // Fetch 1m benchmark bars for all assets
   useEffect(() => {
     let dead = false;
-    const needed = activeAssets.filter(a => !closes[a.symbol] && PYTH_SYM[a.symbol]);
+    const needed = activeAssets.filter(a => !barsBySymbol[a.symbol] && PYTH_SYM[a.symbol]);
     if (!needed.length) return;
     setLoading(true);
-    Promise.all(needed.map(a => fetchCloses(a.symbol, "1m", 300)))
+    Promise.all(needed.map(a => fetchPyth(a.symbol, "1m", 300)))
       .then(results => {
         if (dead) return;
         const upd = {};
         needed.forEach((a, i) => { upd[a.symbol] = results[i]; });
-        setCloses(p => ({ ...p, ...upd }));
+        setBarsBySymbol(p => ({ ...p, ...upd }));
       })
       .catch(() => {})
       .finally(() => { if (!dead) setLoading(false); });
@@ -315,14 +315,14 @@ export default function EntropyView({ histRef, prices, assets, setActiveTab, sta
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selectedSymbols]);
 
-  // Merge base closes + live Pyth ticks
+  // Merge benchmark bars + timestamped live ticks
   const getReturns = () => {
     const ret = {};
     for (const a of activeAssets) {
-      const base  = closes[a.symbol] || [];
-      const live  = histRef.current[a.symbol] || [];
-      const merged = base.length ? [...base, ...live].slice(-300) : live;
-      if (merged.length >= 10) ret[a.symbol] = pctReturns(merged);
+      const hist = barsBySymbol[a.symbol] || [];
+      const merged = mergeHistoricalBarsWithLiveTicks(hist, tickRef?.current?.[a.symbol] || [], 60, 300);
+      const closes = merged.map(b => b.c);
+      if (closes.length >= 10) ret[a.symbol] = pctReturns(closes);
     }
     return ret;
   };
@@ -332,7 +332,7 @@ export default function EntropyView({ histRef, prices, assets, setActiveTab, sta
     if (Object.keys(returns).length < 2) return;
     const seed = pythSeed(prices);
     setSeedInfo({ value: seed, hex: seed.toString(16).padStart(8,"0").toUpperCase(), ts: new Date() });
-    const bsResult = bootstrapEntropy(returns, seed, N_ITER);
+    const bsResult = bootstrapEntropy(returns, seed, N_ITER, SAMPLE);
     const validSyms = Object.keys(bsResult).filter(s => bsResult[s]);
     const ranking = validSyms
       .map(sym => ({ sym, data: bsResult[sym] }))
@@ -342,13 +342,16 @@ export default function EntropyView({ histRef, prices, assets, setActiveTab, sta
     const nmi  = Array.from({ length: n }, () => new Array(n).fill(0));
     const pears = Array.from({ length: n }, () => new Array(n).fill(0));
     for (let i = 0; i < n; i++) {
-      for (let j = 0; j < n; j++) {
-        if (i === j) { nmi[i][j] = 1; pears[i][j] = 1; continue; }
+      nmi[i][i] = 1;
+      pears[i][i] = 1;
+      for (let j = i + 1; j < n; j++) {
         const rA = returns[activeAssets[i].symbol], rB = returns[activeAssets[j].symbol];
         if (!rA || !rB) continue;
-        const mi = computeMI(rA, rB, BINS);
-        nmi[i][j]  = mi?.nmi ?? 0;
-        pears[i][j] = Math.abs(pearson(rA, rB) ?? 0);
+        const mi = permutationAdjustedMI(rA, rB, BINS, (seed ^ (i * 73856093) ^ (j * 19349663)) >>> 0, 24);
+        const nmiVal = mi?.adjNmi ?? 0;
+        const pearsonVal = Math.abs(pearson(rA, rB) ?? 0);
+        nmi[i][j] = nmi[j][i] = nmiVal;
+        pears[i][j] = pears[j][i] = pearsonVal;
       }
     }
     setNmiMatrix(nmi);
@@ -374,7 +377,7 @@ export default function EntropyView({ histRef, prices, assets, setActiveTab, sta
         if (Object.keys(ret).length >= 2) { runAnalysis(); setAutoRun(false); }
       }, 200);
     }
-  }, [loading, closes]);
+  }, [loading, barsBySymbol]);
 
   // Safety: run after 4s even if still loading
   useEffect(() => {
@@ -451,7 +454,7 @@ export default function EntropyView({ histRef, prices, assets, setActiveTab, sta
       tick(n => n + 1);
     }, 2500);
     return () => clearInterval(iv);
-  }, [liveRun, closes, prices]);
+  }, [liveRun, barsBySymbol, prices]);
 
   const returns = getReturns();
   const nAssets = Object.keys(returns).length;
@@ -462,7 +465,7 @@ export default function EntropyView({ histRef, prices, assets, setActiveTab, sta
         const j = i + 1 + j2;
         const nmi = nmiMatrix[i]?.[j] ?? 0;
         const r = Math.abs(pearsonMat[i]?.[j] ?? 0);
-        return rowCount + (nmi > 0.30 && r < 0.35 ? 1 : 0);
+        return rowCount + (nmi > 0.08 && r < 0.35 ? 1 : 0);
       }, 0), 0)
     : 0;
 
@@ -473,7 +476,7 @@ export default function EntropyView({ histRef, prices, assets, setActiveTab, sta
       <div style={{display:"flex",alignItems:"center",height:48,padding:"0 16px",borderBottom:"1px solid rgba(255,255,255,0.06)",background:"#0b0917",flexShrink:0,gap:12}}>
         <PythLogo size={22}/>
         <span className="vt-label" style={{fontSize:13,fontWeight:700,color:"#7c3aed",letterSpacing:".06em"}}>PYTH</span>
-        <span className="vt-label" style={{fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.25)"}}>ENTROPY</span>
+        <span className="vt-label" style={{fontSize:13,fontWeight:700,color:"rgba(255,255,255,0.25)"}}>GAUSSIAN ENTROPY</span>
         <div className="vt-label" style={{height:16,width:1,background:"rgba(255,255,255,0.08)"}}/>
         {seedInfo && (
           <div className="vt-label" style={{display:"flex",alignItems:"center",gap:6,padding:"2px 8px",borderRadius:3,background:"rgba(124,58,237,0.1)",border:"1px solid rgba(124,58,237,0.2)"}}>
@@ -581,17 +584,17 @@ export default function EntropyView({ histRef, prices, assets, setActiveTab, sta
         <div style={{padding:"12px 16px",background:"#080614"}}>
           <div style={{fontSize:9,color:"rgba(255,255,255,0.28)",letterSpacing:".1em",textTransform:"uppercase"}}>Most Predictable</div>
           <div style={{marginTop:6,fontSize:18,fontWeight:800,color:mostPredictable ? (activeAssets.find(a=>a.symbol===mostPredictable.sym)?.color || "#10b981") : "rgba(255,255,255,0.25)"}}>{mostPredictable?.sym || "—"}</div>
-          <div style={{marginTop:2,fontSize:10,color:"rgba(255,255,255,0.42)"}}>{mostPredictable?.data ? `${mostPredictable.data.mean.toFixed(2)} entropy` : "waiting for sample"}</div>
+          <div style={{marginTop:2,fontSize:10,color:"rgba(255,255,255,0.42)"}}>{mostPredictable?.data ? `${mostPredictable.data.mean.toFixed(2)} gaussian entropy` : "waiting for sample"}</div>
         </div>
         <div style={{padding:"12px 16px",background:"#080614"}}>
           <div style={{fontSize:9,color:"rgba(255,255,255,0.28)",letterSpacing:".1em",textTransform:"uppercase"}}>Most Chaotic</div>
           <div style={{marginTop:6,fontSize:18,fontWeight:800,color:mostChaotic ? (assets.find(a=>a.symbol===mostChaotic.sym)?.color || "#ef4444") : "rgba(255,255,255,0.25)"}}>{mostChaotic?.sym || "—"}</div>
-          <div style={{marginTop:2,fontSize:10,color:"rgba(255,255,255,0.42)"}}>{mostChaotic?.data ? `${mostChaotic.data.mean.toFixed(2)} entropy` : "waiting for sample"}</div>
+          <div style={{marginTop:2,fontSize:10,color:"rgba(255,255,255,0.42)"}}>{mostChaotic?.data ? `${mostChaotic.data.mean.toFixed(2)} gaussian entropy` : "waiting for sample"}</div>
         </div>
         <div style={{padding:"12px 16px",background:"#080614"}}>
           <div style={{fontSize:9,color:"rgba(255,255,255,0.28)",letterSpacing:".1em",textTransform:"uppercase"}}>Hidden Links</div>
           <div style={{marginTop:6,fontSize:18,fontWeight:800,color:hiddenPairsCount ? "#f59e0b" : "rgba(255,255,255,0.25)"}}>{hiddenPairsCount}</div>
-          <div style={{marginTop:2,fontSize:10,color:"rgba(255,255,255,0.42)"}}>nonlinear pairs correlation misses</div>
+          <div style={{marginTop:2,fontSize:10,color:"rgba(255,255,255,0.42)"}}>baseline-adjusted nonlinear links</div>
         </div>
         <div style={{padding:"12px 16px",background:"#080614"}}>
           <div style={{fontSize:9,color:"rgba(255,255,255,0.28)",letterSpacing:".1em",textTransform:"uppercase"}}>Assets Ready</div>
@@ -606,7 +609,7 @@ export default function EntropyView({ histRef, prices, assets, setActiveTab, sta
         {/* Entropy Ranking bar chart */}
         <div style={{display:"flex",flexDirection:"column",background:"#07050f",minHeight:0}}>
           <div style={{padding:"8px 16px 4px",flexShrink:0,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
-            <span style={{fontSize:9,color:"rgba(255,255,255,0.25)",letterSpacing:".08em"}}>ENTROPY RANKING — predictability ladder</span>
+            <span style={{fontSize:9,color:"rgba(255,255,255,0.25)",letterSpacing:".08em"}}>GAUSSIAN ENTROPY RANKING — predictability ladder</span>
             <div style={{display:"flex",gap:8,fontSize:8,color:"rgba(255,255,255,0.2)"}}>
               <span style={{color:"#10b981"}}>■ low = predictable</span>
               <span style={{color:"#ef4444"}}>■ high = chaotic</span>

@@ -1,67 +1,69 @@
 # Entropy Lab
 
-The **Entropy Lab** goes beyond linear correlation to detect **nonlinear dependencies** between assets that Pearson completely misses.
+The **Entropy Lab** goes beyond linear correlation to detect how chaotic each asset is and where nonlinear dependencies exist between assets.
 
 ---
 
-## The Problem with Pearson
+## Gaussian Entropy
 
-Pearson correlation only captures **linear** relationships. Two assets can have near-zero Pearson correlation yet still be deeply dependent — just in a nonlinear way.
-
-Example: an asset that mirrors another's volatility (not direction) shows `r ≈ 0` on Pearson but high NMI.
-
----
-
-## Shannon Entropy
-
-The Entropy module computes **Shannon entropy** for each asset's price return distribution:
+The ranking in this module uses **Gaussian differential entropy** of returns:
 
 ```
-H(X) = -Σ p(x) · log₂(p(x))
+H(X) = 1/2 · ln(2πeσ²)
 ```
 
-- **Low entropy** → returns are predictable, concentrated distribution
-- **High entropy** → returns are chaotic, spread distribution
+- **Low entropy** means returns are more compressed and structurally stable
+- **High entropy** means returns are more chaotic and volatile
+
+This ranking is computed on **percent returns**, not raw prices.
 
 ---
 
 ## Entropy Ranking
 
-The **Entropy Ranking** bar chart ranks all active assets from most predictable (low entropy) to most chaotic (high entropy).
+The **Entropy Ranking** bar chart orders active assets from more predictable to more chaotic.
 
-This answers: *"Which asset has the most predictable price behavior right now?"*
+This answers the question:
+
+`Which assets currently have more structured return behavior, and which are noisier?`
 
 ---
 
-## NMI Heatmap
+## Adjusted NMI Heatmap
 
-**Normalized Mutual Information (NMI)** measures how much knowing one asset's returns tells you about another's — regardless of whether the relationship is linear.
+The dependency map uses **Adjusted NMI**:
 
-```
-NMI(X,Y) = I(X;Y) / sqrt(H(X) · H(Y))
-```
+- raw NMI is computed from quantile-binned return series;
+- shuffled baseline runs are used to estimate noise-floor dependence;
+- the UI shows the adjusted value after subtracting that baseline.
 
-- Range: **0.0** (completely independent) to **1.0** (perfectly dependent)
-- The heatmap color scale: dark purple (0) → violet (0.5) → green (1.0)
+This makes the nonlinear dependency map less noisy than the old version.
 
 ---
 
 ## Hidden Connections
 
-The bottom panel highlights **Hidden Connections** — pairs where:
-- Pearson correlation is **weak** (< 0.3 in absolute value)
-- But NMI is **high** (> 0.4)
+The bottom panel highlights **Hidden Connections**:
 
-These are pairs that appear uncorrelated on the surface but have a meaningful nonlinear dependence. They often represent lagged relationships, volatility coupling, or regime-dependent co-movement.
+- Pearson looks weak or uninformative;
+- but adjusted NMI still remains above baseline.
+
+These often represent:
+
+- regime-conditional links;
+- volatility coupling;
+- lagged nonlinear structure.
 
 ---
 
 ## Live Run Mode
 
-Toggle **Live Run** to continuously update entropy calculations as new price ticks arrive. In static mode, entropy is computed once per session load.
+Toggle **Live Run** to continuously update entropy calculations as new price ticks arrive.
+
+Historical benchmark bars are merged with timestamped live ticks on real 1-minute buckets.
 
 ---
 
-{% hint style="info" %}
-Entropy calculations require a minimum sample size. The **Assets Ready** counter in the header shows how many assets have enough history to compute reliable entropy values.
-{% endhint %}
+## Sample Readiness
+
+Entropy calculations require a minimum sample size. The **Assets Ready** counter in the header shows how many assets currently have enough data.
